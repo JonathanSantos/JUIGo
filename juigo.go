@@ -29,6 +29,7 @@ type App struct {
 	window  *glfw.Window
 	blitter *render.Blitter
 	buf     *image.RGBA
+	root    Widget
 	width   int
 	height  int
 	dirty   bool
@@ -101,6 +102,13 @@ func (a *App) resize(w, h int) {
 	a.dirty = true
 }
 
+// SetRoot define o widget raiz da árvore de interface e agenda um redesenho.
+// A raiz recebe Layout com os limites do buffer a cada renderização.
+func (a *App) SetRoot(w Widget) {
+	a.root = w
+	a.dirty = true
+}
+
 // Invalidate marca a interface como suja e acorda o loop de eventos, forçando
 // uma nova renderização. Útil para mudanças de estado feitas fora do fluxo de
 // eventos da janela.
@@ -115,8 +123,11 @@ func (a *App) render() {
 	if !a.dirty || a.width <= 0 || a.height <= 0 {
 		return
 	}
-	// Passo 1: buffer preenchido com cor sólida (widgets chegam depois).
 	render.FillRect(a.buf, a.buf.Bounds(), color.RGBA{R: 0x2E, G: 0x86, B: 0xAB, A: 0xFF})
+	if a.root != nil {
+		a.root.Layout(a.buf.Bounds())
+		a.root.Draw(a.buf)
+	}
 
 	a.blitter.Upload(a.buf)
 	fbw, fbh := a.window.GetFramebufferSize()
