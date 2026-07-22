@@ -48,7 +48,18 @@ juigo/
   `Theme`. `Theme.MeasureString` é a única fonte de verdade para largura de
   texto (layout e posicionamento de cursor).
 - **Texto**: o Input opera sobre `[]rune` (cursor em runes, nunca bytes);
-  acentuação e UTF-8 em geral funcionam.
+  acentuação e UTF-8 em geral funcionam. O desenho de texto passa por
+  `Theme.DrawText`, que usa um **cache de glyphs** (`render.GlyphCache`):
+  cada glyph é rasterizado uma única vez e o caminho quente não aloca —
+  pixel a pixel idêntico ao `font.Drawer`, garantido por teste.
+- **HiDPI**: o buffer RGBA tem o tamanho do *framebuffer* (pixels físicos,
+  blit 1:1 com filtro NEAREST). O tema carrega uma escala
+  (`Theme.SetScale`, aplicada pelo App a partir da escala de conteúdo do
+  monitor, inclusive ao trocar de monitor): a fonte é re-rasterizada — texto
+  nítido em retina — e os campos métricos do tema são LÓGICOS, convertidos
+  por `Px`/`PaddingPx`/`SpacingPx`/`BorderPx`/`InputMinWidthPx`. O mouse é
+  convertido de coordenadas lógicas para pixels antes do roteamento; widgets
+  só veem pixels.
 
 ## Dependências
 
@@ -93,6 +104,6 @@ acessibilidade, IME, seleção de texto com mouse, clipboard, outros widgets
 recebê-los depois: eventos são tipos abertos, o tema é injetado, containers
 são aninháveis e o desenho é isolado em `render/`.
 
-Limitações conhecidas desta fase: sem suporte HiDPI (em telas retina o buffer
-é esticado pelo blit, com leve borrão) e sem cache de glyphs (a rasterização
-de texto aloca dentro de `x/image`).
+Limitação conhecida desta fase: o cache de glyphs cresce sob demanda e não é
+descartado por LRU (irrelevante para textos de UI; cada glyph ocupa poucos
+bytes).
