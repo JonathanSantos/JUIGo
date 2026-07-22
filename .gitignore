@@ -1,0 +1,6 @@
+# Binários de exemplo
+examples/basic/basic
+
+# Artefatos diversos
+*.out
+*.test
