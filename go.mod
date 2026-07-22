@@ -7,3 +7,5 @@ require (
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20260707082822-2a407d02d01a
 	golang.org/x/image v0.44.0
 )
+
+require golang.org/x/text v0.40.0 // indirect

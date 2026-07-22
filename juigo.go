@@ -10,7 +10,6 @@ package juigo
 import (
 	"fmt"
 	"image"
-	"image/color"
 	"runtime"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
@@ -29,6 +28,7 @@ type App struct {
 	window  *glfw.Window
 	blitter *render.Blitter
 	buf     *image.RGBA
+	theme   *Theme
 	root    Widget
 	width   int
 	height  int
@@ -64,9 +64,18 @@ func New(title string, width, height int) (*App, error) {
 		return nil, err
 	}
 
+	theme, err := DefaultTheme()
+	if err != nil {
+		blitter.Destroy()
+		window.Destroy()
+		glfw.Terminate()
+		return nil, err
+	}
+
 	a := &App{
 		window:  window,
 		blitter: blitter,
+		theme:   theme,
 		buf:     image.NewRGBA(image.Rect(0, 0, width, height)),
 		width:   width,
 		height:  height,
@@ -102,6 +111,11 @@ func (a *App) resize(w, h int) {
 	a.dirty = true
 }
 
+// Theme devolve o tema da aplicação, usado na construção dos widgets.
+func (a *App) Theme() *Theme {
+	return a.theme
+}
+
 // SetRoot define o widget raiz da árvore de interface e agenda um redesenho.
 // A raiz recebe Layout com os limites do buffer a cada renderização.
 func (a *App) SetRoot(w Widget) {
@@ -123,7 +137,7 @@ func (a *App) render() {
 	if !a.dirty || a.width <= 0 || a.height <= 0 {
 		return
 	}
-	render.FillRect(a.buf, a.buf.Bounds(), color.RGBA{R: 0x2E, G: 0x86, B: 0xAB, A: 0xFF})
+	render.FillRect(a.buf, a.buf.Bounds(), a.theme.Background)
 	if a.root != nil {
 		a.root.Layout(a.buf.Bounds())
 		a.root.Draw(a.buf)
