@@ -3,6 +3,7 @@ package juigo
 import (
 	_ "embed"
 	"fmt"
+	"image"
 	"image/color"
 
 	"golang.org/x/image/font"
@@ -63,6 +64,7 @@ type Theme struct {
 
 	ascent     int
 	lineHeight int
+	cache      *render.GlyphCache
 }
 
 // DefaultTheme constrói o tema padrão do JUIGo, interpretando a fonte
@@ -109,7 +111,15 @@ func DefaultTheme() (*Theme, error) {
 
 		ascent:     m.Ascent.Ceil(),
 		lineHeight: m.Height.Ceil(),
+		cache:      render.NewGlyphCache(face),
 	}, nil
+}
+
+// DrawText desenha s em dst com a fonte do tema, baseline em dot e cor c,
+// usando o cache de glyphs: cada glyph é rasterizado uma única vez, e o
+// caminho quente de desenho não aloca.
+func (t *Theme) DrawText(dst *image.RGBA, s string, dot image.Point, c color.RGBA) {
+	t.cache.DrawString(dst, s, dot, c)
 }
 
 // MeasureString devolve a largura de s em pixels com a fonte do tema. É a

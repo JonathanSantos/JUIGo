@@ -8,10 +8,14 @@ import (
 	"golang.org/x/image/math/fixed"
 )
 
-// textSrc é a fonte de cor reutilizada por DrawText para evitar alocações no
-// caminho quente de desenho. Como o JUIGo é single-threaded (main thread),
-// não há risco de corrida.
-var textSrc = &image.Uniform{}
+// textColor e textSrc são reutilizados por DrawText para evitar alocações no
+// caminho quente de desenho. O Uniform guarda um ponteiro estável para a cor
+// (atribuir color.RGBA direto à interface color.Color faria boxing a cada
+// chamada). Como o JUIGo é single-threaded (main thread), não há corrida.
+var (
+	textColor color.RGBA
+	textSrc   = &image.Uniform{C: &textColor}
+)
 
 // FillRect preenche o retângulo r de dst com a cor sólida c, sem blending.
 // A área é recortada para os limites de dst. Não aloca.
@@ -51,7 +55,7 @@ func StrokeRect(dst *image.RGBA, r image.Rectangle, w int, c color.RGBA) {
 // DrawText desenha s em dst com a face dada, com a origem da baseline em dot
 // e cor c. O texto não é recortado além dos limites de dst.
 func DrawText(dst *image.RGBA, face font.Face, s string, dot image.Point, c color.RGBA) {
-	textSrc.C = c
+	textColor = c
 	d := font.Drawer{
 		Dst:  dst,
 		Src:  textSrc,

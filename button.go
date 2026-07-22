@@ -153,5 +153,5 @@ func (b *Button) Draw(dst *image.RGBA) {
 	labelW := b.theme.MeasureString(b.Label)
 	x := bounds.Min.X + (bounds.Dx()-labelW)/2
 	y := bounds.Min.Y + (bounds.Dy()-b.theme.LineHeight())/2 + b.theme.Ascent()
-	render.DrawText(dst, b.theme.Face, b.Label, image.Pt(x, y), b.theme.ButtonText)
+	b.theme.DrawText(dst, b.Label, image.Pt(x, y), b.theme.ButtonText)
 }

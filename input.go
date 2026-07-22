@@ -207,9 +207,9 @@ func (in *Input) Draw(dst *image.RGBA) {
 
 	switch {
 	case len(in.runes) > 0:
-		render.DrawText(dst, th.Face, in.text, image.Pt(textX, baseline), th.Text)
+		th.DrawText(dst, in.text, image.Pt(textX, baseline), th.Text)
 	case !in.focused && in.Placeholder != "":
-		render.DrawText(dst, th.Face, in.Placeholder, image.Pt(textX, baseline), th.Placeholder)
+		th.DrawText(dst, in.Placeholder, image.Pt(textX, baseline), th.Placeholder)
 	}
 
 	if in.focused {

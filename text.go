@@ -3,8 +3,6 @@ package juigo
 import (
 	"image"
 	"image/color"
-
-	"juigo/render"
 )
 
 // Align define o alinhamento horizontal do texto dentro dos bounds.
@@ -73,5 +71,5 @@ func (t *Text) Draw(dst *image.RGBA) {
 		x = bounds.Max.X - w
 	}
 	y := bounds.Min.Y + (bounds.Dy()-t.theme.LineHeight())/2 + t.theme.Ascent()
-	render.DrawText(dst, t.theme.Face, t.text, image.Pt(x, y), c)
+	t.theme.DrawText(dst, t.text, image.Pt(x, y), c)
 }
