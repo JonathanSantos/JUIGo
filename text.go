@@ -47,6 +47,16 @@ func (t *Text) Right() *Text {
 	return t
 }
 
+// BindText vincula o conteúdo ao State: o Text passa a exibir o valor atual
+// e é atualizado — com redesenho automático — a cada Set. Encadeável.
+func (t *Text) BindText(s *State[string]) *Text {
+	t.SetText(s.Get())
+	s.Watch(func(v string) {
+		t.SetText(v)
+	})
+	return t
+}
+
 // Text devolve o conteúdo atual.
 func (t *Text) Text() string {
 	return t.text

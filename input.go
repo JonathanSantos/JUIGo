@@ -21,6 +21,7 @@ type Input struct {
 	runes   []rune
 	cursor  int // índice do cursor em runes (0..len(runes))
 	focused bool
+	bound   *State[string] // binding de duas vias (ver BindValue)
 
 	// Caches atualizados a cada edição, para que Draw não aloque.
 	// syncScale registra a escala do tema usada no último sync: se a escala
@@ -48,6 +49,22 @@ func (in *Input) SetText(s string) {
 	in.cursor = len(in.runes)
 	in.sync()
 	requestRepaint()
+}
+
+// BindValue vincula o conteúdo do campo ao State em DUAS vias: edições do
+// usuário fazem Set no State, e um Set externo atualiza o campo (movendo o
+// cursor para o fim). Encadeável.
+func (in *Input) BindValue(s *State[string]) *Input {
+	in.bound = s
+	in.SetText(s.Get())
+	s.Watch(func(v string) {
+		// Guarda contra eco: quando o Set veio de uma edição deste próprio
+		// campo, o texto já está atualizado e nada precisa ser feito.
+		if in.text != v {
+			in.SetText(v)
+		}
+	})
+	return in
 }
 
 // Cursor devolve a posição atual do cursor, em runes.
@@ -172,8 +189,12 @@ func (in *Input) sync() {
 	in.syncScale = in.theme.Scale()
 }
 
-// emitChange notifica OnChange com o texto atual.
+// emitChange propaga uma edição para o State vinculado (se houver) e para o
+// callback OnChange.
 func (in *Input) emitChange() {
+	if in.bound != nil && in.bound.Get() != in.text {
+		in.bound.Set(in.text)
+	}
 	if in.OnChange != nil {
 		in.OnChange(in.text)
 	}
