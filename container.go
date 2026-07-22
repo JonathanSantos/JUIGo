@@ -33,6 +33,15 @@ func (c *Container) Add(ws ...Widget) {
 	c.children = append(c.children, ws...)
 }
 
+// SetTheme define um tema explícito para o container e o propaga
+// imediatamente à subárvore atual (filhos adicionados depois o herdam no
+// próximo mount). Também permite montar árvores sem App — testes e
+// renderização offscreen — aplicando o tema pela raiz.
+func (c *Container) SetTheme(t *Theme) {
+	c.BaseWidget.SetTheme(t)
+	propagateTheme(c, t)
+}
+
 // Children devolve os filhos na ordem de desenho.
 func (c *Container) Children() []Widget {
 	return c.children

@@ -80,15 +80,55 @@ O GLFW é compilado via cgo e precisa de toolchain C e headers de janela/GL:
 - **Windows**: toolchain gcc (MSYS2 ou TDM-GCC)
 - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
 
+## DX: como se escreve uma aplicação
+
+```go
+valor := juigo.NewState("")
+eco := juigo.NewState("Digite algo e clique em Enviar")
+
+contador := juigo.Map(valor, func(s string) string {
+    return fmt.Sprintf("%d caracteres", len([]rune(s)))
+})
+
+ui := juigo.NewVBox(
+    juigo.NewText("").BindText(eco).Center(),
+    juigo.NewInput("Digite aqui…").BindValue(valor),
+    juigo.NewText("").BindText(contador).Right(),
+    juigo.NewButton("Enviar", func() {
+        eco.Set("Você digitou: " + valor.Get())
+    }),
+).Pad(16)
+
+if err := juigo.Run("JUIGo — demo", 480, 240, ui); err != nil {
+    log.Fatal(err)
+}
+```
+
+Três ideias sustentam essa DX:
+
+- **Tema ambiente** — construtores não pedem tema: o App o injeta na árvore
+  no *mount* (e a cada render, cobrindo widgets adicionados dinamicamente).
+  `SetTheme` dá a um widget — ou a uma subárvore inteira, quando aplicado a
+  um container — um tema próprio. Gap/Pad e os campos métricos são unidades
+  lógicas, escaladas pelo tema (HiDPI transparente para o usuário).
+- **Reatividade com `State[T]`** — `NewState`/`Get`/`Set`/`Watch` + `Map`
+  para derivados. `Set` notifica os observadores sincronamente e redesenha a
+  interface sozinho; setters de widgets (`SetText`) também. Bindings:
+  `Text.BindText` (uma via) e `Input.BindValue` (duas vias). Eventos
+  continuam callbacks (`OnClick`) — estado é para dados.
+- **Boot em uma linha** — `juigo.Run(título, w, h, raiz)`. `juigo.New`
+  continua disponível para quem precisa do `*App`.
+
 ## Rodando a demo
 
 ```bash
 go run ./examples/basic
 ```
 
-Na janela: digite no campo (acentos funcionam), use setas/Home/End para mover
-o cursor, Tab para alternar o foco e Enter/Espaço para acionar o botão focado.
-Clicar em **Enviar** atualiza o título com o texto digitado.
+Na janela: digite no campo (acentos funcionam; o contador reage a cada
+tecla), use setas/Home/End para mover o cursor, Tab para alternar o foco e
+Enter/Espaço para acionar o botão focado. Clicar em **Enviar** atualiza o
+título com o texto digitado.
 
 Testes da arquitetura (rodam sem janela):
 

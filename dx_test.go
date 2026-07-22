@@ -33,10 +33,14 @@ func TestTemaAmbienteMount(t *testing.T) {
 		t.Fatal("irmão sem override deveria continuar com o tema do App")
 	}
 
-	// Tema explícito em um container tematiza a subárvore inteira.
+	// Tema explícito em um container tematiza a subárvore inteira — e
+	// propaga imediatamente, sem depender do mount do App.
 	child := NewText("c")
 	sub := NewVBox(child)
 	sub.SetTheme(custom)
+	if child.Theme() != custom {
+		t.Fatal("SetTheme em container deveria propagar imediatamente aos filhos")
+	}
 	outer := NewVBox(sub)
 	propagateTheme(outer, th)
 	if outer.Theme() != th {
