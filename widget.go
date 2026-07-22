@@ -37,8 +37,18 @@ type ParentWidget interface {
 // BaseWidget implementa os comportamentos padrão de Widget e serve para ser
 // embutido nos widgets concretos: guarda os bounds definidos por Layout, não
 // é focável, não consome eventos e não tem tamanho preferido.
+//
+// Também guarda o tema do widget: por padrão ele é HERDADO no mount — o App
+// injeta o tema na árvore antes do primeiro layout (e a cada renderização,
+// cobrindo widgets adicionados dinamicamente), então construtores não pedem
+// tema. Use SetTheme para dar a um widget (e seus descendentes) um tema
+// próprio.
 type BaseWidget struct {
 	bounds image.Rectangle
+	theme  *Theme
+	// themeExplicit protege um tema definido via SetTheme de ser
+	// sobrescrito pela injeção do mount.
+	themeExplicit bool
 }
 
 // Layout guarda os bounds absolutos do widget.
@@ -67,6 +77,50 @@ func (b *BaseWidget) Focusable() bool {
 // PreferredSize devolve zero por padrão (o widget aceita qualquer tamanho).
 func (b *BaseWidget) PreferredSize() image.Point {
 	return image.Point{}
+}
+
+// SetTheme define um tema explícito para este widget. Na injeção do mount,
+// os descendentes herdam o tema explícito do ancestral mais próximo, então
+// definir o tema de um container tematiza a subárvore inteira.
+func (b *BaseWidget) SetTheme(t *Theme) {
+	b.theme = t
+	b.themeExplicit = t != nil
+}
+
+// Theme devolve o tema efetivo do widget — nil antes do mount.
+func (b *BaseWidget) Theme() *Theme {
+	return b.theme
+}
+
+// inheritTheme aplica o tema herdado no mount e devolve o tema efetivo que
+// os descendentes devem herdar.
+func (b *BaseWidget) inheritTheme(t *Theme) *Theme {
+	if b.themeExplicit {
+		return b.theme
+	}
+	b.theme = t
+	return t
+}
+
+// themeHost é satisfeito por todo widget que embute BaseWidget; o App o usa
+// para injetar o tema na árvore durante o mount.
+type themeHost interface {
+	inheritTheme(t *Theme) *Theme
+}
+
+// propagateTheme injeta o tema na árvore (mount). Widgets sem tema explícito
+// herdam o do ancestral; os com SetTheme mantêm o próprio e o repassam aos
+// descendentes. Idempotente e sem alocações — o App a executa a cada
+// renderização para cobrir widgets adicionados dinamicamente.
+func propagateTheme(w Widget, t *Theme) {
+	if h, ok := w.(themeHost); ok {
+		t = h.inheritTheme(t)
+	}
+	if p, ok := w.(ParentWidget); ok {
+		for _, ch := range p.Children() {
+			propagateTheme(ch, t)
+		}
+	}
 }
 
 // dispatchMouse roteia um evento de mouse por GEOMETRIA: desce a árvore até

@@ -18,7 +18,6 @@ type Input struct {
 	// OnChange é chamado após qualquer alteração no texto. Pode ser nil.
 	OnChange func(string)
 
-	theme   *Theme
 	runes   []rune
 	cursor  int // índice do cursor em runes (0..len(runes))
 	focused bool
@@ -31,9 +30,10 @@ type Input struct {
 	syncScale float64
 }
 
-// NewInput cria um campo de texto vazio com o tema e o placeholder dados.
-func NewInput(theme *Theme, placeholder string) *Input {
-	return &Input{theme: theme, Placeholder: placeholder}
+// NewInput cria um campo de texto vazio com o placeholder dado. O tema é
+// herdado no mount.
+func NewInput(placeholder string) *Input {
+	return &Input{Placeholder: placeholder}
 }
 
 // Text devolve o conteúdo atual do campo.
@@ -41,12 +41,13 @@ func (in *Input) Text() string {
 	return in.text
 }
 
-// SetText substitui o conteúdo do campo e move o cursor para o fim.
-// Não dispara OnChange.
+// SetText substitui o conteúdo do campo, move o cursor para o fim e agenda
+// um redesenho. Não dispara OnChange.
 func (in *Input) SetText(s string) {
 	in.runes = []rune(s)
 	in.cursor = len(in.runes)
 	in.sync()
+	requestRepaint()
 }
 
 // Cursor devolve a posição atual do cursor, em runes.
@@ -60,8 +61,11 @@ func (in *Input) Focusable() bool {
 }
 
 // PreferredSize devolve a largura mínima do tema e a altura de uma linha
-// mais o padding interno.
+// mais o padding interno. Antes do mount (sem tema), devolve zero.
 func (in *Input) PreferredSize() image.Point {
+	if in.theme == nil {
+		return image.Point{}
+	}
 	return image.Point{
 		X: in.theme.InputMinWidthPx(),
 		Y: in.theme.LineHeight() + 2*in.theme.PaddingPx(),
@@ -158,6 +162,12 @@ func (in *Input) handleKey(k Key) bool {
 // (ou uma única vez após mudança de escala), nunca por frame desenhado.
 func (in *Input) sync() {
 	in.text = string(in.runes)
+	if in.theme == nil {
+		// Antes do mount não há como medir; Draw refaz o sync ao detectar a
+		// mudança de escala (0 → escala do tema).
+		in.cursorX, in.syncScale = 0, 0
+		return
+	}
 	in.cursorX = in.theme.MeasureString(string(in.runes[:in.cursor]))
 	in.syncScale = in.theme.Scale()
 }
@@ -172,6 +182,9 @@ func (in *Input) emitChange() {
 // runeIndexAt devolve o índice de cursor (em runes) mais próximo da
 // coordenada X absoluta dada.
 func (in *Input) runeIndexAt(x int) int {
+	if in.theme == nil {
+		return 0
+	}
 	rel := x - (in.Bounds().Min.X + in.theme.PaddingPx())
 	if rel <= 0 {
 		return 0
@@ -196,6 +209,9 @@ func (in *Input) runeIndexAt(x int) int {
 // Draw desenha o fundo, a borda (realçada com foco), o texto ou o
 // placeholder, e o cursor quando focado.
 func (in *Input) Draw(dst *image.RGBA) {
+	if in.theme == nil {
+		return
+	}
 	bounds := in.Bounds()
 	th := in.theme
 

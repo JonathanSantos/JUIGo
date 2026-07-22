@@ -114,7 +114,21 @@ func New(title string, width, height int) (*App, error) {
 		dirty:      true,
 	}
 	a.installCallbacks()
+	// Setters de widgets e State.Set redesenham através deste hook.
+	repaintHook = a.Invalidate
 	return a, nil
+}
+
+// Run cria a aplicação com New, define root como raiz da árvore e executa o
+// loop de eventos até a janela ser fechada. É o caminho curto para a maioria
+// das aplicações; use New quando precisar do *App (tema, Invalidate, Bus).
+func Run(title string, width, height int, root Widget) error {
+	app, err := New(title, width, height)
+	if err != nil {
+		return err
+	}
+	app.SetRoot(root)
+	return app.Run()
 }
 
 // pixelRatio calcula a razão framebuffer/janela (pixels físicos por unidade
@@ -320,10 +334,14 @@ func (a *App) Theme() *Theme {
 	return a.theme
 }
 
-// SetRoot define o widget raiz da árvore de interface e agenda um redesenho.
-// A raiz recebe Layout com os limites do buffer a cada renderização.
+// SetRoot define o widget raiz da árvore de interface, injeta o tema da
+// aplicação na árvore (mount) e agenda um redesenho. A raiz recebe Layout
+// com os limites do buffer a cada renderização.
 func (a *App) SetRoot(w Widget) {
 	a.root = w
+	if w != nil {
+		propagateTheme(w, a.theme)
+	}
 	a.dirty = true
 }
 
@@ -343,6 +361,9 @@ func (a *App) render() {
 	}
 	render.FillRect(a.buf, a.buf.Bounds(), a.theme.Background)
 	if a.root != nil {
+		// Re-injeta o tema antes do layout para cobrir widgets adicionados
+		// dinamicamente à árvore (idempotente, sem alocações).
+		propagateTheme(a.root, a.theme)
 		a.root.Layout(a.buf.Bounds())
 		a.root.Draw(a.buf)
 	}
@@ -377,6 +398,7 @@ func (a *App) Run() error {
 
 // destroy libera os recursos GL e a janela.
 func (a *App) destroy() {
+	repaintHook = nil
 	a.blitter.Destroy()
 	a.window.Destroy()
 	glfw.Terminate()

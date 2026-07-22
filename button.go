@@ -29,26 +29,36 @@ type Button struct {
 	// Label é o texto do botão.
 	Label string
 	// Padding é o espaço interno entre o rótulo e as bordas, em unidades
-	// lógicas (convertido pela escala do tema).
+	// lógicas (convertido pela escala do tema). Negativo usa o padrão do
+	// tema (Theme.Padding).
 	Padding int
 	// OnClick é chamado quando o botão é acionado. Pode ser nil.
 	OnClick func()
 
-	theme   *Theme
 	state   ButtonState
 	pressed bool
 	focused bool
 }
 
-// NewButton cria um botão com o tema, rótulo e callback dados. O padding
-// padrão vem do tema.
-func NewButton(theme *Theme, label string, onClick func()) *Button {
+// NewButton cria um botão com o rótulo e o callback dados. O tema é herdado
+// no mount; o padding padrão vem do tema.
+func NewButton(label string, onClick func()) *Button {
 	return &Button{
 		Label:   label,
-		Padding: theme.Padding,
+		Padding: -1,
 		OnClick: onClick,
-		theme:   theme,
 	}
+}
+
+// padPx resolve o padding para pixels na escala do tema.
+func (b *Button) padPx() int {
+	if b.theme == nil {
+		return 0
+	}
+	if b.Padding >= 0 {
+		return b.theme.Px(b.Padding)
+	}
+	return b.theme.PaddingPx()
 }
 
 // State devolve o estado visual atual do botão.
@@ -125,9 +135,13 @@ func (b *Button) Focusable() bool {
 	return true
 }
 
-// PreferredSize devolve o tamanho do rótulo mais o padding interno.
+// PreferredSize devolve o tamanho do rótulo mais o padding interno. Antes do
+// mount (sem tema), devolve zero.
 func (b *Button) PreferredSize() image.Point {
-	pad := b.theme.Px(b.Padding)
+	if b.theme == nil {
+		return image.Point{}
+	}
+	pad := b.padPx()
 	return image.Point{
 		X: b.theme.MeasureString(b.Label) + 2*pad,
 		Y: b.theme.LineHeight() + 2*pad,
@@ -137,6 +151,9 @@ func (b *Button) PreferredSize() image.Point {
 // Draw desenha o fundo conforme o estado, o contorno de foco quando focado e
 // o rótulo centralizado.
 func (b *Button) Draw(dst *image.RGBA) {
+	if b.theme == nil {
+		return
+	}
 	bounds := b.Bounds()
 
 	bg := b.theme.ButtonNormal

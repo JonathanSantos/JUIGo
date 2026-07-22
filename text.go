@@ -26,13 +26,25 @@ type Text struct {
 	// Color sobrescreve a cor do texto; o valor zero usa a cor do tema.
 	Color color.RGBA
 
-	theme *Theme
-	text  string
+	text string
 }
 
-// NewText cria um Text com o tema e o conteúdo dados, alinhado à esquerda.
-func NewText(theme *Theme, s string) *Text {
-	return &Text{theme: theme, text: s}
+// NewText cria um Text com o conteúdo dado, alinhado à esquerda. O tema é
+// herdado no mount.
+func NewText(s string) *Text {
+	return &Text{text: s}
+}
+
+// Center alinha o texto ao centro. Encadeável.
+func (t *Text) Center() *Text {
+	t.Align = AlignCenter
+	return t
+}
+
+// Right alinha o texto à direita. Encadeável.
+func (t *Text) Right() *Text {
+	t.Align = AlignRight
+	return t
 }
 
 // Text devolve o conteúdo atual.
@@ -40,14 +52,21 @@ func (t *Text) Text() string {
 	return t.text
 }
 
-// SetText troca o conteúdo. A mudança aparece no próximo redesenho; fora do
-// fluxo de eventos, use App.Invalidate para forçá-lo.
+// SetText troca o conteúdo e agenda um redesenho se ele mudou.
 func (t *Text) SetText(s string) {
+	if t.text == s {
+		return
+	}
 	t.text = s
+	requestRepaint()
 }
 
 // PreferredSize devolve a largura medida do texto e a altura de uma linha.
+// Antes do mount (sem tema), devolve zero.
 func (t *Text) PreferredSize() image.Point {
+	if t.theme == nil {
+		return image.Point{}
+	}
 	return image.Point{
 		X: t.theme.MeasureString(t.text),
 		Y: t.theme.LineHeight(),
@@ -56,6 +75,9 @@ func (t *Text) PreferredSize() image.Point {
 
 // Draw desenha o texto alinhado horizontalmente e centralizado na vertical.
 func (t *Text) Draw(dst *image.RGBA) {
+	if t.theme == nil {
+		return
+	}
 	bounds := t.Bounds()
 	c := t.Color
 	if c == (color.RGBA{}) {

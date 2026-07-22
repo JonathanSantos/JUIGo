@@ -22,7 +22,8 @@ func typeString(in *Input, s string) {
 }
 
 func TestInputRunesComAcentuacao(t *testing.T) {
-	in := NewInput(newTestTheme(t), "")
+	in := NewInput("")
+	in.SetTheme(newTestTheme(t))
 	typeString(in, "ação")
 
 	if got := in.Text(); got != "ação" {
@@ -66,7 +67,8 @@ func TestInputRunesComAcentuacao(t *testing.T) {
 }
 
 func TestInputOnChange(t *testing.T) {
-	in := NewInput(newTestTheme(t), "")
+	in := NewInput("")
+	in.SetTheme(newTestTheme(t))
 	var got []string
 	in.OnChange = func(s string) { got = append(got, s) }
 
@@ -88,7 +90,8 @@ func TestInputOnChange(t *testing.T) {
 func TestButtonClique(t *testing.T) {
 	th := newTestTheme(t)
 	fired := 0
-	b := NewButton(th, "OK", func() { fired++ })
+	b := NewButton("OK", func() { fired++ })
+	b.SetTheme(th)
 	b.Layout(image.Rect(0, 0, 100, 40))
 	inside := image.Pt(50, 20)
 
@@ -128,14 +131,13 @@ func TestButtonClique(t *testing.T) {
 func TestRoteamentoGeometriaEProfundidade(t *testing.T) {
 	th := newTestTheme(t)
 
-	inner := NewButton(th, "fundo", nil)
+	inner := NewButton("fundo", nil)
 	inner.Layout(image.Rect(10, 10, 60, 40))
-	box := NewContainer()
-	box.Add(inner)
+	box := NewContainer(inner)
 	box.Layout(image.Rect(0, 0, 100, 100))
-	root := NewContainer()
-	root.Add(box)
+	root := NewContainer(box)
 	root.Layout(image.Rect(0, 0, 200, 200))
+	propagateTheme(root, th)
 
 	// Dentro do botão: o mais profundo consome.
 	if !dispatchMouse(root, MouseEvent{Kind: MouseDown, Pos: image.Pt(20, 20), Button: MouseButtonLeft}) {
@@ -162,11 +164,11 @@ func TestRoteamentoGeometriaEProfundidade(t *testing.T) {
 func TestVBoxHBoxLayout(t *testing.T) {
 	th := newTestTheme(t)
 
-	a := NewButton(th, "A", nil)
-	b := NewButton(th, "B", nil)
+	a := NewButton("A", nil)
+	b := NewButton("B", nil)
 
-	v := NewVBox(10, 4)
-	v.Add(a, b)
+	v := NewVBox(a, b).Gap(10).Pad(4)
+	propagateTheme(v, th)
 	v.Layout(image.Rect(0, 0, 200, 300))
 
 	ah := a.PreferredSize().Y
@@ -179,10 +181,10 @@ func TestVBoxHBoxLayout(t *testing.T) {
 		t.Fatalf("VBox: topo de B = %d, esperado %d", b.Bounds().Min.Y, wantBTop)
 	}
 
-	hb := NewHBox(6, 2)
-	c := NewButton(th, "C", nil)
-	d := NewButton(th, "D", nil)
-	hb.Add(c, d)
+	c := NewButton("C", nil)
+	d := NewButton("D", nil)
+	hb := NewHBox(c, d).Gap(6).Pad(2)
+	propagateTheme(hb, th)
 	hb.Layout(image.Rect(0, 0, 300, 100))
 
 	cw := c.PreferredSize().X

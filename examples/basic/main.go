@@ -1,6 +1,6 @@
 // Demo básica do JUIGo: uma janela com título (Text), um campo de texto
-// (Input) e um botão (Button) que, ao ser clicado — ou acionado com Enter/
-// Espaço quando focado —, atualiza o título com o conteúdo do campo.
+// (Input) e um botão (Button) que, ao ser acionado, atualiza o título com o
+// conteúdo do campo.
 //
 // Interações para experimentar:
 //   - digitar com acentos (ã, é, ç…) e mover o cursor com setas/Home/End;
@@ -15,27 +15,18 @@ import (
 )
 
 func main() {
-	app, err := juigo.New("JUIGo — demo básico", 480, 220)
-	if err != nil {
-		log.Fatal(err)
-	}
-	th := app.Theme()
+	title := juigo.NewText("Digite algo e clique em Enviar").Center()
+	campo := juigo.NewInput("Digite aqui…")
 
-	title := juigo.NewText(th, "Digite algo e clique em Enviar")
-	title.Align = juigo.AlignCenter
+	ui := juigo.NewVBox(
+		title,
+		campo,
+		juigo.NewButton("Enviar", func() {
+			title.SetText("Você digitou: " + campo.Text())
+		}),
+	).Pad(16)
 
-	input := juigo.NewInput(th, "Digite aqui…")
-
-	btn := juigo.NewButton(th, "Enviar", nil)
-	btn.OnClick = func() {
-		title.SetText("Você digitou: " + input.Text())
-	}
-
-	root := juigo.NewVBox(th.SpacingPx(), 2*th.PaddingPx())
-	root.Add(title, input, btn)
-	app.SetRoot(root)
-
-	if err := app.Run(); err != nil {
+	if err := juigo.Run("JUIGo — demo básico", 480, 220, ui); err != nil {
 		log.Fatal(err)
 	}
 }
