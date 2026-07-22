@@ -55,6 +55,55 @@ func (b *Button) State() ButtonState {
 	return b.state
 }
 
+// HandleEvent implementa a máquina de estados do clique.
+func (b *Button) HandleEvent(ev Event) bool {
+	e, ok := ev.(MouseEvent)
+	if !ok {
+		return false
+	}
+	switch e.Kind {
+	case MouseEnter:
+		if b.state == ButtonStateNormal {
+			b.state = ButtonStateHover
+			return true
+		}
+	case MouseLeave:
+		// Sair com o botão pressionado cancela o clique sem disparar.
+		b.pressed = false
+		if b.state != ButtonStateNormal {
+			b.state = ButtonStateNormal
+			return true
+		}
+	case MouseDown:
+		if e.Button != MouseButtonLeft {
+			return false
+		}
+		b.pressed = true
+		b.state = ButtonStatePressed
+		return true
+	case MouseUp:
+		if e.Button != MouseButtonLeft || !b.pressed {
+			return false
+		}
+		b.pressed = false
+		if e.Pos.In(b.Bounds()) {
+			b.state = ButtonStateHover
+			b.fire()
+		} else {
+			b.state = ButtonStateNormal
+		}
+		return true
+	}
+	return false
+}
+
+// fire dispara o callback OnClick, se houver.
+func (b *Button) fire() {
+	if b.OnClick != nil {
+		b.OnClick()
+	}
+}
+
 // Focusable devolve true: o botão participa da cadeia de foco.
 func (b *Button) Focusable() bool {
 	return true

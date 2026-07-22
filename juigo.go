@@ -30,6 +30,7 @@ type App struct {
 	buf     *image.RGBA
 	theme   *Theme
 	root    Widget
+	hovered Widget
 	width   int
 	height  int
 	dirty   bool
@@ -92,12 +93,65 @@ func (a *App) installCallbacks() {
 	a.window.SetSizeCallback(func(_ *glfw.Window, w, h int) {
 		a.resize(w, h)
 	})
+	a.window.SetMouseButtonCallback(func(_ *glfw.Window, button glfw.MouseButton, action glfw.Action, _ glfw.ModifierKey) {
+		x, y := a.window.GetCursorPos()
+		pos := image.Pt(int(x), int(y))
+		kind := MouseDown
+		if action == glfw.Release {
+			kind = MouseUp
+		}
+		a.dispatch(MouseEvent{Kind: kind, Pos: pos, Button: mapMouseButton(button)})
+	})
+	a.window.SetCursorPosCallback(func(_ *glfw.Window, x, y float64) {
+		pos := image.Pt(int(x), int(y))
+		a.updateHover(pos)
+		a.dispatch(MouseEvent{Kind: MouseMove, Pos: pos, Button: MouseButtonLeft})
+	})
 	// Refresh dispara quando o SO precisa que a janela seja repintada
 	// (ex.: durante o redimensionamento, que roda um loop modal no macOS).
 	a.window.SetRefreshCallback(func(_ *glfw.Window) {
 		a.dirty = true
 		a.render()
 	})
+}
+
+// dispatch roteia um evento de mouse pela árvore (por geometria) e marca a
+// interface como suja se algum widget o consumir.
+func (a *App) dispatch(ev MouseEvent) {
+	if a.root == nil {
+		return
+	}
+	if dispatchMouse(a.root, ev) {
+		a.dirty = true
+	}
+}
+
+// updateHover mantém o widget sob o cursor, entregando MouseLeave ao widget
+// anterior e MouseEnter ao novo quando o alvo muda.
+func (a *App) updateHover(pos image.Point) {
+	target := widgetAt(a.root, pos)
+	if target == a.hovered {
+		return
+	}
+	if a.hovered != nil && a.hovered.HandleEvent(MouseEvent{Kind: MouseLeave, Pos: pos}) {
+		a.dirty = true
+	}
+	a.hovered = target
+	if target != nil && target.HandleEvent(MouseEvent{Kind: MouseEnter, Pos: pos}) {
+		a.dirty = true
+	}
+}
+
+// mapMouseButton converte o botão do GLFW para o tipo do JUIGo.
+func mapMouseButton(b glfw.MouseButton) MouseButton {
+	switch b {
+	case glfw.MouseButtonRight:
+		return MouseButtonRight
+	case glfw.MouseButtonMiddle:
+		return MouseButtonMiddle
+	default:
+		return MouseButtonLeft
+	}
 }
 
 // resize realoca o buffer RGBA para o novo tamanho lógico da janela.

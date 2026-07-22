@@ -68,3 +68,39 @@ func (b *BaseWidget) Focusable() bool {
 func (b *BaseWidget) PreferredSize() image.Point {
 	return image.Point{}
 }
+
+// dispatchMouse roteia um evento de mouse por GEOMETRIA: desce a árvore até
+// o widget mais profundo que contém o ponto (entre irmãos sobrepostos, vence
+// o desenhado por último) e, se ninguém no ramo consumir, propaga para cima
+// entregando ao próprio w. Devolve true se algum widget consumiu.
+func dispatchMouse(w Widget, ev MouseEvent) bool {
+	if p, ok := w.(ParentWidget); ok {
+		children := p.Children()
+		for i := len(children) - 1; i >= 0; i-- {
+			if ev.Pos.In(children[i].Bounds()) {
+				if dispatchMouse(children[i], ev) {
+					return true
+				}
+				break // só o ramo do topo; depois propaga para o pai
+			}
+		}
+	}
+	return w.HandleEvent(ev)
+}
+
+// widgetAt devolve o widget mais profundo cujo Bounds contém p, ou nil.
+// Usado pelo App para rastrear hover (MouseEnter/MouseLeave).
+func widgetAt(w Widget, p image.Point) Widget {
+	if w == nil || !p.In(w.Bounds()) {
+		return nil
+	}
+	if pw, ok := w.(ParentWidget); ok {
+		children := pw.Children()
+		for i := len(children) - 1; i >= 0; i-- {
+			if deep := widgetAt(children[i], p); deep != nil {
+				return deep
+			}
+		}
+	}
+	return w
+}

@@ -1,9 +1,10 @@
 // Demo básica do JUIGo.
 //
-// Passo 4: título (Text) e Button estático em um Container absoluto.
+// Passo 5: Button interativo (hover/pressed/OnClick) atualiza o título.
 package main
 
 import (
+	"fmt"
 	"image"
 	"log"
 
@@ -21,7 +22,11 @@ func main() {
 	title.Align = juigo.AlignCenter
 	title.Layout(image.Rect(0, 16, 480, 16+th.LineHeight()))
 
-	btn := juigo.NewButton(th, "Enviar", nil)
+	clicks := 0
+	btn := juigo.NewButton(th, "Enviar", func() {
+		clicks++
+		title.SetText(fmt.Sprintf("Cliques: %d", clicks))
+	})
 	pref := btn.PreferredSize()
 	btn.Layout(image.Rect(40, 56, 40+pref.X, 56+pref.Y))
 
