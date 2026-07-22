@@ -48,6 +48,9 @@ type Theme struct {
 	// FocusOutline é o contorno de indicação de foco em widgets focáveis
 	// não-textuais (ex.: Button).
 	FocusOutline color.RGBA
+	// Accent é a cor de destaque dos controles: a marca do Checkbox e o
+	// trilho ativo e a alça do Slider.
+	Accent color.RGBA
 
 	// Face é a fonte já rasterizada na escala atual (ver SetScale). É
 	// reconstruída a cada mudança de escala; não guarde referências a ela.
@@ -68,6 +71,14 @@ type Theme struct {
 	// InputMinWidth é a largura preferida mínima do Input, em unidades
 	// lógicas (use InputMinWidthPx).
 	InputMinWidth int
+	// SliderMinWidth é a largura preferida mínima do Slider, em unidades
+	// lógicas.
+	SliderMinWidth int
+	// SliderTrackThickness é a espessura do trilho do Slider, em unidades
+	// lógicas.
+	SliderTrackThickness int
+	// SliderHandleSize é o lado da alça do Slider, em unidades lógicas.
+	SliderHandleSize int
 
 	fnt        *opentype.Font
 	scale      float64
@@ -100,13 +111,17 @@ func DefaultTheme() (*Theme, error) {
 		InputBorderFocused: color.RGBA{R: 0x3B, G: 0x82, B: 0xF6, A: 0xFF},
 		Cursor:             color.RGBA{R: 0x1F, G: 0x23, B: 0x28, A: 0xFF},
 		FocusOutline:       color.RGBA{R: 0x1D, G: 0x4E, B: 0xD8, A: 0xFF},
+		Accent:             color.RGBA{R: 0x3B, G: 0x82, B: 0xF6, A: 0xFF},
 
 		FontSize: 16,
 
-		Padding:       8,
-		Spacing:       8,
-		BorderWidth:   1,
-		InputMinWidth: 220,
+		Padding:              8,
+		Spacing:              8,
+		BorderWidth:          1,
+		InputMinWidth:        220,
+		SliderMinWidth:       160,
+		SliderTrackThickness: 4,
+		SliderHandleSize:     16,
 
 		fnt: parsed,
 	}
