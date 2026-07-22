@@ -49,3 +49,93 @@ func (c *Container) PreferredSize() image.Point {
 	}
 	return u.Size()
 }
+
+// VBox distribui os filhos verticalmente: cada um recebe a própria altura
+// preferida e a largura disponível, com Padding nas bordas e Spacing entre
+// filhos consecutivos.
+type VBox struct {
+	Container
+}
+
+// NewVBox cria um VBox com o espaçamento e o padding dados, em pixels.
+func NewVBox(spacing, padding int) *VBox {
+	v := &VBox{}
+	v.Spacing = spacing
+	v.Padding = padding
+	return v
+}
+
+// Layout posiciona os filhos de cima para baixo dentro de bounds.
+func (v *VBox) Layout(bounds image.Rectangle) {
+	v.BaseWidget.Layout(bounds)
+	x0 := bounds.Min.X + v.Padding
+	x1 := bounds.Max.X - v.Padding
+	y := bounds.Min.Y + v.Padding
+	for _, ch := range v.Children() {
+		h := ch.PreferredSize().Y
+		ch.Layout(image.Rect(x0, y, x1, y+h))
+		y += h + v.Spacing
+	}
+}
+
+// PreferredSize devolve a maior largura preferida entre os filhos e a soma
+// das alturas, acrescidas de Spacing e Padding.
+func (v *VBox) PreferredSize() image.Point {
+	var w, h int
+	for i, ch := range v.Children() {
+		p := ch.PreferredSize()
+		if p.X > w {
+			w = p.X
+		}
+		h += p.Y
+		if i > 0 {
+			h += v.Spacing
+		}
+	}
+	return image.Point{X: w + 2*v.Padding, Y: h + 2*v.Padding}
+}
+
+// HBox distribui os filhos horizontalmente: cada um recebe a própria largura
+// preferida e a altura disponível, com Padding nas bordas e Spacing entre
+// filhos consecutivos.
+type HBox struct {
+	Container
+}
+
+// NewHBox cria um HBox com o espaçamento e o padding dados, em pixels.
+func NewHBox(spacing, padding int) *HBox {
+	h := &HBox{}
+	h.Spacing = spacing
+	h.Padding = padding
+	return h
+}
+
+// Layout posiciona os filhos da esquerda para a direita dentro de bounds.
+func (h *HBox) Layout(bounds image.Rectangle) {
+	h.BaseWidget.Layout(bounds)
+	y0 := bounds.Min.Y + h.Padding
+	y1 := bounds.Max.Y - h.Padding
+	x := bounds.Min.X + h.Padding
+	for _, ch := range h.Children() {
+		w := ch.PreferredSize().X
+		ch.Layout(image.Rect(x, y0, x+w, y1))
+		x += w + h.Spacing
+	}
+}
+
+// PreferredSize devolve a soma das larguras preferidas dos filhos e a maior
+// altura, acrescidas de Spacing e Padding.
+func (h *HBox) PreferredSize() image.Point {
+	var w, ht int
+	for i, ch := range h.Children() {
+		p := ch.PreferredSize()
+		if p.Y > ht {
+			ht = p.Y
+		}
+		w += p.X
+		if i > 0 {
+			w += h.Spacing
+		}
+	}
+	return image.Point{X: w + 2*h.Padding, Y: ht + 2*h.Padding}
+}
