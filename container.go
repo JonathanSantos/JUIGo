@@ -57,7 +57,9 @@ type VBox struct {
 	Container
 }
 
-// NewVBox cria um VBox com o espaçamento e o padding dados, em pixels.
+// NewVBox cria um VBox com o espaçamento e o padding dados, em pixels. Para
+// valores que acompanham a escala HiDPI, use Theme.SpacingPx e
+// Theme.PaddingPx.
 func NewVBox(spacing, padding int) *VBox {
 	v := &VBox{}
 	v.Spacing = spacing
@@ -102,7 +104,9 @@ type HBox struct {
 	Container
 }
 
-// NewHBox cria um HBox com o espaçamento e o padding dados, em pixels.
+// NewHBox cria um HBox com o espaçamento e o padding dados, em pixels. Para
+// valores que acompanham a escala HiDPI, use Theme.SpacingPx e
+// Theme.PaddingPx.
 func NewHBox(spacing, padding int) *HBox {
 	h := &HBox{}
 	h.Spacing = spacing

@@ -31,7 +31,7 @@ func main() {
 		title.SetText("Você digitou: " + input.Text())
 	}
 
-	root := juigo.NewVBox(th.Spacing, 2*th.Padding)
+	root := juigo.NewVBox(th.SpacingPx(), 2*th.PaddingPx())
 	root.Add(title, input, btn)
 	app.SetRoot(root)
 

@@ -28,7 +28,8 @@ type Button struct {
 	BaseWidget
 	// Label é o texto do botão.
 	Label string
-	// Padding é o espaço interno entre o rótulo e as bordas.
+	// Padding é o espaço interno entre o rótulo e as bordas, em unidades
+	// lógicas (convertido pela escala do tema).
 	Padding int
 	// OnClick é chamado quando o botão é acionado. Pode ser nil.
 	OnClick func()
@@ -126,9 +127,10 @@ func (b *Button) Focusable() bool {
 
 // PreferredSize devolve o tamanho do rótulo mais o padding interno.
 func (b *Button) PreferredSize() image.Point {
+	pad := b.theme.Px(b.Padding)
 	return image.Point{
-		X: b.theme.MeasureString(b.Label) + 2*b.Padding,
-		Y: b.theme.LineHeight() + 2*b.Padding,
+		X: b.theme.MeasureString(b.Label) + 2*pad,
+		Y: b.theme.LineHeight() + 2*pad,
 	}
 }
 
@@ -147,7 +149,7 @@ func (b *Button) Draw(dst *image.RGBA) {
 	render.FillRect(dst, bounds, bg)
 
 	if b.focused {
-		render.StrokeRect(dst, bounds, 2*b.theme.BorderWidth, b.theme.FocusOutline)
+		render.StrokeRect(dst, bounds, 2*b.theme.BorderPx(), b.theme.FocusOutline)
 	}
 
 	labelW := b.theme.MeasureString(b.Label)

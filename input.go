@@ -24,8 +24,11 @@ type Input struct {
 	focused bool
 
 	// Caches atualizados a cada edição, para que Draw não aloque.
-	text    string
-	cursorX int
+	// syncScale registra a escala do tema usada no último sync: se a escala
+	// mudar (ex.: janela movida para outro monitor), cursorX é recalculado.
+	text      string
+	cursorX   int
+	syncScale float64
 }
 
 // NewInput cria um campo de texto vazio com o tema e o placeholder dados.
@@ -60,8 +63,8 @@ func (in *Input) Focusable() bool {
 // mais o padding interno.
 func (in *Input) PreferredSize() image.Point {
 	return image.Point{
-		X: in.theme.InputMinWidth,
-		Y: in.theme.LineHeight() + 2*in.theme.Padding,
+		X: in.theme.InputMinWidthPx(),
+		Y: in.theme.LineHeight() + 2*in.theme.PaddingPx(),
 	}
 }
 
@@ -151,11 +154,12 @@ func (in *Input) handleKey(k Key) bool {
 }
 
 // sync atualiza os caches derivados (string do texto e X do cursor) após
-// qualquer mudança. Alocar aqui é aceitável: acontece por evento de edição,
-// nunca por frame desenhado.
+// qualquer mudança. Alocar aqui é aceitável: acontece por evento de edição
+// (ou uma única vez após mudança de escala), nunca por frame desenhado.
 func (in *Input) sync() {
 	in.text = string(in.runes)
 	in.cursorX = in.theme.MeasureString(string(in.runes[:in.cursor]))
+	in.syncScale = in.theme.Scale()
 }
 
 // emitChange notifica OnChange com o texto atual.
@@ -168,7 +172,7 @@ func (in *Input) emitChange() {
 // runeIndexAt devolve o índice de cursor (em runes) mais próximo da
 // coordenada X absoluta dada.
 func (in *Input) runeIndexAt(x int) int {
-	rel := x - (in.Bounds().Min.X + in.theme.Padding)
+	rel := x - (in.Bounds().Min.X + in.theme.PaddingPx())
 	if rel <= 0 {
 		return 0
 	}
@@ -195,14 +199,19 @@ func (in *Input) Draw(dst *image.RGBA) {
 	bounds := in.Bounds()
 	th := in.theme
 
+	// A escala mudou desde o último sync? Recalcula cursorX uma única vez.
+	if in.syncScale != th.Scale() {
+		in.sync()
+	}
+
 	render.FillRect(dst, bounds, th.InputBackground)
 	border := th.InputBorder
 	if in.focused {
 		border = th.InputBorderFocused
 	}
-	render.StrokeRect(dst, bounds, th.BorderWidth, border)
+	render.StrokeRect(dst, bounds, th.BorderPx(), border)
 
-	textX := bounds.Min.X + th.Padding
+	textX := bounds.Min.X + th.PaddingPx()
 	baseline := bounds.Min.Y + (bounds.Dy()-th.LineHeight())/2 + th.Ascent()
 
 	switch {
@@ -215,6 +224,6 @@ func (in *Input) Draw(dst *image.RGBA) {
 	if in.focused {
 		top := baseline - th.Ascent()
 		cx := textX + in.cursorX
-		render.FillRect(dst, image.Rect(cx, top, cx+th.BorderWidth, top+th.LineHeight()), th.Cursor)
+		render.FillRect(dst, image.Rect(cx, top, cx+th.BorderPx(), top+th.LineHeight()), th.Cursor)
 	}
 }

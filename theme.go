@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"math"
 
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
@@ -48,44 +49,43 @@ type Theme struct {
 	// não-textuais (ex.: Button).
 	FocusOutline color.RGBA
 
-	// Face é a fonte usada por todos os widgets.
+	// Face é a fonte já rasterizada na escala atual (ver SetScale). É
+	// reconstruída a cada mudança de escala; não guarde referências a ela.
 	Face font.Face
-	// FontSize é o tamanho nominal da fonte, em pixels.
+	// FontSize é o tamanho LÓGICO da fonte (independente de escala). A face
+	// é criada com FontSize × escala.
 	FontSize float64
 
-	// Padding é o espaço interno padrão dos widgets, em pixels.
+	// Padding é o espaço interno padrão dos widgets, em unidades LÓGICAS.
+	// No desenho e no layout, use PaddingPx (ou Px) para converter.
 	Padding int
-	// Spacing é o espaço padrão entre widgets em containers de layout.
+	// Spacing é o espaço padrão entre widgets em containers de layout, em
+	// unidades lógicas (use SpacingPx).
 	Spacing int
-	// BorderWidth é a espessura padrão de bordas, em pixels.
+	// BorderWidth é a espessura padrão de bordas, em unidades lógicas (use
+	// BorderPx).
 	BorderWidth int
-	// InputMinWidth é a largura preferida mínima do Input, em pixels.
+	// InputMinWidth é a largura preferida mínima do Input, em unidades
+	// lógicas (use InputMinWidthPx).
 	InputMinWidth int
 
+	fnt        *opentype.Font
+	scale      float64
 	ascent     int
 	lineHeight int
 	cache      *render.GlyphCache
 }
 
-// DefaultTheme constrói o tema padrão do JUIGo, interpretando a fonte
-// embutida. Falhas na fonte são devolvidas como erro.
+// DefaultTheme constrói o tema padrão do JUIGo na escala 1, interpretando a
+// fonte embutida. Falhas na fonte são devolvidas como erro. O App ajusta a
+// escala para o monitor via SetScale.
 func DefaultTheme() (*Theme, error) {
 	parsed, err := opentype.Parse(embeddedFontTTF)
 	if err != nil {
 		return nil, fmt.Errorf("juigo: falha ao interpretar a fonte embutida: %w", err)
 	}
-	const size = 16
-	face, err := opentype.NewFace(parsed, &opentype.FaceOptions{
-		Size:    size,
-		DPI:     72,
-		Hinting: font.HintingFull,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("juigo: falha ao criar a face da fonte: %w", err)
-	}
-	m := face.Metrics()
 
-	return &Theme{
+	t := &Theme{
 		Background:  color.RGBA{R: 0xF2, G: 0xF3, B: 0xF5, A: 0xFF},
 		Text:        color.RGBA{R: 0x1F, G: 0x23, B: 0x28, A: 0xFF},
 		Placeholder: color.RGBA{R: 0x9A, G: 0xA0, B: 0xA8, A: 0xFF},
@@ -101,18 +101,80 @@ func DefaultTheme() (*Theme, error) {
 		Cursor:             color.RGBA{R: 0x1F, G: 0x23, B: 0x28, A: 0xFF},
 		FocusOutline:       color.RGBA{R: 0x1D, G: 0x4E, B: 0xD8, A: 0xFF},
 
-		Face:     face,
-		FontSize: size,
+		FontSize: 16,
 
 		Padding:       8,
 		Spacing:       8,
 		BorderWidth:   1,
 		InputMinWidth: 220,
 
-		ascent:     m.Ascent.Ceil(),
-		lineHeight: m.Height.Ceil(),
-		cache:      render.NewGlyphCache(face),
-	}, nil
+		fnt: parsed,
+	}
+	if err := t.SetScale(1); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+// SetScale reconstrói a fonte, as métricas e o cache de glyphs para a escala
+// dada, em pixels por unidade lógica (1 = tela comum, 2 = retina). O App a
+// chama com a escala de conteúdo da janela e a cada mudança de monitor. Os
+// campos lógicos do tema (FontSize, Padding, ...) não são alterados: a
+// conversão para pixels acontece na face e nos métodos Px/*Px.
+func (t *Theme) SetScale(scale float64) error {
+	if scale <= 0 {
+		return fmt.Errorf("juigo: escala de tema inválida: %v", scale)
+	}
+	face, err := opentype.NewFace(t.fnt, &opentype.FaceOptions{
+		Size:    t.FontSize * scale,
+		DPI:     72,
+		Hinting: font.HintingFull,
+	})
+	if err != nil {
+		return fmt.Errorf("juigo: falha ao criar a face da fonte na escala %v: %w", scale, err)
+	}
+	m := face.Metrics()
+	t.Face = face
+	t.scale = scale
+	t.ascent = m.Ascent.Ceil()
+	t.lineHeight = m.Height.Ceil()
+	t.cache = render.NewGlyphCache(face)
+	return nil
+}
+
+// Scale devolve a escala atual do tema (pixels por unidade lógica).
+func (t *Theme) Scale() float64 {
+	return t.scale
+}
+
+// Px converte um valor em unidades lógicas para pixels na escala atual,
+// arredondando para o inteiro mais próximo.
+func (t *Theme) Px(v int) int {
+	return int(math.Round(float64(v) * t.scale))
+}
+
+// PaddingPx devolve Padding convertido para pixels.
+func (t *Theme) PaddingPx() int {
+	return t.Px(t.Padding)
+}
+
+// SpacingPx devolve Spacing convertido para pixels.
+func (t *Theme) SpacingPx() int {
+	return t.Px(t.Spacing)
+}
+
+// BorderPx devolve BorderWidth convertido para pixels, no mínimo 1 para que
+// bordas nunca desapareçam em escalas baixas.
+func (t *Theme) BorderPx() int {
+	if px := t.Px(t.BorderWidth); px > 1 {
+		return px
+	}
+	return 1
+}
+
+// InputMinWidthPx devolve InputMinWidth convertido para pixels.
+func (t *Theme) InputMinWidthPx() int {
+	return t.Px(t.InputMinWidth)
 }
 
 // DrawText desenha s em dst com a fonte do tema, baseline em dot e cor c,
