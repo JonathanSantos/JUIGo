@@ -77,12 +77,49 @@ const (
 	KeyHome
 	// KeyEnd move o cursor ao fim.
 	KeyEnd
+	// KeyA, KeyC, KeyV e KeyX são as letras dos atalhos de edição —
+	// selecionar tudo, copiar, colar e recortar — quando combinadas com o
+	// modificador de comando. Texto comum não passa por Key: chega como
+	// CharEvent.
+	KeyA
+	KeyC
+	KeyV
+	KeyX
 )
 
-// KeyEvent é um evento de tecla pressionada (ou repetida). Roteado por foco:
-// entregue apenas ao widget focado.
+// Modifiers é o conjunto (bitmask) de teclas modificadoras ativas em um
+// KeyEvent.
+type Modifiers int
+
+const (
+	// ModShift indica Shift pressionado.
+	ModShift Modifiers = 1 << iota
+	// ModControl indica Ctrl pressionado.
+	ModControl
+	// ModAlt indica Alt/Option pressionado.
+	ModAlt
+	// ModSuper indica Super (Cmd no macOS, Windows no Windows) pressionado.
+	ModSuper
+)
+
+// Shift informa se Shift está ativo (ex.: seleção de texto com as setas).
+func (m Modifiers) Shift() bool {
+	return m&ModShift != 0
+}
+
+// Command informa se um modificador de "comando" está ativo — Ctrl (Windows/
+// Linux) ou Cmd/Super (macOS). É a base dos atalhos de edição, aceitando os
+// dois para funcionar igual em qualquer plataforma.
+func (m Modifiers) Command() bool {
+	return m&(ModControl|ModSuper) != 0
+}
+
+// KeyEvent é um evento de tecla pressionada (ou repetida), com os
+// modificadores ativos no momento. Roteado por foco: entregue apenas ao
+// widget focado.
 type KeyEvent struct {
-	Key Key
+	Key  Key
+	Mods Modifiers
 }
 
 func (KeyEvent) isEvent() {}

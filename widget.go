@@ -126,20 +126,24 @@ func propagateTheme(w Widget, t *Theme) {
 // dispatchMouse roteia um evento de mouse por GEOMETRIA: desce a árvore até
 // o widget mais profundo que contém o ponto (entre irmãos sobrepostos, vence
 // o desenhado por último) e, se ninguém no ramo consumir, propaga para cima
-// entregando ao próprio w. Devolve true se algum widget consumiu.
-func dispatchMouse(w Widget, ev MouseEvent) bool {
+// entregando ao próprio w. Devolve o widget que consumiu o evento (usado
+// pelo App para a captura de mouse), ou nil.
+func dispatchMouse(w Widget, ev MouseEvent) Widget {
 	if p, ok := w.(ParentWidget); ok {
 		children := p.Children()
 		for i := len(children) - 1; i >= 0; i-- {
 			if ev.Pos.In(children[i].Bounds()) {
-				if dispatchMouse(children[i], ev) {
-					return true
+				if consumer := dispatchMouse(children[i], ev); consumer != nil {
+					return consumer
 				}
 				break // só o ramo do topo; depois propaga para o pai
 			}
 		}
 	}
-	return w.HandleEvent(ev)
+	if w.HandleEvent(ev) {
+		return w
+	}
+	return nil
 }
 
 // focusableAt devolve o widget FOCÁVEL mais profundo cujo Bounds contém p,

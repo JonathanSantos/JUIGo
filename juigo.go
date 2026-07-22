@@ -38,8 +38,13 @@ type App struct {
 	root    Widget
 	hovered Widget
 	focused Widget
-	width   int // dimensões do buffer, em pixels físicos
-	height  int
+	// captured é o widget que consumiu o último MouseDown: até o botão ser
+	// solto, ele recebe MouseMove/MouseUp DIRETAMENTE (captura de mouse),
+	// mesmo com o cursor fora dos seus bounds — essencial para arrastar
+	// (Slider, seleção de texto).
+	captured Widget
+	width    int // dimensões do buffer, em pixels físicos
+	height   int
 	// pixelRatio converte coordenadas lógicas da janela (mouse) em pixels
 	// do framebuffer. 2 em telas retina; 1 em telas comuns.
 	pixelRatio float64
@@ -162,23 +167,37 @@ func (a *App) installCallbacks() {
 	a.window.SetMouseButtonCallback(func(_ *glfw.Window, button glfw.MouseButton, action glfw.Action, _ glfw.ModifierKey) {
 		x, y := a.window.GetCursorPos()
 		pos := a.toBufferCoords(x, y)
-		kind := MouseDown
+		ev := MouseEvent{Kind: MouseDown, Pos: pos, Button: mapMouseButton(button)}
 		if action == glfw.Release {
-			kind = MouseUp
+			ev.Kind = MouseUp
+			// Fim da captura: o widget capturado recebe o MouseUp mesmo
+			// que o cursor esteja fora dele.
+			if a.captured != nil {
+				if a.captured.HandleEvent(ev) {
+					a.dirty = true
+				}
+				a.captured = nil
+				return
+			}
+			a.dispatch(ev)
+			return
 		}
-		if kind == MouseDown {
-			// Clique em widget focável muda o foco; em área sem widget
-			// focável, limpa o foco.
-			a.setFocus(focusableAt(a.root, pos))
-		}
-		a.dispatch(MouseEvent{Kind: kind, Pos: pos, Button: mapMouseButton(button)})
+		// Clique em widget focável muda o foco; em área sem widget focável,
+		// limpa o foco. Quem consumir o MouseDown captura o mouse.
+		a.setFocus(focusableAt(a.root, pos))
+		a.captured = a.dispatch(ev)
 	})
-	a.window.SetKeyCallback(func(_ *glfw.Window, key glfw.Key, _ int, action glfw.Action, _ glfw.ModifierKey) {
+	a.window.SetKeyCallback(func(_ *glfw.Window, key glfw.Key, _ int, action glfw.Action, rawMods glfw.ModifierKey) {
 		if action == glfw.Release {
 			return
 		}
+		mods := mapMods(rawMods)
 		if key == glfw.KeyTab {
-			a.focusNext()
+			if mods.Shift() {
+				a.focusPrev()
+			} else {
+				a.focusNext()
+			}
 			return
 		}
 		k := mapKey(key)
@@ -186,7 +205,7 @@ func (a *App) installCallbacks() {
 			return
 		}
 		// Teclado roteia por FOCO: direto ao widget focado, sem hit-test.
-		if a.focused.HandleEvent(KeyEvent{Key: k}) {
+		if a.focused.HandleEvent(KeyEvent{Key: k, Mods: mods}) {
 			a.dirty = true
 		}
 	})
@@ -200,8 +219,18 @@ func (a *App) installCallbacks() {
 	})
 	a.window.SetCursorPosCallback(func(_ *glfw.Window, x, y float64) {
 		pos := a.toBufferCoords(x, y)
+		ev := MouseEvent{Kind: MouseMove, Pos: pos, Button: MouseButtonLeft}
+		if a.captured != nil {
+			// Durante a captura, os movimentos vão direto ao capturado e o
+			// hover fica suspenso (nada de realçar outros widgets no meio
+			// de um arraste).
+			if a.captured.HandleEvent(ev) {
+				a.dirty = true
+			}
+			return
+		}
 		a.updateHover(pos)
-		a.dispatch(MouseEvent{Kind: MouseMove, Pos: pos, Button: MouseButtonLeft})
+		a.dispatch(ev)
 	})
 	// Refresh dispara quando o SO precisa que a janela seja repintada
 	// (ex.: durante o redimensionamento, que roda um loop modal no macOS).
@@ -220,15 +249,17 @@ func (a *App) toBufferCoords(x, y float64) image.Point {
 	)
 }
 
-// dispatch roteia um evento de mouse pela árvore (por geometria) e marca a
-// interface como suja se algum widget o consumir.
-func (a *App) dispatch(ev MouseEvent) {
+// dispatch roteia um evento de mouse pela árvore (por geometria), marca a
+// interface como suja se alguém o consumir e devolve o widget consumidor.
+func (a *App) dispatch(ev MouseEvent) Widget {
 	if a.root == nil {
-		return
+		return nil
 	}
-	if dispatchMouse(a.root, ev) {
+	consumer := dispatchMouse(a.root, ev)
+	if consumer != nil {
 		a.dirty = true
 	}
+	return consumer
 }
 
 // updateHover mantém o widget sob o cursor, entregando MouseLeave ao widget
@@ -281,6 +312,42 @@ func (a *App) focusNext() {
 	a.setFocus(order[next])
 }
 
+// focusPrev recua o foco para o widget focável anterior na ordem da árvore
+// (Shift+Tab), com wraparound.
+func (a *App) focusPrev() {
+	var order []Widget
+	collectFocusable(a.root, &order)
+	if len(order) == 0 {
+		return
+	}
+	prev := len(order) - 1
+	for i, w := range order {
+		if w == a.focused {
+			prev = (i - 1 + len(order)) % len(order)
+			break
+		}
+	}
+	a.setFocus(order[prev])
+}
+
+// mapMods converte os modificadores do GLFW para o tipo do JUIGo.
+func mapMods(m glfw.ModifierKey) Modifiers {
+	var mods Modifiers
+	if m&glfw.ModShift != 0 {
+		mods |= ModShift
+	}
+	if m&glfw.ModControl != 0 {
+		mods |= ModControl
+	}
+	if m&glfw.ModAlt != 0 {
+		mods |= ModAlt
+	}
+	if m&glfw.ModSuper != 0 {
+		mods |= ModSuper
+	}
+	return mods
+}
+
 // mapKey converte teclas do GLFW para as teclas reconhecidas pelo JUIGo.
 func mapKey(key glfw.Key) Key {
 	switch key {
@@ -300,6 +367,14 @@ func mapKey(key glfw.Key) Key {
 		return KeyHome
 	case glfw.KeyEnd:
 		return KeyEnd
+	case glfw.KeyA:
+		return KeyA
+	case glfw.KeyC:
+		return KeyC
+	case glfw.KeyV:
+		return KeyV
+	case glfw.KeyX:
+		return KeyX
 	default:
 		return KeyUnknown
 	}

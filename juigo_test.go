@@ -139,17 +139,19 @@ func TestRoteamentoGeometriaEProfundidade(t *testing.T) {
 	root.Layout(image.Rect(0, 0, 200, 200))
 	propagateTheme(root, th)
 
-	// Dentro do botão: o mais profundo consome.
-	if !dispatchMouse(root, MouseEvent{Kind: MouseDown, Pos: image.Pt(20, 20), Button: MouseButtonLeft}) {
-		t.Fatal("evento dentro do botão deveria ser consumido")
+	// Dentro do botão: o mais profundo consome — e é devolvido como
+	// consumidor (base da captura de mouse).
+	consumer := dispatchMouse(root, MouseEvent{Kind: MouseDown, Pos: image.Pt(20, 20), Button: MouseButtonLeft})
+	if consumer != Widget(inner) {
+		t.Fatalf("consumidor = %T, esperado o botão interno", consumer)
 	}
 	if inner.State() != ButtonStatePressed {
 		t.Fatal("botão interno deveria estar pressed")
 	}
 
 	// Fora do botão, dentro dos containers: ninguém consome (propaga e morre).
-	if dispatchMouse(root, MouseEvent{Kind: MouseDown, Pos: image.Pt(90, 90), Button: MouseButtonLeft}) {
-		t.Fatal("evento fora do botão não deveria ser consumido")
+	if got := dispatchMouse(root, MouseEvent{Kind: MouseDown, Pos: image.Pt(90, 90), Button: MouseButtonLeft}); got != nil {
+		t.Fatalf("evento fora do botão não deveria ser consumido; consumidor = %T", got)
 	}
 
 	// focusableAt encontra o botão pelo ponto; fora dele, nil.
