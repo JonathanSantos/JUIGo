@@ -1,38 +1,37 @@
-// Demo básica do JUIGo.
+// Demo básica do JUIGo: uma janela com título (Text), um campo de texto
+// (Input) e um botão (Button) que, ao ser clicado — ou acionado com Enter/
+// Espaço quando focado —, atualiza o título com o conteúdo do campo.
 //
-// Passo 6: Input com foco, cursor e edição por runes; Button ecoa o texto.
+// Interações para experimentar:
+//   - digitar com acentos (ã, é, ç…) e mover o cursor com setas/Home/End;
+//   - Tab para alternar o foco entre o Input e o Button;
+//   - pressionar o botão, arrastar o cursor para fora e soltar (não dispara).
 package main
 
 import (
-	"image"
 	"log"
 
 	"juigo"
 )
 
 func main() {
-	app, err := juigo.New("JUIGo — demo básico", 480, 240)
+	app, err := juigo.New("JUIGo — demo básico", 480, 220)
 	if err != nil {
 		log.Fatal(err)
 	}
 	th := app.Theme()
 
-	title := juigo.NewText(th, "JUIGo — árvore de widgets com acentuação")
+	title := juigo.NewText(th, "Digite algo e clique em Enviar")
 	title.Align = juigo.AlignCenter
-	title.Layout(image.Rect(0, 16, 480, 16+th.LineHeight()))
 
 	input := juigo.NewInput(th, "Digite aqui…")
-	ip := input.PreferredSize()
-	input.Layout(image.Rect(40, 56, 40+ip.X, 56+ip.Y))
 
 	btn := juigo.NewButton(th, "Enviar", nil)
-	bp := btn.PreferredSize()
-	btn.Layout(image.Rect(40, 56+ip.Y+8, 40+bp.X, 56+ip.Y+8+bp.Y))
 	btn.OnClick = func() {
 		title.SetText("Você digitou: " + input.Text())
 	}
 
-	root := juigo.NewContainer()
+	root := juigo.NewVBox(th.Spacing, 2*th.Padding)
 	root.Add(title, input, btn)
 	app.SetRoot(root)
 
