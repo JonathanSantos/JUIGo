@@ -31,6 +31,7 @@ type App struct {
 	theme   *Theme
 	root    Widget
 	hovered Widget
+	focused Widget
 	width   int
 	height  int
 	dirty   bool
@@ -100,7 +101,37 @@ func (a *App) installCallbacks() {
 		if action == glfw.Release {
 			kind = MouseUp
 		}
+		if kind == MouseDown {
+			// Clique em widget focável muda o foco; em área sem widget
+			// focável, limpa o foco.
+			a.setFocus(focusableAt(a.root, pos))
+		}
 		a.dispatch(MouseEvent{Kind: kind, Pos: pos, Button: mapMouseButton(button)})
+	})
+	a.window.SetKeyCallback(func(_ *glfw.Window, key glfw.Key, _ int, action glfw.Action, _ glfw.ModifierKey) {
+		if action == glfw.Release {
+			return
+		}
+		if key == glfw.KeyTab {
+			a.focusNext()
+			return
+		}
+		k := mapKey(key)
+		if k == KeyUnknown || a.focused == nil {
+			return
+		}
+		// Teclado roteia por FOCO: direto ao widget focado, sem hit-test.
+		if a.focused.HandleEvent(KeyEvent{Key: k}) {
+			a.dirty = true
+		}
+	})
+	a.window.SetCharCallback(func(_ *glfw.Window, r rune) {
+		if a.focused == nil {
+			return
+		}
+		if a.focused.HandleEvent(CharEvent{Rune: r}) {
+			a.dirty = true
+		}
 	})
 	a.window.SetCursorPosCallback(func(_ *glfw.Window, x, y float64) {
 		pos := image.Pt(int(x), int(y))
@@ -139,6 +170,64 @@ func (a *App) updateHover(pos image.Point) {
 	a.hovered = target
 	if target != nil && target.HandleEvent(MouseEvent{Kind: MouseEnter, Pos: pos}) {
 		a.dirty = true
+	}
+}
+
+// setFocus move o foco de teclado para w (ou o limpa, se w for nil),
+// notificando os widgets envolvidos com FocusEvent.
+func (a *App) setFocus(w Widget) {
+	if a.focused == w {
+		return
+	}
+	if a.focused != nil {
+		a.focused.HandleEvent(FocusEvent{Gained: false})
+	}
+	a.focused = w
+	if w != nil {
+		w.HandleEvent(FocusEvent{Gained: true})
+	}
+	a.dirty = true
+}
+
+// focusNext avança o foco para o próximo widget focável na ordem da árvore,
+// com wraparound. Sem widgets focáveis, não faz nada.
+func (a *App) focusNext() {
+	var order []Widget
+	collectFocusable(a.root, &order)
+	if len(order) == 0 {
+		return
+	}
+	next := 0
+	for i, w := range order {
+		if w == a.focused {
+			next = (i + 1) % len(order)
+			break
+		}
+	}
+	a.setFocus(order[next])
+}
+
+// mapKey converte teclas do GLFW para as teclas reconhecidas pelo JUIGo.
+func mapKey(key glfw.Key) Key {
+	switch key {
+	case glfw.KeyEnter, glfw.KeyKPEnter:
+		return KeyEnter
+	case glfw.KeySpace:
+		return KeySpace
+	case glfw.KeyBackspace:
+		return KeyBackspace
+	case glfw.KeyDelete:
+		return KeyDelete
+	case glfw.KeyLeft:
+		return KeyLeft
+	case glfw.KeyRight:
+		return KeyRight
+	case glfw.KeyHome:
+		return KeyHome
+	case glfw.KeyEnd:
+		return KeyEnd
+	default:
+		return KeyUnknown
 	}
 }
 

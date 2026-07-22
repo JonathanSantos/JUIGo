@@ -1,10 +1,9 @@
 // Demo básica do JUIGo.
 //
-// Passo 5: Button interativo (hover/pressed/OnClick) atualiza o título.
+// Passo 6: Input com foco, cursor e edição por runes; Button ecoa o texto.
 package main
 
 import (
-	"fmt"
 	"image"
 	"log"
 
@@ -22,16 +21,19 @@ func main() {
 	title.Align = juigo.AlignCenter
 	title.Layout(image.Rect(0, 16, 480, 16+th.LineHeight()))
 
-	clicks := 0
-	btn := juigo.NewButton(th, "Enviar", func() {
-		clicks++
-		title.SetText(fmt.Sprintf("Cliques: %d", clicks))
-	})
-	pref := btn.PreferredSize()
-	btn.Layout(image.Rect(40, 56, 40+pref.X, 56+pref.Y))
+	input := juigo.NewInput(th, "Digite aqui…")
+	ip := input.PreferredSize()
+	input.Layout(image.Rect(40, 56, 40+ip.X, 56+ip.Y))
+
+	btn := juigo.NewButton(th, "Enviar", nil)
+	bp := btn.PreferredSize()
+	btn.Layout(image.Rect(40, 56+ip.Y+8, 40+bp.X, 56+ip.Y+8+bp.Y))
+	btn.OnClick = func() {
+		title.SetText("Você digitou: " + input.Text())
+	}
 
 	root := juigo.NewContainer()
-	root.Add(title, btn)
+	root.Add(title, input, btn)
 	app.SetRoot(root)
 
 	if err := app.Run(); err != nil {

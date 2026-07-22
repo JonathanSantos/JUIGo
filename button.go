@@ -55,12 +55,27 @@ func (b *Button) State() ButtonState {
 	return b.state
 }
 
-// HandleEvent implementa a máquina de estados do clique.
+// HandleEvent implementa a máquina de estados do clique, o acionamento por
+// teclado (Enter/Espaço quando focado) e o registro de foco.
 func (b *Button) HandleEvent(ev Event) bool {
-	e, ok := ev.(MouseEvent)
-	if !ok {
+	switch e := ev.(type) {
+	case KeyEvent:
+		if e.Key == KeyEnter || e.Key == KeySpace {
+			b.fire()
+			return true
+		}
 		return false
+	case FocusEvent:
+		b.focused = e.Gained
+		return true
+	case MouseEvent:
+		return b.handleMouse(e)
 	}
+	return false
+}
+
+// handleMouse trata a parte de mouse da máquina de estados.
+func (b *Button) handleMouse(e MouseEvent) bool {
 	switch e.Kind {
 	case MouseEnter:
 		if b.state == ButtonStateNormal {

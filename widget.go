@@ -88,6 +88,42 @@ func dispatchMouse(w Widget, ev MouseEvent) bool {
 	return w.HandleEvent(ev)
 }
 
+// focusableAt devolve o widget FOCÁVEL mais profundo cujo Bounds contém p,
+// ou nil. Usado pelo App para mover o foco no clique.
+func focusableAt(w Widget, p image.Point) Widget {
+	if w == nil || !p.In(w.Bounds()) {
+		return nil
+	}
+	if pw, ok := w.(ParentWidget); ok {
+		children := pw.Children()
+		for i := len(children) - 1; i >= 0; i-- {
+			if deep := focusableAt(children[i], p); deep != nil {
+				return deep
+			}
+		}
+	}
+	if w.Focusable() {
+		return w
+	}
+	return nil
+}
+
+// collectFocusable acumula em out os widgets focáveis na ordem da árvore
+// (pré-ordem, filhos na ordem de inserção). Define a ordem do Tab.
+func collectFocusable(w Widget, out *[]Widget) {
+	if w == nil {
+		return
+	}
+	if w.Focusable() {
+		*out = append(*out, w)
+	}
+	if pw, ok := w.(ParentWidget); ok {
+		for _, ch := range pw.Children() {
+			collectFocusable(ch, out)
+		}
+	}
+}
+
 // widgetAt devolve o widget mais profundo cujo Bounds contém p, ou nil.
 // Usado pelo App para rastrear hover (MouseEnter/MouseLeave).
 func widgetAt(w Widget, p image.Point) Widget {
