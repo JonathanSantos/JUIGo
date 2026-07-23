@@ -70,3 +70,20 @@ func DrawText(dst *image.RGBA, face font.Face, s string, dot image.Point, c colo
 func MeasureText(face font.Face, s string) int {
 	return font.MeasureString(face, s).Ceil()
 }
+
+// Clip preenche out com uma VISÃO de dst recortada a r — mesmos pixels, sem
+// cópia e sem alocação (out é um scratch reutilizável, normalmente um campo
+// do widget) — e a devolve. Desenhar na visão não alcança nada fora de r,
+// pois todas as primitivas recortam contra os bounds do destino. Semântica
+// idêntica à de image.RGBA.SubImage.
+func Clip(dst *image.RGBA, r image.Rectangle, out *image.RGBA) *image.RGBA {
+	r = r.Intersect(dst.Bounds())
+	if r.Empty() {
+		*out = image.RGBA{Rect: r}
+		return out
+	}
+	out.Pix = dst.Pix[dst.PixOffset(r.Min.X, r.Min.Y):]
+	out.Stride = dst.Stride
+	out.Rect = r
+	return out
+}

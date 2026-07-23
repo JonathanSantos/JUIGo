@@ -43,7 +43,14 @@ type Input struct {
 	text      string
 	cursorX   int
 	anchorX   int
+	textW     int
 	syncScale float64
+
+	// scrollX é a rolagem horizontal do texto, em pixels: quando o texto é
+	// maior que a área útil, o campo rola para manter o cursor visível.
+	scrollX int
+	// clip é a visão recortada reutilizada pelo Draw (sem alocação).
+	clip image.RGBA
 }
 
 // NewInput cria um campo de texto vazio com o placeholder dado. O tema é
@@ -331,6 +338,7 @@ func (in *Input) sync() {
 	}
 	in.cursorX = in.theme.MeasureString(string(in.runes[:in.cursor]))
 	in.anchorX = in.theme.MeasureString(string(in.runes[:in.anchor]))
+	in.textW = in.theme.MeasureString(in.text)
 	in.syncScale = in.theme.Scale()
 }
 
@@ -351,7 +359,7 @@ func (in *Input) runeIndexAt(x int) int {
 	if in.theme == nil {
 		return 0
 	}
-	rel := x - (in.Bounds().Min.X + in.theme.PaddingPx())
+	rel := x - (in.Bounds().Min.X + in.theme.PaddingPx()) + in.scrollX
 	if rel <= 0 {
 		return 0
 	}
@@ -373,7 +381,9 @@ func (in *Input) runeIndexAt(x int) int {
 }
 
 // Draw desenha o fundo, a borda (realçada com foco), o texto ou o
-// placeholder, e o cursor quando focado.
+// placeholder, a seleção e o cursor quando focado. O conteúdo é RECORTADO à
+// área útil do campo e rola horizontalmente para manter o cursor sempre
+// visível quando o texto é maior que o campo.
 func (in *Input) Draw(dst *image.RGBA) {
 	if in.theme == nil {
 		return
@@ -381,7 +391,7 @@ func (in *Input) Draw(dst *image.RGBA) {
 	bounds := in.Bounds()
 	th := in.theme
 
-	// A escala mudou desde o último sync? Recalcula cursorX uma única vez.
+	// A escala mudou desde o último sync? Recalcula as medidas uma vez.
 	if in.syncScale != th.Scale() {
 		in.sync()
 	}
@@ -393,8 +403,35 @@ func (in *Input) Draw(dst *image.RGBA) {
 	}
 	render.StrokeRect(dst, bounds, th.BorderPx(), border)
 
-	textX := bounds.Min.X + th.PaddingPx()
+	innerX0 := bounds.Min.X + th.PaddingPx()
+	innerX1 := bounds.Max.X - th.PaddingPx()
+	innerW := innerX1 - innerX0
+	if innerW <= 0 {
+		return
+	}
+
+	// Rolagem horizontal: limita ao intervalo válido e garante o cursor
+	// visível (com espaço para a própria linha do cursor à direita).
+	if in.textW <= innerW {
+		in.scrollX = 0
+	} else if in.scrollX > in.textW-innerW {
+		in.scrollX = in.textW - innerW
+	}
+	if in.scrollX < 0 {
+		in.scrollX = 0
+	}
+	if in.focused {
+		if lim := innerW - th.BorderPx(); in.cursorX-in.scrollX > lim && lim > 0 {
+			in.scrollX = in.cursorX - lim
+		}
+		if in.cursorX-in.scrollX < 0 {
+			in.scrollX = in.cursorX
+		}
+	}
+
+	textX := innerX0 - in.scrollX
 	baseline := bounds.Min.Y + (bounds.Dy()-th.LineHeight())/2 + th.Ascent()
+	view := render.Clip(dst, image.Rect(innerX0, bounds.Min.Y, innerX1, bounds.Max.Y), &in.clip)
 
 	if in.focused && in.hasSelection() {
 		sx, ex := in.anchorX, in.cursorX
@@ -402,19 +439,19 @@ func (in *Input) Draw(dst *image.RGBA) {
 			sx, ex = ex, sx
 		}
 		top := baseline - th.Ascent()
-		render.FillRect(dst, image.Rect(textX+sx, top, textX+ex, top+th.LineHeight()), th.Selection)
+		render.FillRect(view, image.Rect(textX+sx, top, textX+ex, top+th.LineHeight()), th.Selection)
 	}
 
 	switch {
 	case len(in.runes) > 0:
-		th.DrawText(dst, in.text, image.Pt(textX, baseline), th.Text)
+		th.DrawText(view, in.text, image.Pt(textX, baseline), th.Text)
 	case !in.focused && in.Placeholder != "":
-		th.DrawText(dst, in.Placeholder, image.Pt(textX, baseline), th.Placeholder)
+		th.DrawText(view, in.Placeholder, image.Pt(textX, baseline), th.Placeholder)
 	}
 
 	if in.focused {
 		top := baseline - th.Ascent()
 		cx := textX + in.cursorX
-		render.FillRect(dst, image.Rect(cx, top, cx+th.BorderPx(), top+th.LineHeight()), th.Cursor)
+		render.FillRect(view, image.Rect(cx, top, cx+th.BorderPx(), top+th.LineHeight()), th.Cursor)
 	}
 }

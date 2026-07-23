@@ -39,6 +39,8 @@ type Button struct {
 	state   ButtonState
 	pressed bool
 	focused bool
+	// clip é a visão recortada reutilizada pelo Draw (sem alocação).
+	clip image.RGBA
 }
 
 // NewButton cria um botão com o rótulo e o callback dados. O tema é herdado
@@ -173,5 +175,6 @@ func (b *Button) Draw(dst *image.RGBA) {
 	labelW := b.theme.MeasureString(b.Label)
 	x := bounds.Min.X + (bounds.Dx()-labelW)/2
 	y := bounds.Min.Y + (bounds.Dy()-b.theme.LineHeight())/2 + b.theme.Ascent()
-	b.theme.DrawText(dst, b.Label, image.Pt(x, y), b.theme.ButtonText)
+	view := render.Clip(dst, bounds, &b.clip)
+	b.theme.DrawText(view, b.Label, image.Pt(x, y), b.theme.ButtonText)
 }

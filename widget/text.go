@@ -5,6 +5,7 @@ import (
 	"image/color"
 
 	"juigo/internal/hooks"
+	"juigo/render"
 	"juigo/state"
 )
 
@@ -30,6 +31,8 @@ type Text struct {
 	Color color.RGBA
 
 	text string
+	// clip é a visão recortada reutilizada pelo Draw (sem alocação).
+	clip image.RGBA
 }
 
 // NewText cria um Text com o conteúdo dado, alinhado à esquerda. O tema é
@@ -86,7 +89,8 @@ func (t *Text) PreferredSize() image.Point {
 	}
 }
 
-// Draw desenha o texto alinhado horizontalmente e centralizado na vertical.
+// Draw desenha o texto alinhado horizontalmente e centralizado na vertical,
+// recortado aos bounds do widget.
 func (t *Text) Draw(dst *image.RGBA) {
 	if t.theme == nil {
 		return
@@ -106,5 +110,6 @@ func (t *Text) Draw(dst *image.RGBA) {
 		x = bounds.Max.X - w
 	}
 	y := bounds.Min.Y + (bounds.Dy()-t.theme.LineHeight())/2 + t.theme.Ascent()
-	t.theme.DrawText(dst, t.text, image.Pt(x, y), c)
+	view := render.Clip(dst, bounds, &t.clip)
+	t.theme.DrawText(view, t.text, image.Pt(x, y), c)
 }
