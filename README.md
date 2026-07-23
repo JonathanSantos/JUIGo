@@ -24,10 +24,11 @@ juigo/
                              (DispatchAt/DispatchMouse/DispatchScroll,
                              DeepestAt/FocusableAt/Focusables), Mount,
                              flex (Grow/Spacer/Centered/AtStart/AtEnd),
-                             Container/VBox/HBox, Scroll (clipping),
-                             overlay (OpenOverlay/CloseOverlay), CursorShape,
-                             Tooltip, Text, Button, Input, TextArea, Checkbox,
-                             Slider, ProgressBar, Radio, Image, Dropdown, Modal
+                             Container/VBox/HBox, Grid, Scroll (clipping),
+                             List virtualizada, overlay, CursorShape, Tooltip,
+                             Text, Button, Input, TextArea (soft wrap),
+                             Checkbox, Slider, ProgressBar, Radio, Image,
+                             Dropdown, Modal
   offscreen/                 Render/SavePNG: árvore → *image.RGBA sem janela
                              (golden tests, screenshots, depuração)
   uitest/                    harness de testes de UI: dirige a Session real
@@ -174,6 +175,12 @@ Três ideias sustentam essa DX:
   interface sozinho; setters de widgets (`SetText`) também. Bindings:
   `Text.BindText` (uma via) e `Input.BindValue` (duas vias). Eventos
   continuam callbacks (`OnClick`) — estado é para dados.
+- **Grid e lista virtualizada** — `NewGrid(2, rótulo, campo, …)` alinha
+  formulários (colunas na largura do filho mais largo; sobra vai às colunas
+  com `Grow`); `NewList(n, criar, vincular)` mostra milhares de linhas com
+  um pool de meia dúzia de widgets reciclados na rolagem, dentro de um
+  `Scroll` comum. A TextArea quebra linha automaticamente (soft wrap) na
+  largura do campo, preferindo espaços, com navegação por linhas visuais.
 - **Layout flex sem cerimônia** — `Grow(w, peso)` expande um filho no eixo
   principal do box (proporcional ao peso); `NewSpacer()` empurra irmãos;
   `Centered`/`AtStart`/`AtEnd` controlam o eixo transversal (padrão:
@@ -265,10 +272,11 @@ go test ./...
 
 ## Fora de escopo (por enquanto)
 
-Animações, dirty regions, temas alternáveis, acessibilidade, IME, quebra
-automática de linha na TextArea (soft wrap), tabelas/árvores. A arquitetura
-foi pensada para recebê-los depois: eventos são tipos abertos, o tema é
-injetado, containers são aninháveis e o desenho é isolado em `render/`.
+Acessibilidade, IME (composição de texto asiático), multi-janela, edição
+rica (negrito/itálico), drag-and-drop, tabelas com colunas e árvores. A
+arquitetura foi pensada para recebê-los depois: eventos são tipos abertos, o
+tema é injetado, containers são aninháveis e o desenho é isolado em
+`render/`.
 
 Limitação conhecida desta fase: o cache de glyphs cresce sob demanda e não é
 descartado por LRU (irrelevante para textos de UI; cada glyph ocupa poucos
