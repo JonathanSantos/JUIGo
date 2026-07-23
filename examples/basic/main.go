@@ -34,17 +34,19 @@ func main() {
 
 	ui := juigo.NewVBox(
 		juigo.NewText("").BindText(eco).Center(),
-		juigo.NewInput("Digite aqui…").BindValue(valor),
+		juigo.NewHBox(
+			juigo.Grow(juigo.NewInput("Digite aqui…").BindValue(valor), 1),
+			juigo.NewButton("Enviar", func() {
+				eco.Set("Você digitou: " + valor.Get())
+			}),
+		),
 		juigo.NewText("").BindText(contador).Right(),
-		juigo.NewButton("Enviar", func() {
-			eco.Set("Você digitou: " + valor.Get())
-		}),
 		juigo.NewCheckbox("Notificações").BindChecked(notif),
 		juigo.NewSlider(0, 1).BindValue(volume),
 		juigo.NewText("").BindText(volTxt).Right(),
 	).Pad(16)
 
-	if err := juigo.Run("JUIGo — demo básico", 480, 320, ui); err != nil {
+	if err := juigo.Run("JUIGo — demo básico", 480, 280, ui); err != nil {
 		log.Fatal(err)
 	}
 }

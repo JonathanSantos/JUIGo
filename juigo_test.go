@@ -1,11 +1,10 @@
 package juigo_test
 
 import (
-	"image"
 	"testing"
 
 	"juigo"
-	"juigo/render"
+	"juigo/offscreen"
 )
 
 // TestFachada garante que a API reexportada pela raiz monta, mede e desenha
@@ -23,21 +22,16 @@ func TestFachada(t *testing.T) {
 
 	ui := juigo.NewVBox(
 		juigo.NewText("Título").Center(),
-		campo,
+		juigo.NewHBox(
+			juigo.Grow(campo, 1),
+			juigo.NewButton("OK", nil),
+		),
 		juigo.NewText("").BindText(eco),
-		juigo.NewButton("OK", nil),
 		juigo.NewCheckbox("Ativo"),
-		juigo.NewSlider(0, 1),
+		juigo.Centered(juigo.NewSlider(0, 1)),
 	).Pad(16)
 
 	juigo.Mount(ui, th)
-	buf := image.NewRGBA(image.Rect(0, 0, 480, 320))
-	render.FillRect(buf, buf.Bounds(), th.Background)
-	ui.Layout(buf.Bounds())
-
-	if got := campo.PreferredSize().X; got != th.InputMinWidthPx() {
-		t.Fatalf("mount pela fachada falhou: PreferredSize().X = %d", got)
-	}
 
 	// Interação pela fachada: eventos e estado reexportados.
 	campo.HandleEvent(juigo.FocusEvent{Gained: true})
@@ -49,8 +43,8 @@ func TestFachada(t *testing.T) {
 		t.Fatalf("binding pela fachada: State = %q, esperado %q", valor.Get(), "çã")
 	}
 
-	ui.Draw(buf)
-	// Algo foi desenhado além do fundo.
+	// Renderiza pelo pacote offscreen e verifica que algo foi pintado.
+	buf := offscreen.Render(ui, th, 480, 320)
 	bg := th.Background
 	painted := false
 	for i := 0; i < len(buf.Pix); i += 4 {
@@ -60,6 +54,11 @@ func TestFachada(t *testing.T) {
 		}
 	}
 	if !painted {
-		t.Fatal("Draw pela fachada não pintou nenhum pixel")
+		t.Fatal("Render pela fachada não pintou nenhum pixel")
+	}
+
+	// Com Grow, o campo ocupa a largura que o botão não usa.
+	if campo.Bounds().Dx() <= th.InputMinWidthPx() {
+		t.Fatalf("Grow deveria expandir o campo além da largura mínima; Dx = %d", campo.Bounds().Dx())
 	}
 }

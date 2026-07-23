@@ -22,7 +22,10 @@ juigo/
   widget/                    contrato Widget, BaseWidget, roteamento
                              (DispatchMouse/DeepestAt/FocusableAt/Focusables),
                              Mount (injeção de tema), Container/VBox/HBox,
+                             flex (Grow/Spacer/Centered/AtStart/AtEnd),
                              Text, Button, Input, Checkbox, Slider
+  offscreen/                 Render/SavePNG: árvore → *image.RGBA sem janela
+                             (golden tests, screenshots, depuração)
   theme/                     Theme: cores, métricas, escala HiDPI, cache de
                              glyphs e a fonte embutida (theme/assets/)
   event/                     tipos de evento, modificadores e o Bus síncrono
@@ -111,11 +114,13 @@ contador := juigo.Map(valor, func(s string) string {
 
 ui := juigo.NewVBox(
     juigo.NewText("").BindText(eco).Center(),
-    juigo.NewInput("Digite aqui…").BindValue(valor),
+    juigo.NewHBox( // campo expande; botão fica na largura natural
+        juigo.Grow(juigo.NewInput("Digite aqui…").BindValue(valor), 1),
+        juigo.NewButton("Enviar", func() {
+            eco.Set("Você digitou: " + valor.Get())
+        }),
+    ),
     juigo.NewText("").BindText(contador).Right(),
-    juigo.NewButton("Enviar", func() {
-        eco.Set("Você digitou: " + valor.Get())
-    }),
 ).Pad(16)
 
 if err := juigo.Run("JUIGo — demo", 480, 240, ui); err != nil {
@@ -135,8 +140,17 @@ Três ideias sustentam essa DX:
   interface sozinho; setters de widgets (`SetText`) também. Bindings:
   `Text.BindText` (uma via) e `Input.BindValue` (duas vias). Eventos
   continuam callbacks (`OnClick`) — estado é para dados.
+- **Layout flex sem cerimônia** — `Grow(w, peso)` expande um filho no eixo
+  principal do box (proporcional ao peso); `NewSpacer()` empurra irmãos;
+  `Centered`/`AtStart`/`AtEnd` controlam o eixo transversal (padrão:
+  esticar). As funções devolvem o próprio widget com o tipo concreto — uso
+  inline na árvore, sem nó extra, metadados internos no `BaseWidget`.
 - **Boot em uma linha** — `juigo.Run(título, w, h, raiz)`. `juigo.New`
   continua disponível para quem precisa do `*App`.
+- **Renderização offscreen de primeira classe** — `juigo/offscreen` desenha
+  qualquer árvore em um `*image.RGBA` sem janela nem GL, deterministicamente
+  (mesma árvore ⇒ mesmos bytes): golden tests, screenshots de documentação e
+  depuração de layout com `offscreen.Render` + `offscreen.SavePNG`.
 
 ## Rodando a demo
 
