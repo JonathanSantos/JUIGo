@@ -57,13 +57,13 @@ func main() {
 	)
 	erroDe := func(chave any) *juigo.Text {
 		t := juigo.NewText("").BindText(cadastro.ErrorOf(chave))
-		t.Color = app.Theme().Danger
+		t.Danger()
 		return t
 	}
 	campoNome := juigo.NewInput("Nome").BindValue(nome)
-	campoNome.OnBlur = func() { cadastro.Touch(nome) }
+	campoNome.OnBlur(func() { cadastro.Touch(nome) })
 	campoMail := juigo.NewInput("E-mail").BindValue(mail)
-	campoMail.OnBlur = func() { cadastro.Touch(mail) }
+	campoMail.OnBlur(func() { cadastro.Touch(mail) })
 
 	var sobre *juigo.Modal
 	sobre = juigo.NewModal(juigo.NewVBox(

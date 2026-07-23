@@ -15,7 +15,7 @@ func TestCheckboxToggleEBinding(t *testing.T) {
 
 	c := NewCheckbox("Notificações").BindChecked(ligado)
 	c.SetTheme(th)
-	c.OnChange = func(v bool) { changes = append(changes, v) }
+	c.OnChange(func(v bool) { changes = append(changes, v) })
 	c.Layout(image.Rect(0, 0, 150, 24))
 	inside := image.Pt(10, 12)
 
@@ -99,5 +99,26 @@ func TestSliderMouseTecladoEBinding(t *testing.T) {
 	s.SetValue(1000)
 	if s.Value() != 100 {
 		t.Fatalf("SetValue além do Max deveria limitar; Value=%v", s.Value())
+	}
+}
+
+func TestInputOnSubmit(t *testing.T) {
+	th := newTestTheme(t)
+	enviado := 0
+	in := NewInput("x").OnSubmit(func() { enviado++ })
+	in.SetTheme(th)
+	in.HandleEvent(event.FocusEvent{Gained: true})
+	if !in.HandleEvent(event.KeyEvent{Key: event.KeyEnter}) {
+		t.Fatal("Enter deveria ser consumido quando há OnSubmit")
+	}
+	if enviado != 1 {
+		t.Fatalf("OnSubmit deveria disparar 1 vez; disparou %d", enviado)
+	}
+
+	// Sem OnSubmit, Enter não é consumido (sobe para quem interessar).
+	outro := NewInput("y")
+	outro.SetTheme(th)
+	if outro.HandleEvent(event.KeyEvent{Key: event.KeyEnter}) {
+		t.Fatal("sem OnSubmit, Enter não deveria ser consumido")
 	}
 }

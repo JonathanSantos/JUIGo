@@ -26,12 +26,12 @@ type Input struct {
 	BaseWidget
 	// Placeholder é exibido quando o campo está vazio e sem foco.
 	Placeholder string
-	// OnChange é chamado após qualquer alteração no texto. Pode ser nil.
-	OnChange func(string)
-	// OnFocus e OnBlur são chamados ao ganhar/perder o foco de teclado —
-	// úteis para validação "touched" (ver juigo/form). Podem ser nil.
-	OnFocus func()
-	OnBlur  func()
+
+	// Callbacks definidos pelos métodos encadeáveis de mesmo nome.
+	onChange func(string)
+	onFocus  func()
+	onBlur   func()
+	onSubmit func()
 
 	runes []rune
 	// cursor e anchor são índices em runes (0..len(runes)); a seleção é o
@@ -69,6 +69,33 @@ type Input struct {
 // herdado no mount.
 func NewInput(placeholder string) *Input {
 	return &Input{Placeholder: placeholder, caretOn: true}
+}
+
+// OnChange define o callback chamado após qualquer alteração no texto.
+// Encadeável.
+func (in *Input) OnChange(fn func(string)) *Input {
+	in.onChange = fn
+	return in
+}
+
+// OnFocus define o callback chamado ao ganhar o foco de teclado. Encadeável.
+func (in *Input) OnFocus(fn func()) *Input {
+	in.onFocus = fn
+	return in
+}
+
+// OnBlur define o callback chamado ao perder o foco de teclado — útil para
+// validação "touched" (ver juigo/form). Encadeável.
+func (in *Input) OnBlur(fn func()) *Input {
+	in.onBlur = fn
+	return in
+}
+
+// OnSubmit define o callback chamado quando Enter é pressionado com o campo
+// focado (envio de formulários). Encadeável.
+func (in *Input) OnSubmit(fn func()) *Input {
+	in.onSubmit = fn
+	return in
 }
 
 // Text devolve o conteúdo atual do campo.
@@ -137,13 +164,13 @@ func (in *Input) HandleEvent(ev event.Event) bool {
 		in.focused = e.Gained
 		if e.Gained {
 			in.restartBlink()
-			if in.OnFocus != nil {
-				in.OnFocus()
+			if in.onFocus != nil {
+				in.onFocus()
 			}
 		} else {
 			in.stopBlink()
-			if in.OnBlur != nil {
-				in.OnBlur()
+			if in.onBlur != nil {
+				in.onBlur()
 			}
 		}
 		return true
@@ -189,6 +216,12 @@ func (in *Input) insert(r rune) {
 // mudou (texto, cursor ou seleção).
 func (in *Input) handleKey(e event.KeyEvent) bool {
 	switch e.Key {
+	case event.KeyEnter:
+		if in.onSubmit == nil {
+			return false
+		}
+		in.onSubmit()
+		return true
 	case event.KeyBackspace:
 		if in.deleteSelection() {
 			in.sync()
@@ -404,8 +437,8 @@ func (in *Input) emitChange() {
 	if in.bound != nil && in.bound.Get() != in.text {
 		in.bound.Set(in.text)
 	}
-	if in.OnChange != nil {
-		in.OnChange(in.text)
+	if in.onChange != nil {
+		in.onChange(in.text)
 	}
 }
 

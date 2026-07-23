@@ -20,9 +20,9 @@ func TestFormularioNaInterface(t *testing.T) {
 	)
 
 	campoNome := juigo.NewInput("Nome").BindValue(nome)
-	campoNome.OnBlur = func() { f.Touch(nome) }
+	campoNome.OnBlur(func() { f.Touch(nome) })
 	campoEmail := juigo.NewInput("E-mail").BindValue(email)
-	campoEmail.OnBlur = func() { f.Touch(email) }
+	campoEmail.OnBlur(func() { f.Touch(email) })
 
 	salvos := 0
 	salvar := juigo.BindDisabled(juigo.NewButton("Salvar", func() {

@@ -56,7 +56,7 @@ func TestBindValueDuasVias(t *testing.T) {
 
 	// O binding não engole o OnChange do usuário.
 	var last string
-	in.OnChange = func(v string) { last = v }
+	in.OnChange(func(v string) { last = v })
 	typeString(in, "!")
 	if last != "reescrito!" || s.Get() != "reescrito!" {
 		t.Fatalf("OnChange=%q, State=%q; esperado ambos %q", last, s.Get(), "reescrito!")

@@ -20,17 +20,32 @@ type Slider struct {
 	BaseWidget
 	// Min e Max delimitam o intervalo de valores (Min <= Max).
 	Min, Max float64
-	// Step é o incremento das setas do teclado; zero usa 5% do intervalo.
-	Step float64
-	// OnChange é chamado com o novo valor a cada ajuste feito pelo usuário.
-	// Pode ser nil.
-	OnChange func(float64)
 
+	// step é o incremento das setas do teclado (ver Step); zero usa 5% do
+	// intervalo.
+	step float64
+	// onChange é chamado com o novo valor a cada ajuste feito pelo usuário
+	// (ver OnChange).
+	onChange func(float64)
 	value    float64
 	dragging bool
 	hover    bool
 	focused  bool
 	bound    *state.State[float64]
+}
+
+// Step define o incremento das setas do teclado; zero (o padrão) usa 5% do
+// intervalo. Encadeável.
+func (s *Slider) Step(v float64) *Slider {
+	s.step = v
+	return s
+}
+
+// OnChange define o callback chamado com o novo valor a cada ajuste feito
+// pelo usuário. Encadeável.
+func (s *Slider) OnChange(fn func(float64)) *Slider {
+	s.onChange = fn
+	return s
 }
 
 // NewSlider cria um slider com o intervalo dado e o valor inicial em min.
@@ -130,7 +145,7 @@ func (s *Slider) HandleEvent(ev event.Event) bool {
 
 // handleKey ajusta o valor pelo teclado. Devolve true se algo mudou.
 func (s *Slider) handleKey(k event.Key) bool {
-	step := s.Step
+	step := s.step
 	if step <= 0 {
 		step = (s.Max - s.Min) / 20
 	}
@@ -158,8 +173,8 @@ func (s *Slider) setFromUser(v float64) bool {
 	if s.bound != nil && s.bound.Get() != v {
 		s.bound.Set(v)
 	}
-	if s.OnChange != nil {
-		s.OnChange(v)
+	if s.onChange != nil {
+		s.onChange(v)
 	}
 	return true
 }

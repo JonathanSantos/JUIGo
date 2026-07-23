@@ -145,7 +145,7 @@ func TestModalEscapeComFocoInterno(t *testing.T) {
 	interno := juigo.NewInput("dentro")
 	m := juigo.NewModal(juigo.NewVBox(juigo.NewText("Diálogo"), interno))
 	fechado := 0
-	m.OnClose = func() { fechado++ }
+	m.OnClose(func() { fechado++ })
 
 	h := uitest.New(t, juigo.NewVBox(campoFora, juigo.NewButton("Abrir", m.Show)).Pad(8), 400, 300)
 

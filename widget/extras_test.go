@@ -73,7 +73,7 @@ func TestRadioGrupoViaState(t *testing.T) {
 
 	free := NewRadio("Grátis", "free").BindValue(plano)
 	pro := NewRadio("Pro", "pro").BindValue(plano)
-	free.OnChange = func(v string) { chosen = v }
+	free.OnChange(func(v string) { chosen = v })
 	free.SetTheme(th)
 	pro.SetTheme(th)
 	free.Layout(image.Rect(0, 0, 120, 20))
@@ -211,7 +211,7 @@ func TestModalAbreFechaEBackdrop(t *testing.T) {
 	th := newTestTheme(t)
 	fechado := 0
 	m := NewModal(NewVBox(NewText("Título"), NewButton("OK", nil)))
-	m.OnClose = func() { fechado++ }
+	m.OnClose(func() { fechado++ })
 	m.SetTheme(th)
 	m.Show()
 	if opened != Widget(m) || !m.Shown() {
@@ -244,7 +244,7 @@ func TestModalAbreFechaEBackdrop(t *testing.T) {
 	}
 
 	// Escape fecha; com CloseOnBackdrop desligado, backdrop não fecha.
-	m.CloseOnBackdrop = false
+	m.CloseOnBackdrop(false)
 	m.Show()
 	m.HandleEvent(event.MouseEvent{Kind: event.MouseDown, Pos: image.Pt(5, 5), Button: event.MouseButtonLeft})
 	if !m.Shown() {

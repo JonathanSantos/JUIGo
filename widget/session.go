@@ -322,8 +322,21 @@ func (s *Session) OpenOverlay(w Widget) {
 	}
 	s.overlay = w
 	Mount(w, s.theme)
-	if w.Focusable() {
-		s.setFocus(w)
+	// Foca o primeiro focável DENTRO da camada (um campo de diálogo fica
+	// pronto para digitar); sem descendentes focáveis, a própria camada.
+	// Escape segue fechando modais pela entrega de fallback à overlay.
+	var target Widget
+	for _, f := range Focusables(w) {
+		if f != w {
+			target = f
+			break
+		}
+	}
+	if target == nil && w.Focusable() {
+		target = w
+	}
+	if target != nil {
+		s.setFocus(target)
 	}
 	s.InvalidateAll()
 }

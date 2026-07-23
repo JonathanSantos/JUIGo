@@ -20,13 +20,12 @@ type Dropdown struct {
 	BaseWidget
 	// Options são as opções exibidas, na ordem.
 	Options []string
-	// Placeholder é exibido quando nada está selecionado (Options vazio ou
-	// seleção -1).
-	Placeholder string
-	// OnChange é chamado com a opção escolhida a cada seleção feita pelo
-	// usuário. Pode ser nil.
-	OnChange func(string)
 
+	// placeholder é exibido quando nada está selecionado (ver Placeholder).
+	placeholder string
+	// onChange é chamado com a opção escolhida a cada seleção feita pelo
+	// usuário (ver OnChange).
+	onChange func(string)
 	selected int
 	open     bool
 	hover    bool
@@ -45,6 +44,20 @@ func NewDropdown(options ...string) *Dropdown {
 		d.selected = 0
 	}
 	d.list = &dropdownList{owner: d}
+	return d
+}
+
+// Placeholder define o texto exibido quando nada está selecionado (Options
+// vazio ou seleção -1). Encadeável.
+func (d *Dropdown) Placeholder(s string) *Dropdown {
+	d.placeholder = s
+	return d
+}
+
+// OnChange define o callback chamado com a opção escolhida a cada seleção
+// feita pelo usuário. Encadeável.
+func (d *Dropdown) OnChange(fn func(string)) *Dropdown {
+	d.onChange = fn
 	return d
 }
 
@@ -112,7 +125,7 @@ func (d *Dropdown) PreferredSize() image.Point {
 		return image.Point{}
 	}
 	th := d.theme
-	widest := th.MeasureString(d.Placeholder)
+	widest := th.MeasureString(d.placeholder)
 	for _, o := range d.Options {
 		if w := th.MeasureString(o); w > widest {
 			widest = w
@@ -218,8 +231,8 @@ func (d *Dropdown) selectFromUser(i int) {
 		if d.bound != nil && d.bound.Get() != d.Options[i] {
 			d.bound.Set(d.Options[i])
 		}
-		if d.OnChange != nil {
-			d.OnChange(d.Options[i])
+		if d.onChange != nil {
+			d.onChange(d.Options[i])
 		}
 	}
 	d.closePopup()
@@ -244,8 +257,8 @@ func (d *Dropdown) Draw(dst *image.RGBA) {
 	baseline := bounds.Min.Y + (bounds.Dy()-th.LineHeight())/2 + th.Ascent()
 	if d.selected >= 0 && d.selected < len(d.Options) {
 		th.DrawText(view, d.Options[d.selected], image.Pt(bounds.Min.X+th.PaddingPx(), baseline), th.Text)
-	} else if d.Placeholder != "" {
-		th.DrawText(view, d.Placeholder, image.Pt(bounds.Min.X+th.PaddingPx(), baseline), th.Placeholder)
+	} else if d.placeholder != "" {
+		th.DrawText(view, d.placeholder, image.Pt(bounds.Min.X+th.PaddingPx(), baseline), th.Placeholder)
 	}
 
 	// Chevron ▼ desenhado com faixas de largura decrescente.

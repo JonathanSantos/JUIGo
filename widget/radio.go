@@ -26,11 +26,11 @@ type Radio struct {
 	Label string
 	// Value é o valor que este rádio representa no grupo.
 	Value string
-	// OnChange é chamado com Value quando ESTE rádio é selecionado pelo
-	// usuário. Pode ser nil.
-	OnChange func(string)
 
-	checked bool
+	// onChange é chamado com Value quando ESTE rádio é selecionado pelo
+	// usuário (ver OnChange).
+	onChange func(string)
+	checked  bool
 	pressed bool
 	hover   bool
 	focused bool
@@ -41,6 +41,13 @@ type Radio struct {
 // herdado no mount.
 func NewRadio(label, value string) *Radio {
 	return &Radio{Label: label, Value: value}
+}
+
+// OnChange define o callback chamado com Value quando ESTE rádio é
+// selecionado pelo usuário. Encadeável.
+func (r *Radio) OnChange(fn func(string)) *Radio {
+	r.onChange = fn
+	return r
 }
 
 // Checked devolve se este rádio é o selecionado do grupo.
@@ -135,8 +142,8 @@ func (r *Radio) selectFromUser() {
 	if r.bound != nil && r.bound.Get() != r.Value {
 		r.bound.Set(r.Value)
 	}
-	if r.OnChange != nil {
-		r.OnChange(r.Value)
+	if r.onChange != nil {
+		r.onChange(r.Value)
 	}
 }
 

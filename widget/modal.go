@@ -24,12 +24,12 @@ type OverlaySpanning interface {
 //	m.Show()
 type Modal struct {
 	BaseWidget
-	// CloseOnBackdrop permite fechar clicando no pano de fundo (padrão
-	// true). Desligue para exigir uma ação explícita do conteúdo.
-	CloseOnBackdrop bool
-	// OnClose é chamado quando o modal fecha, por qualquer caminho. Pode
-	// ser nil.
-	OnClose func()
+	// closeOnBackdrop permite fechar clicando no pano de fundo (ver
+	// CloseOnBackdrop; padrão true).
+	closeOnBackdrop bool
+	// onClose é chamado quando o modal fecha, por qualquer caminho (ver
+	// OnClose).
+	onClose func()
 
 	content Widget
 	panel   image.Rectangle
@@ -39,7 +39,21 @@ type Modal struct {
 
 // NewModal cria um modal com o conteúdo dado. O tema é herdado ao abrir.
 func NewModal(content Widget) *Modal {
-	return &Modal{content: content, CloseOnBackdrop: true}
+	return &Modal{content: content, closeOnBackdrop: true}
+}
+
+// CloseOnBackdrop define se clicar no pano de fundo fecha o modal (padrão
+// true); desligue para exigir uma ação explícita do conteúdo. Encadeável.
+func (m *Modal) CloseOnBackdrop(v bool) *Modal {
+	m.closeOnBackdrop = v
+	return m
+}
+
+// OnClose define o callback chamado quando o modal fecha, por qualquer
+// caminho (Escape, clique fora ou Close). Encadeável.
+func (m *Modal) OnClose(fn func()) *Modal {
+	m.onClose = fn
+	return m
 }
 
 // Children devolve o conteúdo (roteamento, mount e foco).
@@ -87,8 +101,8 @@ func (m *Modal) Close() {
 	}
 	m.shown = false
 	CloseOverlay(m)
-	if m.OnClose != nil {
-		m.OnClose()
+	if m.onClose != nil {
+		m.onClose()
 	}
 }
 
@@ -130,7 +144,7 @@ func (m *Modal) HandleEvent(ev event.Event) bool {
 	case event.MouseEvent:
 		switch e.Kind {
 		case event.MouseDown:
-			if e.Button == event.MouseButtonLeft && m.CloseOnBackdrop && !e.Pos.In(m.panel) {
+			if e.Button == event.MouseButtonLeft && m.closeOnBackdrop && !e.Pos.In(m.panel) {
 				m.Close()
 			}
 			return true

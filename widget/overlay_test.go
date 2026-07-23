@@ -33,7 +33,7 @@ func TestDropdownAbreNavegaSeleciona(t *testing.T) {
 	sel := state.New("Média")
 	var changed string
 	d := NewDropdown("Baixa", "Média", "Alta").BindValue(sel)
-	d.OnChange = func(v string) { changed = v }
+	d.OnChange(func(v string) { changed = v })
 	d.SetTheme(th)
 	d.Layout(image.Rect(10, 10, 210, 46))
 

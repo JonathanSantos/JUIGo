@@ -76,7 +76,7 @@ func TestInputClipboard(t *testing.T) {
 
 	// Recortar tudo.
 	var changed string
-	in.OnChange = func(s string) { changed = s }
+	in.OnChange(func(s string) { changed = s })
 	in.HandleEvent(event.KeyEvent{Key: event.KeyA, Mods: event.ModControl})
 	in.HandleEvent(event.KeyEvent{Key: event.KeyX, Mods: event.ModControl})
 	if fake != "olá mundoolá" || in.Text() != "" || changed != "" {

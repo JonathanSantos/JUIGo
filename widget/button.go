@@ -32,12 +32,12 @@ type Button struct {
 	BaseWidget
 	// Label é o texto do botão.
 	Label string
-	// Padding é o espaço interno entre o rótulo e as bordas, em unidades
-	// lógicas (convertido pela escala do tema). Negativo usa o padrão do
-	// tema (Theme.Padding).
-	Padding int
-	// OnClick é chamado quando o botão é acionado. Pode ser nil.
-	OnClick func()
+
+	// padding é o espaço interno entre o rótulo e as bordas, em unidades
+	// lógicas (ver Pad); negativo usa o padrão do tema (Theme.Padding).
+	padding int
+	// onClick é chamado quando o botão é acionado (ver OnClick).
+	onClick func()
 
 	state   ButtonState
 	pressed bool
@@ -57,9 +57,23 @@ type Button struct {
 func NewButton(label string, onClick func()) *Button {
 	return &Button{
 		Label:   label,
-		Padding: -1,
-		OnClick: onClick,
+		padding: -1,
+		onClick: onClick,
 	}
+}
+
+// OnClick define a ação do clique, substituindo a passada no construtor.
+// Encadeável.
+func (b *Button) OnClick(fn func()) *Button {
+	b.onClick = fn
+	return b
+}
+
+// Pad define o espaço interno entre o rótulo e as bordas, em unidades
+// lógicas; negativo volta ao padrão do tema. Encadeável.
+func (b *Button) Pad(padding int) *Button {
+	b.padding = padding
+	return b
 }
 
 // padPx resolve o padding para pixels na escala do tema.
@@ -67,8 +81,8 @@ func (b *Button) padPx() int {
 	if b.theme == nil {
 		return 0
 	}
-	if b.Padding >= 0 {
-		return b.theme.Px(b.Padding)
+	if b.padding >= 0 {
+		return b.theme.Px(b.padding)
 	}
 	return b.theme.PaddingPx()
 }
@@ -203,8 +217,8 @@ func (b *Button) handleMouse(e event.MouseEvent) bool {
 
 // fire dispara o callback OnClick, se houver.
 func (b *Button) fire() {
-	if b.OnClick != nil {
-		b.OnClick()
+	if b.onClick != nil {
+		b.onClick()
 	}
 }
 

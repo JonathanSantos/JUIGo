@@ -19,11 +19,11 @@ type Checkbox struct {
 	BaseWidget
 	// Label é o texto exibido à direita da caixa.
 	Label string
-	// OnChange é chamado com o novo valor a cada alternância feita pelo
-	// usuário. Pode ser nil.
-	OnChange func(bool)
 
-	checked bool
+	// onChange é chamado com o novo valor a cada alternância feita pelo
+	// usuário (ver OnChange).
+	onChange func(bool)
+	checked  bool
 	pressed bool
 	hover   bool
 	focused bool
@@ -34,6 +34,13 @@ type Checkbox struct {
 // herdado no mount.
 func NewCheckbox(label string) *Checkbox {
 	return &Checkbox{Label: label}
+}
+
+// OnChange define o callback chamado com o novo valor a cada alternância
+// feita pelo usuário. Encadeável.
+func (c *Checkbox) OnChange(fn func(bool)) *Checkbox {
+	c.onChange = fn
+	return c
 }
 
 // Checked devolve o valor atual.
@@ -132,8 +139,8 @@ func (c *Checkbox) toggle() {
 	if c.bound != nil && c.bound.Get() != c.checked {
 		c.bound.Set(c.checked)
 	}
-	if c.OnChange != nil {
-		c.OnChange(c.checked)
+	if c.onChange != nil {
+		c.onChange(c.checked)
 	}
 }
 

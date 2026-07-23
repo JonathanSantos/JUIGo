@@ -26,10 +26,12 @@ type Text struct {
 	BaseWidget
 	// Align controla o alinhamento horizontal dentro dos bounds.
 	Align Align
-	// Color sobrescreve a cor do texto; o valor zero usa a cor do tema.
-	Color color.RGBA
 
-	text string
+	// col sobrescreve a cor do texto (ver Color); o valor zero usa a cor do
+	// tema. danger usa Theme.Danger — segue trocas de tema em runtime.
+	col    color.RGBA
+	danger bool
+	text   string
 	// clip é a visão recortada reutilizada pelo Draw (sem alocação).
 	clip image.RGBA
 }
@@ -49,6 +51,21 @@ func (t *Text) Center() *Text {
 // Right alinha o texto à direita. Encadeável.
 func (t *Text) Right() *Text {
 	t.Align = AlignRight
+	return t
+}
+
+// Color sobrescreve a cor do texto com um valor fixo; para a cor de erro que
+// acompanha o tema, prefira Danger. Encadeável.
+func (t *Text) Color(c color.RGBA) *Text {
+	t.col = c
+	t.danger = false
+	return t
+}
+
+// Danger desenha o texto na cor de erro do tema (Theme.Danger), seguindo
+// trocas de tema em runtime — ideal para mensagens de validação. Encadeável.
+func (t *Text) Danger() *Text {
+	t.danger = true
 	return t
 }
 
@@ -95,8 +112,10 @@ func (t *Text) Draw(dst *image.RGBA) {
 		return
 	}
 	bounds := t.Bounds()
-	c := t.Color
-	if c == (color.RGBA{}) {
+	c := t.col
+	if t.danger {
+		c = t.theme.Danger
+	} else if c == (color.RGBA{}) {
 		c = t.theme.Text
 	}
 

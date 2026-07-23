@@ -73,7 +73,7 @@ func TestInputOnChange(t *testing.T) {
 	in := NewInput("")
 	in.SetTheme(newTestTheme(t))
 	var got []string
-	in.OnChange = func(s string) { got = append(got, s) }
+	in.OnChange(func(s string) { got = append(got, s) })
 
 	typeString(in, "oi")
 	in.HandleEvent(event.KeyEvent{Key: event.KeyBackspace})

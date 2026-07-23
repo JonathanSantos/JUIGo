@@ -31,12 +31,11 @@ type TextArea struct {
 	BaseWidget
 	// Placeholder é exibido quando o campo está vazio e sem foco.
 	Placeholder string
-	// OnChange é chamado após qualquer alteração no texto. Pode ser nil.
-	OnChange func(string)
-	// OnFocus e OnBlur são chamados ao ganhar/perder o foco de teclado —
-	// úteis para validação "touched" (ver juigo/form). Podem ser nil.
-	OnFocus func()
-	OnBlur  func()
+
+	// Callbacks definidos pelos métodos encadeáveis de mesmo nome.
+	onChange func(string)
+	onFocus  func()
+	onBlur   func()
 
 	runes     []rune
 	cursor    int
@@ -79,6 +78,26 @@ type TextArea struct {
 func NewTextArea(placeholder string) *TextArea {
 	t := &TextArea{Placeholder: placeholder, goalX: -1, caretOn: true}
 	t.sync()
+	return t
+}
+
+// OnChange define o callback chamado após qualquer alteração no texto.
+// Encadeável.
+func (t *TextArea) OnChange(fn func(string)) *TextArea {
+	t.onChange = fn
+	return t
+}
+
+// OnFocus define o callback chamado ao ganhar o foco de teclado. Encadeável.
+func (t *TextArea) OnFocus(fn func()) *TextArea {
+	t.onFocus = fn
+	return t
+}
+
+// OnBlur define o callback chamado ao perder o foco de teclado — útil para
+// validação "touched" (ver juigo/form). Encadeável.
+func (t *TextArea) OnBlur(fn func()) *TextArea {
+	t.onBlur = fn
 	return t
 }
 
@@ -365,13 +384,13 @@ func (t *TextArea) HandleEvent(ev event.Event) bool {
 		t.focused = e.Gained
 		if e.Gained {
 			t.restartBlink()
-			if t.OnFocus != nil {
-				t.OnFocus()
+			if t.onFocus != nil {
+				t.onFocus()
 			}
 		} else {
 			t.stopBlink()
-			if t.OnBlur != nil {
-				t.OnBlur()
+			if t.onBlur != nil {
+				t.onBlur()
 			}
 		}
 		return true
@@ -636,8 +655,8 @@ func (t *TextArea) emitChange() {
 	if t.bound != nil && t.bound.Get() != t.text {
 		t.bound.Set(t.text)
 	}
-	if t.OnChange != nil {
-		t.OnChange(t.text)
+	if t.onChange != nil {
+		t.onChange(t.text)
 	}
 }
 
