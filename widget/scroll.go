@@ -91,6 +91,11 @@ func (s *Scroll) Layout(bounds image.Rectangle) {
 	}
 	top := bounds.Min.Y - s.offset
 	s.child.Layout(image.Rect(bounds.Min.X, top, bounds.Max.X, top+contentH))
+	// Filhos virtualizados (List) recebem a viewport para vincular apenas
+	// as linhas visíveis, já no layout.
+	if vp, ok := s.child.(interface{ SetViewport(image.Rectangle) }); ok {
+		vp.SetViewport(bounds)
+	}
 }
 
 // HandleEvent consome ScrollEvent quando há para onde rolar; no limite,

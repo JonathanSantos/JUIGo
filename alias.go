@@ -53,6 +53,8 @@ type (
 	TextArea = widget.TextArea
 	// Modal é o diálogo centralizado sobre pano de fundo translúcido.
 	Modal = widget.Modal
+	// Grid distribui filhos em grade de N colunas (formulários alinhados).
+	Grid = widget.Grid
 	// Align é o alinhamento horizontal do Text.
 	Align = widget.Align
 	// ButtonState é o estado visual do Button.
@@ -66,6 +68,9 @@ type (
 	// Theme centraliza cores, fonte, métricas e a escala HiDPI.
 	Theme = theme.Theme
 )
+
+// List é a lista virtualizada de linhas uniformes com pool reciclado.
+type List[W Widget] = widget.List[W]
 
 // Reatividade (juigo/state).
 type (
@@ -201,6 +206,17 @@ func NewTextArea(placeholder string) *TextArea { return widget.NewTextArea(place
 // NewModal cria um diálogo modal com o conteúdo dado; exiba com Show (ver
 // widget.NewModal).
 func NewModal(content Widget) *Modal { return widget.NewModal(content) }
+
+// NewGrid cria uma grade com o número de colunas e os filhos dados (ver
+// widget.NewGrid).
+func NewGrid(colunas int, children ...Widget) *Grid { return widget.NewGrid(colunas, children...) }
+
+// NewList cria uma lista virtualizada: count linhas, criar() fabrica uma
+// linha do pool e vincular(linha, i) a preenche com os dados do índice (ver
+// widget.NewList).
+func NewList[W Widget](count int, criar func() W, vincular func(W, int)) *List[W] {
+	return widget.NewList(count, criar, vincular)
+}
 
 // Tooltip associa a w um texto de dica exibido quando o ponteiro pausa sobre
 // o widget, devolvendo o próprio w (ver widget.Tooltip).

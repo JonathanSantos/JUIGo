@@ -12,11 +12,13 @@ import (
 	"juigo/state"
 )
 
-// TextArea é um editor de texto MULTILINHA: linhas separadas por '\n' (sem
-// quebra automática — linhas longas são recortadas à direita), com rolagem
-// vertical automática para manter o cursor visível e rolagem pela roda do
-// mouse. Opera sobre []rune, como o Input, com seleção por âncora+cursor
-// atravessando linhas.
+// TextArea é um editor de texto MULTILINHA: linhas separadas por '\n' e
+// QUEBRA AUTOMÁTICA (soft wrap) na largura do campo — preferindo espaços,
+// quebrando no meio da palavra quando não há —, com rolagem vertical
+// automática para manter o cursor visível e rolagem pela roda do mouse.
+// Opera sobre []rune, como o Input, com seleção por âncora+cursor
+// atravessando linhas. Cima/Baixo navegam por linhas VISUAIS (preservando a
+// coluna desejada); Home/End vão ao início/fim da linha REAL.
 //
 // Suporta: Enter insere linha; setas em todas as direções (Cima/Baixo
 // preservam a coluna desejada); Home/End vão ao início/fim da LINHA;
@@ -59,6 +61,14 @@ type TextArea struct {
 	scrollY int
 	accum   float64
 	clip    image.RGBA
+
+	// Soft wrap: vlines são as linhas VISUAIS (cada linha real quebrada na
+	// largura útil), recalculadas quando texto, largura ou fonte mudam.
+	vlines    []vline
+	wrapWidth int
+	wrapFace  font.Face
+	wrapGen   int
+	textGen   int
 
 	caretOn     bool
 	blinkCancel func()
@@ -131,6 +141,7 @@ func (t *TextArea) PreferredSize() image.Point {
 // piscada. Aloca — mas por evento de edição, nunca por frame.
 func (t *TextArea) sync() {
 	t.text = string(t.runes)
+	t.textGen++
 	t.lineStarts = t.lineStarts[:0]
 	t.lineStarts = append(t.lineStarts, 0)
 	for i, r := range t.runes {
@@ -175,21 +186,138 @@ func (t *TextArea) lineEnd(li int) int {
 	return len(t.runes)
 }
 
-// indexAtLineX devolve o índice mais próximo de x px na linha dada.
-func (t *TextArea) indexAtLineX(li, x int) int {
-	if li < 0 {
+// vline é uma linha VISUAL: um trecho [startCol, endCol) de runes da linha
+// real hard, resultado do soft wrap.
+type vline struct {
+	hard     int
+	startCol int
+	endCol   int
+}
+
+// segment devolve o texto da vline, sem alocar (fatia de bytes da linha).
+func (t *TextArea) segment(v vline) string {
+	line := t.lines[v.hard]
+	b0 := len(runePrefix(line, v.startCol))
+	b1 := len(runePrefix(line, v.endCol))
+	return line[b0:b1]
+}
+
+// startIdx devolve o índice absoluto (em runes) do início da vline.
+func (t *TextArea) startIdx(v vline) int {
+	return t.lineStarts[v.hard] + v.startCol
+}
+
+// innerWidth devolve a largura útil de texto do campo.
+func (t *TextArea) innerWidth() int {
+	return t.Bounds().Dx() - 2*t.theme.PaddingPx()
+}
+
+// ensureWrap recalcula as linhas visuais se texto, largura ou fonte mudaram.
+func (t *TextArea) ensureWrap() {
+	if t.theme == nil {
+		return
+	}
+	w := t.innerWidth()
+	if w <= 0 {
+		w = 1 << 20 // sem layout ainda: uma vline por linha real
+	}
+	if t.wrapWidth == w && t.wrapFace == t.theme.Face && t.wrapGen == t.textGen {
+		return
+	}
+	t.wrapWidth, t.wrapFace, t.wrapGen = w, t.theme.Face, t.textGen
+
+	t.vlines = t.vlines[:0]
+	for li, line := range t.lines {
+		n := t.lineEnd(li) - t.lineStarts[li]
+		if n == 0 || t.theme.MeasureString(line) <= w {
+			t.vlines = append(t.vlines, vline{hard: li, startCol: 0, endCol: n})
+			continue
+		}
+		col := 0
+		for col < n {
+			fit := t.fitCols(li, col, n, w)
+			if fit < n {
+				// Recua até o último espaço do trecho (o espaço fecha a
+				// linha visual); sem espaço, quebra no meio da palavra.
+				for j := fit; j > col+1; j-- {
+					if t.runes[t.lineStarts[li]+j-1] == ' ' {
+						fit = j
+						break
+					}
+				}
+			}
+			t.vlines = append(t.vlines, vline{hard: li, startCol: col, endCol: fit})
+			col = fit
+		}
+	}
+}
+
+// fitCols devolve, por busca binária, o maior fim em (col, n] cujo trecho
+// [col, fim) cabe em w px (pelo menos uma rune).
+func (t *TextArea) fitCols(li, col, n, w int) int {
+	line := t.lines[li]
+	base := len(runePrefix(line, col))
+	lo, hi := col+1, n
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		end := len(runePrefix(line, mid))
+		if t.theme.MeasureString(line[base:end]) <= w {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	return lo
+}
+
+// visualOf devolve a vline que contém o índice absoluto idx. No exato ponto
+// de quebra, o caret pertence à linha visual SEGUINTE (afinidade para
+// baixo), exceto no fim real da linha.
+func (t *TextArea) visualOf(idx int) int {
+	for i, v := range t.vlines {
+		end := t.startIdx(v) + (v.endCol - v.startCol)
+		if idx < end {
+			return i
+		}
+		if idx == end {
+			lastOfHard := i+1 >= len(t.vlines) || t.vlines[i+1].hard != v.hard
+			if lastOfHard {
+				return i
+			}
+		}
+	}
+	if len(t.vlines) == 0 {
 		return 0
 	}
-	if li >= len(t.lines) {
+	return len(t.vlines) - 1
+}
+
+// visualX devolve o deslocamento em px de idx dentro da vline vli.
+func (t *TextArea) visualX(idx, vli int) int {
+	v := t.vlines[vli]
+	line := t.lines[v.hard]
+	b0 := len(runePrefix(line, v.startCol))
+	b1 := len(runePrefix(line, v.startCol+(idx-t.startIdx(v))))
+	return t.theme.MeasureString(line[b0:b1])
+}
+
+// indexAtVisual devolve o índice absoluto mais próximo de x px na vline.
+func (t *TextArea) indexAtVisual(vli, x int) int {
+	if vli < 0 {
+		return 0
+	}
+	if vli >= len(t.vlines) {
 		return len(t.runes)
 	}
+	v := t.vlines[vli]
+	seg := t.segment(v)
+	cols := v.endCol - v.startCol
 	if x <= 0 {
-		return t.lineStarts[li]
+		return t.startIdx(v)
 	}
-	line := []rune(t.lines[li])
-	best, bestDist := len(line), abs(t.theme.MeasureString(t.lines[li])-x)
-	for i := 0; i <= len(line); i++ {
-		w := t.theme.MeasureString(string(line[:i]))
+	best, bestDist := cols, abs(t.theme.MeasureString(seg)-x)
+	for i := 0; i <= cols; i++ {
+		w := t.theme.MeasureString(runePrefix(seg, i))
 		if d := abs(w - x); d < bestDist {
 			best, bestDist = i, d
 		}
@@ -197,7 +325,7 @@ func (t *TextArea) indexAtLineX(li, x int) int {
 			break
 		}
 	}
-	return t.lineStarts[li] + best
+	return t.startIdx(v) + best
 }
 
 func abs(v int) int {
@@ -207,20 +335,22 @@ func abs(v int) int {
 	return v
 }
 
-// indexAt converte uma posição absoluta do mouse em índice de rune.
+// indexAt converte uma posição absoluta do mouse em índice de rune, pela
+// linha VISUAL sob o ponto.
 func (t *TextArea) indexAt(p image.Point) int {
 	if t.theme == nil {
 		return 0
 	}
+	t.ensureWrap()
 	th := t.theme
-	li := (p.Y - (t.Bounds().Min.Y + th.PaddingPx()) + t.scrollY) / th.LineHeight()
-	if li < 0 {
-		li = 0
+	vli := (p.Y - (t.Bounds().Min.Y + th.PaddingPx()) + t.scrollY) / th.LineHeight()
+	if vli < 0 {
+		vli = 0
 	}
-	if li >= len(t.lines) {
-		li = len(t.lines) - 1
+	if vli >= len(t.vlines) {
+		vli = len(t.vlines) - 1
 	}
-	return t.indexAtLineX(li, p.X-(t.Bounds().Min.X+th.PaddingPx()))
+	return t.indexAtVisual(vli, p.X-(t.Bounds().Min.X+th.PaddingPx()))
 }
 
 // HandleEvent trata texto, teclas, rolagem, foco, clique e arraste.
@@ -303,7 +433,8 @@ func (t *TextArea) handleScroll(e event.ScrollEvent) bool {
 }
 
 func (t *TextArea) contentHeight() int {
-	return len(t.lines) * t.theme.LineHeight()
+	t.ensureWrap()
+	return len(t.vlines) * t.theme.LineHeight()
 }
 
 func (t *TextArea) innerHeight() int {
@@ -362,20 +493,22 @@ func (t *TextArea) handleKey(e event.KeyEvent) bool {
 		}
 		return t.moveCursor(t.cursor+1, e.Mods.Shift())
 	case event.KeyUp, event.KeyDown:
+		t.ensureWrap()
+		cur := t.visualOf(t.cursor)
 		if t.goalX < 0 {
-			t.goalX = t.caretX
+			t.goalX = t.visualX(t.cursor, cur)
 		}
-		target := t.caretLine - 1
+		target := cur - 1
 		if e.Key == event.KeyDown {
-			target = t.caretLine + 1
+			target = cur + 1
 		}
 		if target < 0 {
 			return t.moveCursor(0, e.Mods.Shift())
 		}
-		if target >= len(t.lines) {
+		if target >= len(t.vlines) {
 			return t.moveCursor(len(t.runes), e.Mods.Shift())
 		}
-		return t.moveCursor(t.indexAtLineX(target, t.goalX), e.Mods.Shift())
+		return t.moveCursor(t.indexAtVisual(target, t.goalX), e.Mods.Shift())
 	case event.KeyHome:
 		t.goalX = -1
 		return t.moveCursor(t.lineStarts[t.caretLine], e.Mods.Shift())
@@ -573,15 +706,19 @@ func (t *TextArea) Draw(dst *image.RGBA) {
 		return
 	}
 
-	// Rolagem vertical: limita e garante a linha do cursor visível.
-	if max := t.contentHeight() - innerH; t.scrollY > max {
+	// Quebra visual atualizada para a largura corrente.
+	t.ensureWrap()
+	caretVLine := t.visualOf(t.cursor)
+
+	// Rolagem vertical: limita e garante a linha VISUAL do cursor visível.
+	if max := len(t.vlines)*lineH - innerH; t.scrollY > max {
 		t.scrollY = max
 	}
 	if t.scrollY < 0 {
 		t.scrollY = 0
 	}
 	if t.focused {
-		caretTop := t.caretLine * lineH
+		caretTop := caretVLine * lineH
 		if caretTop-t.scrollY < 0 {
 			t.scrollY = caretTop
 		}
@@ -600,38 +737,42 @@ func (t *TextArea) Draw(dst *image.RGBA) {
 
 	selStart, selEnd := t.selection()
 	spaceW := th.MeasureString(" ")
-	for li, line := range t.lines {
-		y := innerTop + li*lineH - t.scrollY
+	for vi, v := range t.vlines {
+		y := innerTop + vi*lineH - t.scrollY
 		if y+lineH < innerTop || y > innerTop+innerH {
 			continue
 		}
-		// Seleção nesta linha (o '\n' selecionado vira um talão de espaço).
-		if t.focused && selStart != selEnd {
-			ls, le := t.lineStarts[li], t.lineEnd(li)
+		seg := t.segment(v)
+		vs := t.startIdx(v)
+		ve := vs + (v.endCol - v.startCol)
+		// Seleção nesta linha visual; no fim da linha REAL, o '\n'
+		// selecionado vira um talão de espaço.
+		if t.focused && selStart != selEnd && selStart < ve+1 && selEnd > vs {
 			s, e := selStart, selEnd
-			if s < le || (e > ls && s <= le) {
-				if s < ls {
-					s = ls
+			if s < vs {
+				s = vs
+			}
+			lastOfHard := vi+1 >= len(t.vlines) || t.vlines[vi+1].hard != v.hard
+			x0 := th.MeasureString(runePrefix(seg, s-vs))
+			var x1 int
+			if e > ve {
+				x1 = th.MeasureString(seg)
+				if lastOfHard {
+					x1 += spaceW
 				}
-				if e > le {
-					x0 := th.MeasureString(runePrefix(line, s-ls))
-					x1 := th.MeasureString(line) + spaceW
-					if s <= le && e > ls {
-						render.FillRect(view, image.Rect(textX+x0, y, textX+x1, y+lineH), th.Selection)
-					}
-				} else if e > ls && s <= le {
-					x0 := th.MeasureString(runePrefix(line, s-ls))
-					x1 := th.MeasureString(runePrefix(line, e-ls))
-					render.FillRect(view, image.Rect(textX+x0, y, textX+x1, y+lineH), th.Selection)
-				}
+			} else {
+				x1 = th.MeasureString(runePrefix(seg, e-vs))
+			}
+			if x1 > x0 || (e > ve && lastOfHard) {
+				render.FillRect(view, image.Rect(textX+x0, y, textX+x1, y+lineH), th.Selection)
 			}
 		}
-		th.DrawText(view, line, image.Pt(textX, y+th.Ascent()), th.Text)
+		th.DrawText(view, seg, image.Pt(textX, y+th.Ascent()), th.Text)
 	}
 
 	if t.focused && t.caretOn {
-		y := innerTop + t.caretLine*lineH - t.scrollY
-		cx := textX + t.caretX
+		y := innerTop + caretVLine*lineH - t.scrollY
+		cx := textX + t.visualX(t.cursor, caretVLine)
 		render.FillRect(view, image.Rect(cx, y, cx+th.BorderPx(), y+lineH), th.Cursor)
 	}
 	t.drawDisabledOverlay(dst)

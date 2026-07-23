@@ -28,10 +28,11 @@ func TestIncrementalIgualCompleto(t *testing.T) {
 		return "eco: " + s
 	}))
 	deslizante := juigo.NewSlider(0, 1).BindValue(volume)
-	lista := juigo.NewVBox().Gap(0).Pad(0)
-	for i := 0; i < 30; i++ {
-		lista.Add(juigo.NewText(fmt.Sprintf("linha %02d", i)))
-	}
+	lista := juigo.NewList(200,
+		func() *juigo.Text { return juigo.NewText("") },
+		func(row *juigo.Text, i int) { row.SetText(fmt.Sprintf("linha %03d", i)) },
+	)
+	area := juigo.NewTextArea("obs…")
 	modal := juigo.NewModal(juigo.NewVBox(juigo.NewText("Diálogo"), juigo.NewInput("interno")))
 
 	ui := juigo.NewVBox(
@@ -48,7 +49,10 @@ func TestIncrementalIgualCompleto(t *testing.T) {
 		),
 		deslizante,
 		juigo.NewProgressBar(0, 1).BindValue(volume),
-		juigo.NewDropdown("Baixa", "Média", "Alta"),
+		juigo.NewGrid(2,
+			juigo.NewText("Prio:"), juigo.NewDropdown("Baixa", "Média", "Alta"),
+			juigo.NewText("Obs:"), juigo.Grow(area, 1),
+		),
 		juigo.NewButton("Abrir", modal.Show),
 		juigo.Grow(juigo.NewScroll(lista), 1),
 	).Pad(12)
@@ -107,9 +111,19 @@ func TestIncrementalIgualCompleto(t *testing.T) {
 	h.Drag(meio, meio.Add(image.Pt(120, 0)))
 	verifica("arraste do slider")
 
-	// Rolagem da lista.
+	// Rolagem da lista VIRTUALIZADA (pool reciclado + dano).
 	h.Scroll(uitest.OfType[*juigo.Scroll](), -2)
 	verifica("rolagem")
+	h.Scroll(uitest.OfType[*juigo.Scroll](), -8)
+	verifica("rolagem funda")
+
+	// TextArea com SOFT WRAP: digita além da largura e navega visualmente.
+	h.Click(uitest.Placeholder("obs…"))
+	h.Type("uma observação bem comprida que certamente quebra em várias linhas visuais dentro da célula")
+	verifica("textarea com wrap")
+	h.Key(juigo.KeyUp)
+	h.Key(juigo.KeyUp, juigo.ModShift)
+	verifica("navegação e seleção no wrap")
 
 	// Foco por Tab (contorno de foco).
 	h.Key(juigo.KeyTab)

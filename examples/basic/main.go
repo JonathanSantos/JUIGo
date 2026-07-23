@@ -68,8 +68,12 @@ func main() {
 	var sobre *juigo.Modal
 	sobre = juigo.NewModal(juigo.NewVBox(
 		juigo.NewText("Cadastro").Center(),
-		campoNome, erroDe(nome),
-		campoMail, erroDe(mail),
+		juigo.NewGrid(2,
+			juigo.NewText("Nome:"), juigo.Grow(campoNome, 1),
+			juigo.NewText(""), erroDe(nome),
+			juigo.NewText("E-mail:"), juigo.Grow(campoMail, 1),
+			juigo.NewText(""), erroDe(mail),
+		),
 		juigo.NewHBox(
 			juigo.NewSpacer(),
 			juigo.NewButton("Salvar", func() {
@@ -111,10 +115,14 @@ func main() {
 		}
 	})
 
-	lista := juigo.NewVBox().Gap(4).Pad(0)
-	for i := 1; i <= 25; i++ {
-		lista.Add(juigo.NewText(fmt.Sprintf("Item %02d da lista rolável — use a roda do mouse", i)))
-	}
+	// Lista VIRTUALIZADA: 500 itens, mas só as linhas visíveis existem como
+	// widgets (pool reciclado na rolagem).
+	lista := juigo.NewList(500,
+		func() *juigo.Text { return juigo.NewText("") },
+		func(row *juigo.Text, i int) {
+			row.SetText(fmt.Sprintf("Item %03d da lista virtualizada — role com a roda", i+1))
+		},
+	)
 
 	// Rolagem suave: o botão anima o offset do Scroll até o topo (o Tween
 	// dirige um State que o Watch aplica ao ScrollTo).
