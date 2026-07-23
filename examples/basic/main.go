@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"juigo"
+	"juigo/form"
 )
 
 func main() {
@@ -39,10 +40,38 @@ func main() {
 		return fmt.Sprintf("Volume: %.0f%%", v*100)
 	})
 
-	sobre := juigo.NewModal(juigo.NewVBox(
-		juigo.NewText("JUIGo — biblioteca de GUI em Go").Center(),
-		juigo.NewText("Renderização por software, reatividade com State,"),
-		juigo.NewText("HiDPI, overlay e tema centralizado."),
+	// Modal de cadastro com validação declarativa (juigo/form): erros
+	// aparecem no blur ou no Submit; Salvar só passa com tudo válido.
+	nome := juigo.NewState("")
+	mail := juigo.NewState("")
+	cadastro := form.New(
+		form.Field(nome, form.Required("Informe o nome"), form.MinRunes(3, "Mínimo de 3 caracteres")),
+		form.Field(mail, form.Required("Informe o e-mail"), form.Email("E-mail inválido")),
+	)
+	erroDe := func(chave any) *juigo.Text {
+		t := juigo.NewText("").BindText(cadastro.ErrorOf(chave))
+		t.Color = app.Theme().Danger
+		return t
+	}
+	campoNome := juigo.NewInput("Nome").BindValue(nome)
+	campoNome.OnBlur = func() { cadastro.Touch(nome) }
+	campoMail := juigo.NewInput("E-mail").BindValue(mail)
+	campoMail.OnBlur = func() { cadastro.Touch(mail) }
+
+	var sobre *juigo.Modal
+	sobre = juigo.NewModal(juigo.NewVBox(
+		juigo.NewText("Cadastro").Center(),
+		campoNome, erroDe(nome),
+		campoMail, erroDe(mail),
+		juigo.NewHBox(
+			juigo.NewSpacer(),
+			juigo.NewButton("Salvar", func() {
+				cadastro.Submit(func() {
+					sobre.Close()
+					eco.Set("Cadastrado: " + nome.Get())
+				})
+			}),
+		),
 	))
 
 	// Enviar: desabilitado enquanto o campo está vazio (reativo) e com
@@ -88,7 +117,7 @@ func main() {
 		juigo.NewTextArea("Observações (Enter quebra linha)…"),
 		juigo.NewHBox(
 			juigo.NewSpacer(),
-			juigo.Tooltip(juigo.NewButton("Sobre…", sobre.Show), "Abre o diálogo modal"),
+			juigo.Tooltip(juigo.NewButton("Cadastrar…", sobre.Show), "Abre o formulário validado"),
 		),
 		juigo.Grow(juigo.NewScroll(lista), 1),
 	).Pad(16)

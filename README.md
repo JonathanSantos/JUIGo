@@ -33,6 +33,9 @@ juigo/
   uitest/                    harness de testes de UI: dirige a Session real
                              com cliques/teclas/hover sintéticos, seletores,
                              relógio virtual e screenshots determinísticos
+  form/                      validação declarativa sobre estados: Field/
+                             Check/Rule, validadores, Valid/Invalid,
+                             ErrorOf com semântica touched e Submit
   theme/                     Theme: cores, métricas, escala HiDPI, cache de
                              glyphs e a fonte embutida (theme/assets/)
   event/                     tipos de evento, modificadores e o Bus síncrono
@@ -168,6 +171,13 @@ Três ideias sustentam essa DX:
   clique, foco, Tab, hover ou tooltip, com esmaecimento visual
   (`Theme.DisabledWash`). `Button.SetLoading`/`BindLoading` mostram um
   spinner animado e implicam desabilitado.
+- **Validação declarativa (`juigo/form`)** — campos são os mesmos States dos
+  bindings; `form.Field(nome, form.Required(…), form.MinRunes(3, …))` deriva
+  erros e validade como States: `BindDisabled(salvar, f.Invalid())`,
+  `NewText("").BindText(f.ErrorOf(nome))` com `Theme.Danger`. Erros aparecem
+  no blur (`campo.OnBlur = func(){ f.Touch(nome) }`) ou no primeiro
+  `Submit`, e daí acompanham a digitação ao vivo. `Rule` cobre regras
+  multi-fonte (senhas coincidem) e `Check`, booleanas (aceite os termos).
 - **Trabalho assíncrono com `App.Post`** — o ÚNICO método seguro para chamar
   de outras goroutines: entrega um callback à main thread na próxima volta
   do loop. Padrão: `SetLoading(true)` → goroutine faz o trabalho →
