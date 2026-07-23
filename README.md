@@ -24,8 +24,9 @@ juigo/
                              DeepestAt/FocusableAt/Focusables), Mount,
                              flex (Grow/Spacer/Centered/AtStart/AtEnd),
                              Container/VBox/HBox, Scroll (clipping),
-                             CursorShape, Text, Button, Input, Checkbox,
-                             Slider
+                             overlay (OpenOverlay/CloseOverlay), CursorShape,
+                             Tooltip, Text, Button, Input, Checkbox, Slider,
+                             Dropdown
   offscreen/                 Render/SavePNG: árvore → *image.RGBA sem janela
                              (golden tests, screenshots, depuração)
   theme/                     Theme: cores, métricas, escala HiDPI, cache de
@@ -67,7 +68,14 @@ execução só por `internal/hooks`, registrado na inicialização.
   mutex, sem goroutines. O `Publish` do EventBus é síncrono.
 - **Loop**: `glfw.WaitEvents()` (sem busy loop) + flag `dirty`; só renderiza
   e faz `SwapBuffers` quando algo mudou. O buffer RGBA é reutilizado entre
-  frames e só é realocado no resize.
+  frames e só é realocado no resize. Com timers pendentes (cursor piscante,
+  atraso do tooltip), o loop usa `WaitEventsTimeout` para acordar no
+  vencimento — sem goroutines: os callbacks executam na main thread.
+- **Overlay**: uma camada de sobreposição (popup do Dropdown) desenhada por
+  cima da árvore, com prioridade nos eventos: clique/rolagem fora fecham e
+  são engolidos, Tab/foco fora fecham, e o foco anterior é restaurado. O
+  tooltip (`Tooltip(w, texto)`) é uma camada passiva acima de tudo, fora do
+  hit-test.
 - **Tema**: nenhuma cor ou tamanho hardcoded nos widgets — tudo vem de
   `Theme`. `Theme.MeasureString` é a única fonte de verdade para largura de
   texto (layout e posicionamento de cursor).
@@ -178,8 +186,7 @@ go test ./...
 ## Fora de escopo (por enquanto)
 
 Animações, dirty regions, temas alternáveis, acessibilidade, IME, outros
-widgets (radio/dropdown/modal), overlay (pré-requisito de dropdown/modal/
-tooltip). A arquitetura
+widgets (radio/modal/TextArea multilinha). A arquitetura
 foi pensada para recebê-los depois: eventos são tipos abertos, o tema é
 injetado, containers são aninháveis e o desenho é isolado em `render/`.
 
