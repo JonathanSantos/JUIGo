@@ -68,6 +68,9 @@ type BaseWidget struct {
 	cross crossAlign
 	// tooltip é o texto de dica definido pela função Tooltip (tooltip.go).
 	tooltip string
+	// disabled tira o widget (e sua subárvore) da interação — aplicado
+	// centralmente no roteamento (ver disabled.go).
+	disabled bool
 }
 
 // Layout guarda os bounds absolutos do widget.
@@ -148,6 +151,9 @@ func Mount(w Widget, t *theme.Theme) {
 // desenhado por último) e, se ninguém no ramo consumir, propaga para cima
 // entregando ao próprio w. Devolve o widget que consumiu o evento, ou nil.
 func DispatchAt(w Widget, pos image.Point, ev event.Event) Widget {
+	if DisabledOf(w) {
+		return nil // desabilitado: subárvore inteira fora do roteamento
+	}
 	if p, ok := w.(ParentWidget); ok {
 		children := p.Children()
 		for i := len(children) - 1; i >= 0; i-- {
@@ -179,7 +185,7 @@ func DispatchScroll(w Widget, ev event.ScrollEvent) Widget {
 // FocusableAt devolve o widget FOCÁVEL mais profundo cujo Bounds contém p,
 // ou nil. Usado pelo App para mover o foco no clique.
 func FocusableAt(w Widget, p image.Point) Widget {
-	if w == nil || !p.In(w.Bounds()) {
+	if w == nil || !p.In(w.Bounds()) || DisabledOf(w) {
 		return nil
 	}
 	if pw, ok := w.(ParentWidget); ok {
@@ -206,7 +212,7 @@ func Focusables(w Widget) []Widget {
 
 // collectFocusable acumula em out os widgets focáveis em pré-ordem.
 func collectFocusable(w Widget, out *[]Widget) {
-	if w == nil {
+	if w == nil || DisabledOf(w) {
 		return
 	}
 	if w.Focusable() {
@@ -222,7 +228,7 @@ func collectFocusable(w Widget, out *[]Widget) {
 // DeepestAt devolve o widget mais profundo cujo Bounds contém p, ou nil.
 // Usado pelo App para rastrear hover (event.MouseEnter/event.MouseLeave).
 func DeepestAt(w Widget, p image.Point) Widget {
-	if w == nil || !p.In(w.Bounds()) {
+	if w == nil || !p.In(w.Bounds()) || DisabledOf(w) {
 		return nil
 	}
 	if pw, ok := w.(ParentWidget); ok {

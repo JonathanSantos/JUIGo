@@ -256,6 +256,7 @@ func (d *Dropdown) Draw(dst *image.RGBA) {
 	for i := 0; i < size/2; i++ {
 		render.FillRect(view, image.Rect(cx+i, cy+i, cx+size-i, cy+i+1), th.Placeholder)
 	}
+	d.drawDisabledOverlay(dst)
 }
 
 // dropdownList é o popup de opções, exibido na camada de overlay. Recebe o

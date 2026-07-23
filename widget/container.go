@@ -56,6 +56,7 @@ func (c *Container) Draw(dst *image.RGBA) {
 	for _, ch := range c.children {
 		ch.Draw(dst)
 	}
+	c.drawDisabledOverlay(dst)
 }
 
 // PreferredSize devolve a união dos bounds dos filhos, já que no container

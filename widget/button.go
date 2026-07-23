@@ -2,9 +2,12 @@ package widget
 
 import (
 	"image"
+	"image/color"
 
 	"juigo/event"
+	"juigo/internal/hooks"
 	"juigo/render"
+	"juigo/state"
 )
 
 // ButtonState identifica o estado visual do Button.
@@ -41,6 +44,12 @@ type Button struct {
 	focused bool
 	// clip é a visão recortada reutilizada pelo Draw (sem alocação).
 	clip image.RGBA
+
+	// loading exibe o indicador animado no lugar do rótulo e implica
+	// desabilitado (sem cliques, fora do Tab) enquanto ativo.
+	loading      bool
+	spinnerPhase int
+	spinnerStop  func()
 }
 
 // NewButton cria um botão com o rótulo e o callback dados. O tema é herdado
@@ -67,6 +76,72 @@ func (b *Button) padPx() int {
 // State devolve o estado visual atual do botão.
 func (b *Button) State() ButtonState {
 	return b.state
+}
+
+// Loading informa se o botão está no estado de carregamento.
+func (b *Button) Loading() bool {
+	return b.loading
+}
+
+// SetLoading liga/desliga o estado de carregamento: um indicador animado
+// substitui o rótulo e o botão fica efetivamente desabilitado. Combine com
+// App.Post para trabalho assíncrono:
+//
+//	btn.SetLoading(true)
+//	go func() {
+//	    resultado := buscar()
+//	    app.Post(func() { btn.SetLoading(false); usar(resultado) })
+//	}()
+func (b *Button) SetLoading(v bool) {
+	if b.loading == v {
+		return
+	}
+	b.loading = v
+	b.stopSpinner()
+	if v {
+		b.state = ButtonStateNormal
+		b.pressed = false
+		b.spinnerPhase = 0
+		b.scheduleSpinner()
+	}
+	hooks.RequestRepaint()
+}
+
+// BindLoading vincula o estado de carregamento ao State. Encadeável.
+func (b *Button) BindLoading(s *state.State[bool]) *Button {
+	b.SetLoading(s.Get())
+	s.Watch(func(v bool) {
+		b.SetLoading(v)
+	})
+	return b
+}
+
+// isDisabled: loading implica desabilitado para o roteamento central.
+func (b *Button) isDisabled() bool {
+	return b.BaseWidget.isDisabled() || b.loading
+}
+
+// scheduleSpinner agenda o próximo quadro da animação de carregamento.
+func (b *Button) scheduleSpinner() {
+	if b.theme == nil || b.theme.SpinnerStep <= 0 {
+		return
+	}
+	b.spinnerStop = hooks.ScheduleAfter(b.theme.SpinnerStep, func() {
+		if !b.loading {
+			return
+		}
+		b.spinnerPhase = (b.spinnerPhase + 1) % 3
+		hooks.RequestRepaint()
+		b.scheduleSpinner()
+	})
+}
+
+// stopSpinner cancela o quadro pendente da animação.
+func (b *Button) stopSpinner() {
+	if b.spinnerStop != nil {
+		b.spinnerStop()
+		b.spinnerStop = nil
+	}
 }
 
 // HandleEvent implementa a máquina de estados do clique, o acionamento por
@@ -172,9 +247,56 @@ func (b *Button) Draw(dst *image.RGBA) {
 		render.StrokeRect(dst, bounds, 2*b.theme.BorderPx(), b.theme.FocusOutline)
 	}
 
-	labelW := b.theme.MeasureString(b.Label)
-	x := bounds.Min.X + (bounds.Dx()-labelW)/2
-	y := bounds.Min.Y + (bounds.Dy()-b.theme.LineHeight())/2 + b.theme.Ascent()
 	view := render.Clip(dst, bounds, &b.clip)
-	b.theme.DrawText(view, b.Label, image.Pt(x, y), b.theme.ButtonText)
+	if b.loading {
+		b.drawSpinner(view, bounds)
+	} else {
+		labelW := b.theme.MeasureString(b.Label)
+		x := bounds.Min.X + (bounds.Dx()-labelW)/2
+		y := bounds.Min.Y + (bounds.Dy()-b.theme.LineHeight())/2 + b.theme.Ascent()
+		b.theme.DrawText(view, b.Label, image.Pt(x, y), b.theme.ButtonText)
+	}
+	b.drawDisabledOverlay(dst)
+}
+
+// drawSpinner desenha os três pontos do indicador de carregamento, com o
+// ponto ativo em destaque.
+func (b *Button) drawSpinner(dst *image.RGBA, bounds image.Rectangle) {
+	th := b.theme
+	r := th.Px(3)
+	gap := th.Px(4)
+	step := 2*r + gap
+	cx := bounds.Min.X + bounds.Dx()/2 - step
+	cy := bounds.Min.Y + bounds.Dy()/2
+	// Pontos inativos: rótulo misturado 50/50 com o fundo do estado
+	// (FillCircle é sólido, então a "transparência" é pré-misturada).
+	dim := mix(th.ButtonText, b.bgColor())
+	for i := 0; i < 3; i++ {
+		c := dim
+		if i == b.spinnerPhase {
+			c = th.ButtonText
+		}
+		render.FillCircle(dst, image.Pt(cx+i*step, cy), r, c)
+	}
+}
+
+// bgColor devolve a cor de fundo do estado atual do botão.
+func (b *Button) bgColor() color.RGBA {
+	switch b.state {
+	case ButtonStateHover:
+		return b.theme.ButtonHover
+	case ButtonStatePressed:
+		return b.theme.ButtonPressed
+	}
+	return b.theme.ButtonNormal
+}
+
+// mix devolve a média aritmética de duas cores (mistura 50/50).
+func mix(a, bg color.RGBA) color.RGBA {
+	return color.RGBA{
+		R: uint8((int(a.R) + int(bg.R)) / 2),
+		G: uint8((int(a.G) + int(bg.G)) / 2),
+		B: uint8((int(a.B) + int(bg.B)) / 2),
+		A: 0xFF,
+	}
 }

@@ -498,4 +498,5 @@ func (in *Input) Draw(dst *image.RGBA) {
 		cx := textX + in.cursorX
 		render.FillRect(view, image.Rect(cx, top, cx+th.BorderPx(), top+th.LineHeight()), th.Cursor)
 	}
+	in.drawDisabledOverlay(dst)
 }

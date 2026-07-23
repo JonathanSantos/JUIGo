@@ -203,6 +203,10 @@ func NewModal(content Widget) *Modal { return widget.NewModal(content) }
 // o widget, devolvendo o próprio w (ver widget.Tooltip).
 func Tooltip[W Widget](w W, texto string) W { return widget.Tooltip(w, texto) }
 
+// BindDisabled vincula o estado desabilitado de w ao State (true desabilita),
+// devolvendo o próprio w (ver widget.BindDisabled).
+func BindDisabled[W Widget](w W, s *State[bool]) W { return widget.BindDisabled(w, s) }
+
 // Grow marca w para expandir no eixo principal do VBox/HBox com o peso dado,
 // devolvendo o próprio w (ver widget.Grow).
 func Grow[W Widget](w W, peso int) W { return widget.Grow(w, peso) }

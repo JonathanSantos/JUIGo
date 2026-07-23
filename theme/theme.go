@@ -103,8 +103,13 @@ type Theme struct {
 	TooltipDelay time.Duration
 	// TextAreaMinLines é a altura preferida da TextArea, em linhas.
 	TextAreaMinLines int
+	// SpinnerStep é o intervalo entre quadros do indicador de loading.
+	SpinnerStep time.Duration
 	// Backdrop é a cor translúcida do pano de fundo do Modal.
 	Backdrop color.RGBA
+	// DisabledWash é a lavagem translúcida aplicada sobre widgets
+	// desabilitados, esmaecendo-os em direção ao fundo.
+	DisabledWash color.RGBA
 
 	fnt        *opentype.Font
 	scale      float64
@@ -158,7 +163,9 @@ func Default() (*Theme, error) {
 		CaretBlink:       530 * time.Millisecond,
 		TooltipDelay:     600 * time.Millisecond,
 		TextAreaMinLines: 4,
+		SpinnerStep:      250 * time.Millisecond,
 		Backdrop:         color.RGBA{A: 0x66},
+		DisabledWash:     color.RGBA{R: 0xF2, G: 0xF3, B: 0xF5, A: 0x99},
 
 		fnt: parsed,
 	}

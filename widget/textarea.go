@@ -622,4 +622,5 @@ func (t *TextArea) Draw(dst *image.RGBA) {
 		cx := textX + t.caretX
 		render.FillRect(view, image.Rect(cx, y, cx+th.BorderPx(), y+lineH), th.Cursor)
 	}
+	t.drawDisabledOverlay(dst)
 }

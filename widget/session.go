@@ -215,7 +215,7 @@ func (s *Session) KeyPress(k event.Key, mods event.Modifiers) {
 	}
 	ke := event.KeyEvent{Key: k, Mods: mods}
 	consumed := false
-	if s.focused != nil {
+	if s.focused != nil && !DisabledOf(s.focused) {
 		consumed = s.focused.HandleEvent(ke)
 		if consumed {
 			s.markDirty()
@@ -230,7 +230,9 @@ func (s *Session) KeyPress(k event.Key, mods event.Modifiers) {
 
 // Char entrega um caractere digitado ao widget focado.
 func (s *Session) Char(r rune) {
-	if s.focused == nil {
+	// Um widget pode ser desabilitado ENQUANTO focado (ex.: formulário que
+	// invalida); a entrega de teclado respeita isso.
+	if s.focused == nil || DisabledOf(s.focused) {
 		return
 	}
 	if s.focused.HandleEvent(event.CharEvent{Rune: r}) {

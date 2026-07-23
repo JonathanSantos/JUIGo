@@ -14,11 +14,17 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"juigo"
 )
 
 func main() {
+	app, err := juigo.New("JUIGo — demo", 520, 640)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	valor := juigo.NewState("")
 	eco := juigo.NewState("Digite algo e clique em Enviar")
 	notif := juigo.NewState(true)
@@ -39,6 +45,23 @@ func main() {
 		juigo.NewText("HiDPI, overlay e tema centralizado."),
 	))
 
+	// Enviar: desabilitado enquanto o campo está vazio (reativo) e com
+	// loading durante um "trabalho de rede" — a goroutine entrega o
+	// resultado de volta à main thread com app.Post.
+	var enviar *juigo.Button
+	enviar = juigo.BindDisabled(juigo.Tooltip(juigo.NewButton("Enviar", func() {
+		enviar.SetLoading(true)
+		texto := valor.Get()
+		go func() {
+			time.Sleep(1200 * time.Millisecond) // simula rede
+			app.Post(func() {
+				enviar.SetLoading(false)
+				eco.Set("Você digitou: " + texto)
+			})
+		}()
+	}), "Atualiza o título com o texto digitado"),
+		juigo.Map(valor, func(s string) bool { return s == "" }))
+
 	lista := juigo.NewVBox().Gap(4).Pad(0)
 	for i := 1; i <= 25; i++ {
 		lista.Add(juigo.NewText(fmt.Sprintf("Item %02d da lista rolável — use a roda do mouse", i)))
@@ -48,9 +71,7 @@ func main() {
 		juigo.NewText("").BindText(eco).Center(),
 		juigo.NewHBox(
 			juigo.Grow(juigo.NewInput("Digite aqui…").BindValue(valor), 1),
-			juigo.Tooltip(juigo.NewButton("Enviar", func() {
-				eco.Set("Você digitou: " + valor.Get())
-			}), "Atualiza o título com o texto digitado"),
+			enviar,
 		),
 		juigo.NewText("").BindText(contador).Right(),
 		juigo.NewHBox(
@@ -72,7 +93,8 @@ func main() {
 		juigo.Grow(juigo.NewScroll(lista), 1),
 	).Pad(16)
 
-	if err := juigo.Run("JUIGo — demo", 520, 640, ui); err != nil {
+	app.SetRoot(ui)
+	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"image"
 	"math"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
@@ -55,6 +56,10 @@ type App struct {
 	// WaitEventsTimeout para acordar no vencimento mais próximo.
 	timers   []appTimer
 	timerSeq int
+	// postMu protege posted — a ÚNICA estrutura do JUIGo tocada por outras
+	// goroutines (ver Post).
+	postMu sync.Mutex
+	posted []func()
 }
 
 // appTimer é um agendamento pendente de hooks.Schedule.
@@ -426,6 +431,41 @@ func (a *App) Invalidate() {
 	glfw.PostEmptyEvent()
 }
 
+// Post agenda fn para executar na MAIN THREAD, na próxima volta do loop de
+// eventos. É o ÚNICO método do JUIGo seguro para chamar de outras goroutines
+// — a ponte para trabalho assíncrono (rede, disco): faça o trabalho pesado
+// em uma goroutine e entregue o resultado à interface via Post; DENTRO de fn,
+// State.Set e os setters de widgets são seguros como sempre.
+//
+//	btn.SetLoading(true)
+//	go func() {
+//	    resultado := buscar()
+//	    app.Post(func() {
+//	        btn.SetLoading(false)
+//	        estado.Set(resultado)
+//	    })
+//	}()
+func (a *App) Post(fn func()) {
+	if fn == nil {
+		return
+	}
+	a.postMu.Lock()
+	a.posted = append(a.posted, fn)
+	a.postMu.Unlock()
+	glfw.PostEmptyEvent() // thread-safe: acorda o loop
+}
+
+// runPosted executa, na main thread, os callbacks entregues via Post.
+func (a *App) runPosted() {
+	a.postMu.Lock()
+	batch := a.posted
+	a.posted = nil
+	a.postMu.Unlock()
+	for _, fn := range batch {
+		fn()
+	}
+}
+
 // render compõe o frame pela Session, envia para a textura e apresenta.
 // Não aloca: o buffer é reutilizado entre frames.
 func (a *App) render() {
@@ -458,6 +498,7 @@ func (a *App) Run() error {
 			glfw.WaitEvents()
 		}
 		a.runDueTimers()
+		a.runPosted()
 		if a.fatalErr != nil {
 			a.destroy()
 			return a.fatalErr

@@ -168,4 +168,5 @@ func (r *Radio) Draw(dst *image.RGBA) {
 	labelX := bounds.Min.X + side + th.PaddingPx()
 	baseline := bounds.Min.Y + (bounds.Dy()-th.LineHeight())/2 + th.Ascent()
 	th.DrawText(dst, r.Label, image.Pt(labelX, baseline), th.Text)
+	r.drawDisabledOverlay(dst)
 }

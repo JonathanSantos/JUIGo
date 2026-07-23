@@ -238,4 +238,5 @@ func (s *Slider) Draw(dst *image.RGBA) {
 	if s.focused {
 		render.StrokeRect(dst, hr, 2*th.BorderPx(), th.FocusOutline)
 	}
+	s.drawDisabledOverlay(dst)
 }
