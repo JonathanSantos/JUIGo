@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"juigo"
+	"juigo/anim"
 	"juigo/form"
 )
 
@@ -115,6 +116,15 @@ func main() {
 		lista.Add(juigo.NewText(fmt.Sprintf("Item %02d da lista rolável — use a roda do mouse", i)))
 	}
 
+	// Rolagem suave: o botão anima o offset do Scroll até o topo (o Tween
+	// dirige um State que o Watch aplica ao ScrollTo).
+	rolagem := juigo.NewScroll(lista)
+	aoTopo := juigo.Tooltip(juigo.NewButton("↑ Topo", func() {
+		pos := juigo.NewState(float64(rolagem.Offset()))
+		pos.Watch(func(v float64) { rolagem.ScrollTo(int(v)) })
+		anim.Tween(pos, 0, 400*time.Millisecond, anim.EaseOut)
+	}), "Rola a lista suavemente até o topo")
+
 	ui := juigo.NewVBox(
 		juigo.NewText("").BindText(eco).Center(),
 		juigo.NewHBox(
@@ -140,9 +150,10 @@ func main() {
 		juigo.NewTextArea("Observações (Enter quebra linha)…"),
 		juigo.NewHBox(
 			juigo.NewSpacer(),
+			aoTopo,
 			juigo.Tooltip(juigo.NewButton("Cadastrar…", sobre.Show), "Abre o formulário validado"),
 		),
-		juigo.Grow(juigo.NewScroll(lista), 1),
+		juigo.Grow(rolagem, 1),
 	).Pad(16)
 
 	app.SetRoot(ui)

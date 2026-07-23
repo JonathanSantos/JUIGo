@@ -36,6 +36,8 @@ juigo/
   form/                      validação declarativa sobre estados: Field/
                              Check/Rule, validadores, Valid/Invalid,
                              ErrorOf com semântica touched e Submit
+  anim/                      Tween de State[float64] com easing sobre os
+                             timers — determinístico no uitest (Advance)
   theme/                     Theme: cores, métricas, escala HiDPI, cache de
                              glyphs e a fonte embutida (theme/assets/)
   event/                     tipos de evento, modificadores e o Bus síncrono
@@ -181,6 +183,11 @@ Três ideias sustentam essa DX:
   no blur (`campo.OnBlur = func(){ f.Touch(nome) }`) ou no primeiro
   `Submit`, e daí acompanham a digitação ao vivo. `Rule` cobre regras
   multi-fonte (senhas coincidem) e `Check`, booleanas (aceite os termos).
+- **Animações (`juigo/anim`)** — `anim.Tween(estado, alvo, duração, easing)`
+  interpola qualquer `State[float64]` sobre os timers da aplicação, com
+  retarget automático; compõe com os bindings (barra de progresso, rolagem
+  suave via `Watch`+`ScrollTo`) e avança deterministicamente no relógio
+  virtual do uitest.
 - **Trabalho assíncrono com `App.Post`** — o ÚNICO método seguro para chamar
   de outras goroutines: entrega um callback à main thread na próxima volta
   do loop. Padrão: `SetLoading(true)` → goroutine faz o trabalho →
