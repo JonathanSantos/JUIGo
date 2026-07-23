@@ -110,6 +110,9 @@ type Theme struct {
 	// TooltipDelay é quanto tempo o ponteiro precisa pausar sobre um widget
 	// com Tooltip até a dica aparecer.
 	TooltipDelay time.Duration
+	// ToastDuration é quanto tempo um toast (aviso transitório) fica na
+	// tela antes de sumir sozinho.
+	ToastDuration time.Duration
 	// TextAreaMinLines é a altura preferida da TextArea, em linhas.
 	TextAreaMinLines int
 	// SpinnerStep é o intervalo entre quadros do indicador de loading.
@@ -174,6 +177,7 @@ func Default() (*Theme, error) {
 
 		CaretBlink:       530 * time.Millisecond,
 		TooltipDelay:     600 * time.Millisecond,
+		ToastDuration:    2500 * time.Millisecond,
 		TextAreaMinLines: 4,
 		SpinnerStep:      250 * time.Millisecond,
 		Backdrop:         color.RGBA{A: 0x66},

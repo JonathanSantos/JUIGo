@@ -47,6 +47,12 @@ type Session struct {
 	tipCancel func()
 	tipShown  bool
 
+	// toastView é a caixa do aviso transitório (ver toast.go) — camada
+	// passiva como o tooltip, ancorada na base da janela.
+	toastView   *TooltipView
+	toastCancel func()
+	toastShown  bool
+
 	// inspect liga a camada do inspector de depuração (ver inspector.go).
 	inspect bool
 
@@ -561,6 +567,11 @@ func (s *Session) Render(dst *image.RGBA) (image.Rectangle, bool) {
 		}
 	}
 
+	if s.toastShown && s.toastView != nil {
+		Mount(s.toastView, s.theme)
+		s.layoutToast(dst.Bounds())
+	}
+
 	// O inspector desenha contornos da árvore inteira: sempre frame total.
 	if s.inspect {
 		s.full = true
@@ -590,6 +601,9 @@ func (s *Session) Render(dst *image.RGBA) (image.Rectangle, bool) {
 	}
 	if s.tipShown && s.tipView != nil {
 		s.tipView.Draw(target)
+	}
+	if s.toastShown && s.toastView != nil {
+		s.toastView.Draw(target)
 	}
 	if s.inspect {
 		s.drawInspector(target)

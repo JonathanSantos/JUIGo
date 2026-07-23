@@ -165,6 +165,9 @@ func New(title string, width, height int) (*App, error) {
 		w, _ := v.(widget.Widget)
 		a.session.Focus(w)
 	}
+	hooks.Toast = func(text string, d time.Duration) {
+		a.session.ShowToast(text, d)
+	}
 	return a, nil
 }
 
@@ -559,6 +562,7 @@ func (a *App) destroy() {
 	hooks.OpenOverlay = nil
 	hooks.CloseOverlay = nil
 	hooks.Focus = nil
+	hooks.Toast = nil
 	a.blitter.Destroy()
 	a.window.Destroy()
 	glfw.Terminate()

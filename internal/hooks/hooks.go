@@ -52,6 +52,19 @@ var (
 // any para evitar ciclo de import.
 var Focus func(w any)
 
+// Toast é registrado pelo App/harness para exibir um aviso transitório na
+// camada passiva da sessão (ver Session.ShowToast). d <= 0 usa a duração
+// padrão do tema.
+var Toast func(text string, d time.Duration)
+
+// ShowToast exibe um toast se houver aplicação em execução; sem aplicação,
+// não faz nada.
+func ShowToast(text string, d time.Duration) {
+	if Toast != nil {
+		Toast(text, d)
+	}
+}
+
 // RequestFocus move o foco para w se houver aplicação em execução.
 func RequestFocus(w any) {
 	if Focus != nil {
