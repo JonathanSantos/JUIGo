@@ -4,7 +4,6 @@ import (
 	"image"
 	"image/color"
 
-	"juigo/internal/hooks"
 	"juigo/render"
 	"juigo/state"
 )
@@ -74,7 +73,7 @@ func (t *Text) SetText(s string) {
 		return
 	}
 	t.text = s
-	hooks.RequestRepaint()
+	t.Invalidate()
 }
 
 // PreferredSize devolve a largura medida do texto e a altura de uma linha.

@@ -3,7 +3,6 @@ package widget
 import (
 	"image"
 
-	"juigo/internal/hooks"
 	"juigo/render"
 	"juigo/state"
 )
@@ -22,7 +21,7 @@ func (b *BaseWidget) SetDisabled(v bool) {
 		return
 	}
 	b.disabled = v
-	hooks.RequestRepaint()
+	b.Invalidate()
 }
 
 // Disabled informa se o widget está desabilitado.

@@ -104,7 +104,7 @@ func (b *Button) SetLoading(v bool) {
 		b.spinnerPhase = 0
 		b.scheduleSpinner()
 	}
-	hooks.RequestRepaint()
+	b.Invalidate()
 }
 
 // BindLoading vincula o estado de carregamento ao State. Encadeável.
@@ -131,7 +131,7 @@ func (b *Button) scheduleSpinner() {
 			return
 		}
 		b.spinnerPhase = (b.spinnerPhase + 1) % 3
-		hooks.RequestRepaint()
+		b.Invalidate()
 		b.scheduleSpinner()
 	})
 }

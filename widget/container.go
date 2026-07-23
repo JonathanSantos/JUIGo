@@ -51,10 +51,13 @@ func (c *Container) Children() []Widget {
 	return c.children
 }
 
-// Draw desenha os filhos na ordem em que foram adicionados.
+// Draw desenha os filhos na ordem em que foram adicionados, pulando os que
+// não intersectam o destino (que, no redesenho parcial, é a região suja).
 func (c *Container) Draw(dst *image.RGBA) {
 	for _, ch := range c.children {
-		ch.Draw(dst)
+		if ch.Bounds().Overlaps(dst.Bounds()) {
+			ch.Draw(dst)
+		}
 	}
 	c.drawDisabledOverlay(dst)
 }

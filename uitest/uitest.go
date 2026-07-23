@@ -39,6 +39,10 @@ type Harness struct {
 	timers   []vtimer
 	timerSeq int
 
+	// buf é o framebuffer PERSISTENTE do harness: como no App real, o render
+	// incremental repinta apenas as regiões danificadas sobre ele.
+	buf *image.RGBA
+
 	// Repaints conta quantas vezes a interface pediu redesenho.
 	Repaints int
 }
@@ -72,11 +76,22 @@ func newWith(t testing.TB, root widget.Widget, th *theme.Theme, width, height in
 	h.session = widget.NewSession(th)
 	h.session.OnDirty = func() { h.Repaints++ }
 
+	h.buf = image.NewRGBA(image.Rectangle{Max: h.size})
+
 	prevRepaint := hooks.Repaint
+	prevDamage := hooks.Damage
+	prevFrame := hooks.Frame
 	prevSchedule := hooks.Schedule
 	prevOpen := hooks.OpenOverlay
 	prevClose := hooks.CloseOverlay
-	hooks.Repaint = func() { h.Repaints++ }
+	hooks.Repaint = func() {
+		h.Repaints++
+		h.session.InvalidateAll()
+	}
+	hooks.Damage = func(r image.Rectangle) {
+		h.session.AddDamage(r)
+	}
+	hooks.Frame = func() {}
 	hooks.Schedule = h.schedule
 	hooks.OpenOverlay = func(v any) {
 		if w, ok := v.(widget.Widget); ok {
@@ -90,6 +105,8 @@ func newWith(t testing.TB, root widget.Widget, th *theme.Theme, width, height in
 	}
 	t.Cleanup(func() {
 		hooks.Repaint = prevRepaint
+		hooks.Damage = prevDamage
+		hooks.Frame = prevFrame
 		hooks.Schedule = prevSchedule
 		hooks.OpenOverlay = prevOpen
 		hooks.CloseOverlay = prevClose
@@ -143,19 +160,21 @@ func (h *Harness) Session() *widget.Session {
 	return h.session
 }
 
-// Layout força um passe de layout (Render sem capturar a imagem) — útil após
-// mudanças de estado, antes de calcular posições de clique.
+// Layout força um passe de render incremental no framebuffer persistente —
+// útil após mudanças de estado, antes de calcular posições de clique.
 func (h *Harness) Layout() {
-	buf := image.NewRGBA(image.Rectangle{Max: h.size})
-	h.session.Render(buf)
+	h.session.Render(h.buf)
 }
 
-// Screenshot compõe o frame atual (árvore + overlay + tooltip) e devolve a
-// imagem — determinística: mesma árvore e estado produzem os mesmos bytes.
+// Screenshot compõe o frame atual como o App faria (render INCREMENTAL sobre
+// o framebuffer persistente: só as regiões danificadas são repintadas) e
+// devolve uma CÓPIA da imagem — determinística e segura para comparar entre
+// chamadas.
 func (h *Harness) Screenshot() *image.RGBA {
-	buf := image.NewRGBA(image.Rectangle{Max: h.size})
-	h.session.Render(buf)
-	return buf
+	h.session.Render(h.buf)
+	clone := image.NewRGBA(h.buf.Bounds())
+	copy(clone.Pix, h.buf.Pix)
+	return clone
 }
 
 // Focused devolve o widget focado (nil se nenhum).

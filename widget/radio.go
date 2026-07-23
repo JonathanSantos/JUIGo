@@ -56,6 +56,7 @@ func (r *Radio) BindValue(s *state.State[string]) *Radio {
 	s.Watch(func(v string) {
 		if want := v == r.Value; want != r.checked {
 			r.checked = want
+			r.Invalidate()
 		}
 	})
 	return r

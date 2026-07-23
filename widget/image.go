@@ -6,7 +6,6 @@ import (
 
 	xdraw "golang.org/x/image/draw"
 
-	"juigo/internal/hooks"
 	"juigo/render"
 )
 
@@ -36,7 +35,7 @@ func NewImage(src image.Image) *Image {
 func (im *Image) SetImage(src image.Image) {
 	im.src = src
 	im.srcChanged = true
-	hooks.RequestRepaint()
+	im.Invalidate()
 }
 
 // PreferredSize devolve o tamanho da imagem em unidades lógicas convertidas

@@ -6,6 +6,7 @@ import (
 
 	"juigo"
 	"juigo/render"
+	"juigo/widget"
 )
 
 // benchUI monta a árvore da demo (título, input com texto, contador, botão,
@@ -78,5 +79,37 @@ func BenchmarkTeclaDigitada(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		campo.HandleEvent(juigo.CharEvent{Rune: 'ç'})
 		campo.HandleEvent(juigo.KeyEvent{Key: juigo.KeyBackspace})
+	}
+}
+
+// BenchmarkFrameIncremental mede o frame com DIRTY REGIONS: só a região de
+// um campo danificado é repintada sobre o buffer persistente (compare com
+// BenchmarkFrame1x, que repinta a janela inteira).
+func BenchmarkFrameIncremental(b *testing.B) {
+	th, err := juigo.DefaultTheme()
+	if err != nil {
+		b.Fatalf("DefaultTheme: %v", err)
+	}
+	campo := juigo.NewInput("Digite aqui…")
+	campo.SetText("Olá, ação! Texto de exemplo çãé")
+	ui := juigo.NewVBox(
+		juigo.NewText("Digite algo e clique em Enviar").Center(),
+		campo,
+		juigo.NewButton("Enviar", nil),
+		juigo.NewCheckbox("Notificações"),
+		juigo.NewSlider(0, 1),
+	).Pad(16)
+
+	s := widget.NewSession(th)
+	s.Resize(image.Pt(480, 320))
+	s.SetRoot(ui)
+	buf := image.NewRGBA(image.Rect(0, 0, 480, 320))
+	s.Render(buf) // frame inicial completo + aquecimento
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		s.AddDamage(campo.Bounds())
+		s.Render(buf)
 	}
 }

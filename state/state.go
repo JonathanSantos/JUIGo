@@ -24,14 +24,20 @@ func (s *State[T]) Get() T {
 }
 
 // Set define o valor, notifica os observadores sincronamente (na ordem de
-// registro) e agenda um redesenho da interface. Não deduplica: definir o
-// mesmo valor notifica de novo.
+// registro) e agenda um frame. Não deduplica: definir o mesmo valor notifica
+// de novo.
+//
+// Repintura: os bindings e setters de widgets reportam as REGIÕES afetadas
+// (dano parcial); se nenhum observador tocar a interface, o frame é pulado.
+// Widgets personalizados que leem estados diretamente no Draw devem se
+// invalidar num Watch (Watch(func(T){ w.Invalidate() })); mutar campos
+// públicos por fora dos setters exige App.Invalidate().
 func (s *State[T]) Set(v T) {
 	s.value = v
 	for _, fn := range s.watchers {
 		fn(v)
 	}
-	hooks.RequestRepaint()
+	hooks.RequestFrame()
 }
 
 // Watch registra fn para ser chamada a cada Set, com o novo valor.

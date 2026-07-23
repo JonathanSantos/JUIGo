@@ -1,6 +1,7 @@
 package widget
 
 import (
+	"image"
 	"testing"
 
 	"juigo/event"
@@ -62,17 +63,20 @@ func TestBindValueDuasVias(t *testing.T) {
 	}
 }
 
-// TestSetTextRepaint garante que setters de widgets agendam redesenho pelo
-// hook, apenas quando algo muda.
-func TestSetTextRepaint(t *testing.T) {
-	repaints := 0
-	hooks.Repaint = func() { repaints++ }
-	defer func() { hooks.Repaint = nil }()
+// TestSetTextDamage garante que setters reportam DANO PRECISO (os próprios
+// bounds), apenas quando algo muda.
+func TestSetTextDamage(t *testing.T) {
+	var danos []image.Rectangle
+	hooks.Damage = func(r image.Rectangle) { danos = append(danos, r) }
+	defer func() { hooks.Damage = nil }()
 
 	txt := NewText("a")
+	txt.Layout(image.Rect(10, 20, 110, 40))
+	danos = nil // ignora o dano do próprio Layout (diff de bounds)
+
 	txt.SetText("b")
-	txt.SetText("b") // sem mudança: não deve repintar
-	if repaints != 1 {
-		t.Fatalf("repaints = %d, esperado 1 (um SetText com mudança)", repaints)
+	txt.SetText("b") // sem mudança: não deve danificar
+	if len(danos) != 1 || danos[0] != image.Rect(10, 20, 110, 40) {
+		t.Fatalf("danos = %v, esperado só os bounds do widget", danos)
 	}
 }

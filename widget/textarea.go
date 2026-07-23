@@ -85,7 +85,7 @@ func (t *TextArea) SetText(s string) {
 	t.anchor = t.cursor
 	t.goalX = -1
 	t.sync()
-	hooks.RequestRepaint()
+	t.Invalidate()
 }
 
 // Cursor devolve a posição do cursor, em runes.
@@ -523,7 +523,7 @@ func (t *TextArea) blinkTick() {
 		return
 	}
 	t.caretOn = !t.caretOn
-	hooks.RequestRepaint()
+	t.Invalidate()
 	t.blinkCancel = hooks.ScheduleAfter(t.theme.CaretBlink, t.blinkTick)
 }
 

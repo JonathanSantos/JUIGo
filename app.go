@@ -142,6 +142,12 @@ func New(title string, width, height int) (*App, error) {
 	// copia/cola através da área de transferência do sistema; popups abrem
 	// pela Session; timers acordam o loop.
 	hooks.Repaint = a.Invalidate
+	hooks.Damage = func(r image.Rectangle) {
+		a.session.AddDamage(r)
+	}
+	hooks.Frame = func() {
+		a.dirty = true
+	}
 	hooks.ClipboardRead = window.GetClipboardString
 	hooks.ClipboardWrite = window.SetClipboardString
 	hooks.Schedule = a.schedule
@@ -441,10 +447,11 @@ func (a *App) SetRoot(w widget.Widget) {
 	a.dirty = true
 }
 
-// Invalidate marca a interface como suja e acorda o loop de eventos, forçando
-// uma nova renderização. Útil para mudanças de estado feitas fora do fluxo de
-// eventos da janela.
+// Invalidate marca a interface INTEIRA como suja e acorda o loop de eventos,
+// forçando uma renderização completa. É a válvula de escape para mudanças
+// feitas por fora dos setters/States (mutação direta de campos públicos).
 func (a *App) Invalidate() {
+	a.session.InvalidateAll()
 	a.dirty = true
 	glfw.PostEmptyEvent()
 }
@@ -490,12 +497,20 @@ func (a *App) render() {
 	if !a.dirty || a.width <= 0 || a.height <= 0 {
 		return
 	}
-	a.session.Render(a.buf)
-	a.blitter.Upload(a.buf)
+	region, full := a.session.Render(a.buf)
+	a.dirty = false
+	if region.Empty() {
+		return // frame agendado sem dano visível: nada a apresentar
+	}
+	// Dirty regions: só a região repintada sobe para a GPU.
+	if full {
+		a.blitter.Upload(a.buf)
+	} else {
+		a.blitter.UploadRegion(a.buf, region)
+	}
 	fbw, fbh := a.window.GetFramebufferSize()
 	a.blitter.Draw(fbw, fbh)
 	a.window.SwapBuffers()
-	a.dirty = false
 }
 
 // Run executa o loop de eventos até a janela ser fechada e então libera os
@@ -532,6 +547,8 @@ func (a *App) Run() error {
 // destroy libera os recursos GL e a janela.
 func (a *App) destroy() {
 	hooks.Repaint = nil
+	hooks.Damage = nil
+	hooks.Frame = nil
 	hooks.ClipboardRead = nil
 	hooks.ClipboardWrite = nil
 	hooks.Schedule = nil

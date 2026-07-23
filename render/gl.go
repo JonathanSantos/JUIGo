@@ -117,6 +117,29 @@ func (b *Blitter) Upload(img *image.RGBA) {
 		gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
 }
 
+// UploadRegion envia apenas a região r do buffer para a textura — o caminho
+// das dirty regions: o resto da textura permanece válido de frames
+// anteriores. Se o tamanho do buffer mudou, faz o upload completo.
+func (b *Blitter) UploadRegion(img *image.RGBA, r image.Rectangle) {
+	w, h := img.Bounds().Dx(), img.Bounds().Dy()
+	if w != b.width || h != b.height {
+		b.Upload(img)
+		return
+	}
+	r = r.Intersect(img.Bounds())
+	if r.Empty() {
+		return
+	}
+	gl.BindTexture(gl.TEXTURE_2D, b.texture)
+	// UNPACK_ROW_LENGTH permite enviar um sub-retângulo direto do buffer,
+	// pulando o restante de cada linha.
+	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(img.Stride/4))
+	gl.TexSubImage2D(gl.TEXTURE_2D, 0, int32(r.Min.X), int32(r.Min.Y),
+		int32(r.Dx()), int32(r.Dy()), gl.RGBA, gl.UNSIGNED_BYTE,
+		gl.Ptr(&img.Pix[img.PixOffset(r.Min.X, r.Min.Y)]))
+	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
+}
+
 // Draw desenha o quad texturizado cobrindo o framebuffer inteiro.
 // fbWidth e fbHeight são o tamanho do framebuffer da janela em pixels
 // físicos (pode diferir do tamanho lógico em telas HiDPI).

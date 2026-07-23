@@ -12,6 +12,7 @@ import (
 	"image"
 
 	"juigo/event"
+	"juigo/internal/hooks"
 	"juigo/theme"
 )
 
@@ -73,9 +74,24 @@ type BaseWidget struct {
 	disabled bool
 }
 
-// Layout guarda os bounds absolutos do widget.
+// Layout guarda os bounds absolutos do widget. Quando os bounds MUDAM, a
+// posição antiga e a nova entram no dano do frame automaticamente — é assim
+// que cascatas de layout (um título que cresce e empurra os irmãos) são
+// repintadas sem nenhum trabalho dos widgets.
 func (b *BaseWidget) Layout(bounds image.Rectangle) {
+	if bounds != b.bounds {
+		hooks.AddDamage(b.bounds)
+		hooks.AddDamage(bounds)
+	}
 	b.bounds = bounds
+}
+
+// Invalidate marca os bounds atuais do widget como danificados (precisam ser
+// repintados) e agenda um frame. É o que os setters chamam; widgets
+// personalizados que mudam de aparência fora do fluxo de eventos devem
+// chamá-lo também.
+func (b *BaseWidget) Invalidate() {
+	hooks.AddDamage(b.bounds)
 }
 
 // Bounds devolve o retângulo absoluto definido pelo último Layout.

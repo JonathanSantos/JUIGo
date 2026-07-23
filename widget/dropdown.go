@@ -4,7 +4,6 @@ import (
 	"image"
 
 	"juigo/event"
-	"juigo/internal/hooks"
 	"juigo/render"
 	"juigo/state"
 )
@@ -69,7 +68,7 @@ func (d *Dropdown) Select(i int) {
 		return
 	}
 	d.selected = i
-	hooks.RequestRepaint()
+	d.Invalidate()
 }
 
 // BindValue vincula a seleção ao State em DUAS vias: seleções do usuário

@@ -31,20 +31,20 @@ func TestStateSetWatchMap(t *testing.T) {
 	}
 }
 
-// TestRepaintHook garante que Set agenda redesenho pelo hook do App e que
-// tudo continua seguro sem aplicação em execução (hook nil).
-func TestRepaintHook(t *testing.T) {
-	repaints := 0
-	hooks.Repaint = func() { repaints++ }
-	defer func() { hooks.Repaint = nil }()
+// TestFrameHook garante que Set agenda um FRAME (sem dano — as regiões vêm
+// dos setters dos widgets) e que tudo continua seguro sem aplicação.
+func TestFrameHook(t *testing.T) {
+	frames := 0
+	hooks.Frame = func() { frames++ }
+	defer func() { hooks.Frame = nil }()
 
 	s := New(0)
 	s.Set(1)
-	if repaints != 1 {
-		t.Fatalf("repaints = %d, esperado 1", repaints)
+	if frames != 1 {
+		t.Fatalf("frames = %d, esperado 1", frames)
 	}
 
-	hooks.Repaint = nil
+	hooks.Frame = nil
 	s.Set(2) // não deve entrar em pânico sem app
 }
 

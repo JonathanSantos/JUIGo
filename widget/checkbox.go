@@ -4,7 +4,6 @@ import (
 	"image"
 
 	"juigo/event"
-	"juigo/internal/hooks"
 	"juigo/render"
 	"juigo/state"
 )
@@ -49,7 +48,7 @@ func (c *Checkbox) SetChecked(v bool) {
 		return
 	}
 	c.checked = v
-	hooks.RequestRepaint()
+	c.Invalidate()
 }
 
 // BindChecked vincula o valor ao State em DUAS vias: alternâncias do usuário

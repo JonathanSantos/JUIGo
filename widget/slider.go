@@ -4,7 +4,6 @@ import (
 	"image"
 
 	"juigo/event"
-	"juigo/internal/hooks"
 	"juigo/render"
 	"juigo/state"
 )
@@ -56,7 +55,7 @@ func (s *Slider) SetValue(v float64) {
 		return
 	}
 	s.value = v
-	hooks.RequestRepaint()
+	s.Invalidate()
 }
 
 // BindValue vincula o valor ao State em DUAS vias: ajustes do usuário fazem

@@ -49,11 +49,33 @@ type Session struct {
 
 	// inspect liga a camada do inspector de depuração (ver inspector.go).
 	inspect bool
+
+	// damage acumula a REGIÃO suja do próximo frame; full força repintura
+	// total (primeiro frame, resize, overlay, tema...). clipScratch é a
+	// visão reutilizada do redesenho parcial.
+	damage      image.Rectangle
+	full        bool
+	clipScratch image.RGBA
 }
 
 // NewSession cria uma sessão com o tema dado.
 func NewSession(th *theme.Theme) *Session {
-	return &Session{theme: th}
+	return &Session{theme: th, full: true}
+}
+
+// AddDamage acumula uma região suja para o próximo frame e o agenda. O dono
+// da sessão liga este método em hooks.Damage.
+func (s *Session) AddDamage(r image.Rectangle) {
+	if !s.full {
+		s.damage = s.damage.Union(r)
+	}
+	s.markDirty()
+}
+
+// InvalidateAll marca o frame inteiro como sujo e o agenda.
+func (s *Session) InvalidateAll() {
+	s.full = true
+	s.markDirty()
 }
 
 // markDirty notifica o dono de que um redesenho é necessário.
@@ -69,7 +91,7 @@ func (s *Session) SetRoot(w Widget) {
 	if w != nil {
 		Mount(w, s.theme)
 	}
-	s.markDirty()
+	s.InvalidateAll()
 }
 
 // Root devolve a raiz atual.
@@ -89,7 +111,7 @@ func (s *Session) SetTheme(th *theme.Theme) {
 		return
 	}
 	s.theme = th
-	s.markDirty()
+	s.InvalidateAll()
 }
 
 // Focused devolve o widget com o foco de teclado (nil se nenhum).
@@ -131,7 +153,7 @@ func (s *Session) Resize(size image.Point) {
 		s.closeOverlay()
 	}
 	s.hideTooltip()
-	s.markDirty()
+	s.InvalidateAll()
 }
 
 // PointerDown processa o pressionar de um botão do mouse em pos: fecha o
@@ -151,7 +173,7 @@ func (s *Session) PointerDown(pos image.Point, btn event.MouseButton) {
 		}
 		if c := DispatchMouse(s.overlay, ev); c != nil {
 			s.captured = c
-			s.markDirty()
+			s.AddDamage(c.Bounds())
 		}
 		return
 	}
@@ -165,17 +187,17 @@ func (s *Session) PointerDown(pos image.Point, btn event.MouseButton) {
 func (s *Session) PointerUp(pos image.Point, btn event.MouseButton) {
 	s.lastCursor = pos
 	ev := event.MouseEvent{Kind: event.MouseUp, Pos: pos, Button: btn}
-	if s.captured != nil {
-		if s.captured.HandleEvent(ev) {
-			s.markDirty()
+	if c := s.captured; c != nil {
+		if c.HandleEvent(ev) {
+			s.AddDamage(c.Bounds())
 		}
 		s.captured = nil
 		return
 	}
 	if s.overlay != nil {
 		if pos.In(s.overlay.Bounds()) {
-			if DispatchMouse(s.overlay, ev) != nil {
-				s.markDirty()
+			if c := DispatchMouse(s.overlay, ev); c != nil {
+				s.AddDamage(c.Bounds())
 			}
 		}
 		return
@@ -189,21 +211,21 @@ func (s *Session) PointerUp(pos image.Point, btn event.MouseButton) {
 func (s *Session) PointerMove(pos image.Point) {
 	s.lastCursor = pos
 	if s.inspect {
-		// O crachá segue o ponteiro: redesenha a cada movimento.
-		s.markDirty()
+		// O crachá segue o ponteiro: redesenha tudo a cada movimento.
+		s.InvalidateAll()
 	}
 	ev := event.MouseEvent{Kind: event.MouseMove, Pos: pos, Button: event.MouseButtonLeft}
-	if s.captured != nil {
-		if s.captured.HandleEvent(ev) {
-			s.markDirty()
+	if c := s.captured; c != nil {
+		if c.HandleEvent(ev) {
+			s.AddDamage(c.Bounds())
 		}
 		return
 	}
 	if s.overlay != nil {
 		if pos.In(s.overlay.Bounds()) {
 			s.updateHoverIn(s.overlay, pos)
-			if DispatchMouse(s.overlay, ev) != nil {
-				s.markDirty()
+			if c := DispatchMouse(s.overlay, ev); c != nil {
+				s.AddDamage(c.Bounds())
 			}
 		} else {
 			s.updateHoverIn(nil, pos)
@@ -236,15 +258,17 @@ func (s *Session) KeyPress(k event.Key, mods event.Modifiers) {
 	}
 	ke := event.KeyEvent{Key: k, Mods: mods}
 	consumed := false
-	if s.focused != nil && !DisabledOf(s.focused) {
-		consumed = s.focused.HandleEvent(ke)
+	// Referências locais: o próprio handler pode fechar overlays ou mover o
+	// foco (Escape num Modal zera s.overlay), e o dano é do widget original.
+	if f := s.focused; f != nil && !DisabledOf(f) {
+		consumed = f.HandleEvent(ke)
 		if consumed {
-			s.markDirty()
+			s.AddDamage(f.Bounds())
 		}
 	}
-	if !consumed && k == event.KeyEscape && s.overlay != nil {
-		if s.overlay.HandleEvent(ke) {
-			s.markDirty()
+	if ov := s.overlay; !consumed && k == event.KeyEscape && ov != nil {
+		if ov.HandleEvent(ke) {
+			s.AddDamage(ov.Bounds())
 		}
 	}
 }
@@ -256,8 +280,8 @@ func (s *Session) Char(r rune) {
 	if s.focused == nil || DisabledOf(s.focused) {
 		return
 	}
-	if s.focused.HandleEvent(event.CharEvent{Rune: r}) {
-		s.markDirty()
+	if f := s.focused; f.HandleEvent(event.CharEvent{Rune: r}) {
+		s.AddDamage(f.Bounds())
 	}
 }
 
@@ -272,16 +296,16 @@ func (s *Session) Scroll(pos image.Point, dx, dy float64) {
 	ev := event.ScrollEvent{Pos: pos, DX: dx, DY: dy}
 	if s.overlay != nil {
 		if pos.In(s.overlay.Bounds()) {
-			if DispatchScroll(s.overlay, ev) != nil {
-				s.markDirty()
+			if c := DispatchScroll(s.overlay, ev); c != nil {
+				s.AddDamage(c.Bounds())
 			}
 		} else {
 			s.closeOverlay()
 		}
 		return
 	}
-	if DispatchScroll(s.root, ev) != nil {
-		s.markDirty()
+	if c := DispatchScroll(s.root, ev); c != nil {
+		s.AddDamage(c.Bounds())
 	}
 }
 
@@ -301,7 +325,7 @@ func (s *Session) OpenOverlay(w Widget) {
 	if w.Focusable() {
 		s.setFocus(w)
 	}
-	s.markDirty()
+	s.InvalidateAll()
 }
 
 // CloseOverlayIf fecha a camada se w for a camada atual (hooks.CloseOverlay).
@@ -319,7 +343,7 @@ func (s *Session) closeOverlay() {
 	s.overlay = nil
 	s.setFocus(s.overlayPrevFocus)
 	s.overlayPrevFocus = nil
-	s.markDirty()
+	s.InvalidateAll()
 }
 
 // dispatch roteia um evento de mouse pela raiz e devolve o consumidor.
@@ -329,7 +353,7 @@ func (s *Session) dispatch(ev event.MouseEvent) Widget {
 	}
 	consumer := DispatchMouse(s.root, ev)
 	if consumer != nil {
-		s.markDirty()
+		s.AddDamage(consumer.Bounds())
 	}
 	return consumer
 }
@@ -344,12 +368,12 @@ func (s *Session) updateHoverIn(root Widget, pos image.Point) {
 	if target == s.hovered {
 		return
 	}
-	if s.hovered != nil && s.hovered.HandleEvent(event.MouseEvent{Kind: event.MouseLeave, Pos: pos}) {
-		s.markDirty()
+	if prev := s.hovered; prev != nil && prev.HandleEvent(event.MouseEvent{Kind: event.MouseLeave, Pos: pos}) {
+		s.AddDamage(prev.Bounds())
 	}
 	s.hovered = target
 	if target != nil && target.HandleEvent(event.MouseEvent{Kind: event.MouseEnter, Pos: pos}) {
-		s.markDirty()
+		s.AddDamage(target.Bounds())
 	}
 
 	shape := CursorDefault
@@ -395,7 +419,7 @@ func (s *Session) showTooltip(text string) {
 	}
 	s.tipView.Layout(image.Rectangle{Min: pos, Max: pos.Add(pref)})
 	s.tipShown = true
-	s.markDirty()
+	s.AddDamage(s.tipView.Bounds())
 }
 
 // hideTooltip cancela a espera pendente e esconde a dica, se visível.
@@ -406,7 +430,11 @@ func (s *Session) hideTooltip() {
 	}
 	if s.tipShown {
 		s.tipShown = false
-		s.markDirty()
+		if s.tipView != nil {
+			s.AddDamage(s.tipView.Bounds())
+		} else {
+			s.markDirty()
+		}
 	}
 }
 
@@ -421,10 +449,12 @@ func (s *Session) setFocus(w Widget) {
 	}
 	if s.focused != nil {
 		s.focused.HandleEvent(event.FocusEvent{Gained: false})
+		s.AddDamage(s.focused.Bounds())
 	}
 	s.focused = w
 	if w != nil {
 		w.HandleEvent(event.FocusEvent{Gained: true})
+		s.AddDamage(w.Bounds())
 	}
 	s.markDirty()
 }
@@ -475,19 +505,26 @@ func spansWindow(w Widget) bool {
 	return ok && o.SpansWindow()
 }
 
-// Render compõe o frame em dst: fundo do tema, árvore, overlay e tooltip.
-// Não aloca com os caches aquecidos.
-func (s *Session) Render(dst *image.RGBA) {
+// Render compõe o frame em dst e devolve a região efetivamente repintada e
+// se a repintura foi total (o App usa isso para o upload parcial à GPU).
+//
+// dst deve ser PERSISTENTE entre frames: com dano parcial acumulado, apenas
+// a região suja é repintada — fundo, árvore, overlay e tooltip são
+// redesenhados dentro de uma visão recortada (render.Clip), então nada fora
+// do dano é tocado e a ordem de camadas se mantém. O layout roda completo
+// ANTES do recorte: o diff de bounds do BaseWidget acrescenta ao dano deste
+// mesmo frame qualquer widget que o layout moveu. Não aloca com os caches
+// aquecidos.
+func (s *Session) Render(dst *image.RGBA) (image.Rectangle, bool) {
 	if s.theme == nil {
-		return
+		return image.Rectangle{}, false
 	}
-	render.FillRect(dst, dst.Bounds(), s.theme.Background)
+	// Layout completo primeiro: gera o dano de geometria do frame atual.
 	if s.root != nil {
 		// Re-injeta o tema antes do layout para cobrir widgets adicionados
 		// dinamicamente à árvore (idempotente, sem alocações).
 		Mount(s.root, s.theme)
 		s.root.Layout(dst.Bounds())
-		s.root.Draw(dst)
 	}
 	if s.overlay != nil {
 		Mount(s.overlay, s.theme)
@@ -496,12 +533,40 @@ func (s *Session) Render(dst *image.RGBA) {
 		} else {
 			s.overlay.Layout(s.overlay.Bounds())
 		}
-		s.overlay.Draw(dst)
+	}
+
+	// O inspector desenha contornos da árvore inteira: sempre frame total.
+	if s.inspect {
+		s.full = true
+	}
+
+	full := s.full
+	region := dst.Bounds()
+	if !full {
+		region = s.damage.Intersect(dst.Bounds())
+	}
+	s.damage = image.Rectangle{}
+	s.full = false
+	if region.Empty() {
+		return image.Rectangle{}, false
+	}
+
+	target := dst
+	if !full {
+		target = render.Clip(dst, region, &s.clipScratch)
+	}
+	render.FillRect(target, region, s.theme.Background)
+	if s.root != nil {
+		s.root.Draw(target)
+	}
+	if s.overlay != nil {
+		s.overlay.Draw(target)
 	}
 	if s.tipShown && s.tipView != nil {
-		s.tipView.Draw(dst)
+		s.tipView.Draw(target)
 	}
 	if s.inspect {
-		s.drawInspector(dst)
+		s.drawInspector(target)
 	}
+	return region, full
 }

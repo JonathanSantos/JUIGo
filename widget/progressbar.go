@@ -3,7 +3,6 @@ package widget
 import (
 	"image"
 
-	"juigo/internal/hooks"
 	"juigo/render"
 	"juigo/state"
 )
@@ -46,7 +45,7 @@ func (p *ProgressBar) SetValue(v float64) {
 		return
 	}
 	p.value = v
-	hooks.RequestRepaint()
+	p.Invalidate()
 }
 
 // BindValue espelha o State na barra (uma via: a barra só exibe).

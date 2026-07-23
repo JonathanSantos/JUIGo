@@ -4,7 +4,6 @@ import (
 	"image"
 
 	"juigo/event"
-	"juigo/internal/hooks"
 	"juigo/render"
 	"juigo/theme"
 )
@@ -60,7 +59,7 @@ func (s *Scroll) Offset() int {
 // intervalo válido no próximo layout), e agenda um redesenho.
 func (s *Scroll) ScrollTo(y int) {
 	s.offset = y
-	hooks.RequestRepaint()
+	s.Invalidate()
 }
 
 // PreferredSize devolve o tamanho preferido do filho — normalmente o Scroll

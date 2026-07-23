@@ -83,7 +83,7 @@ func (in *Input) SetText(s string) {
 	in.cursor = len(in.runes)
 	in.anchor = in.cursor
 	in.sync()
-	hooks.RequestRepaint()
+	in.Invalidate()
 }
 
 // BindValue vincula o conteúdo do campo ao State em DUAS vias: edições do
@@ -367,7 +367,7 @@ func (in *Input) blinkTick() {
 		return
 	}
 	in.caretOn = !in.caretOn
-	hooks.RequestRepaint()
+	in.Invalidate()
 	in.blinkCancel = hooks.ScheduleAfter(in.theme.CaretBlink, in.blinkTick)
 }
 

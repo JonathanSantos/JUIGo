@@ -8,10 +8,23 @@
 // podem injetar implementações falsas.
 package hooks
 
-import "time"
+import (
+	"image"
+	"time"
+)
 
-// Repaint é registrado pelo App para agendar um redesenho da interface.
+// Repaint é registrado pelo App para agendar um redesenho COMPLETO da
+// interface (dano total). É a válvula de escape correta quando não se sabe a
+// região afetada.
 var Repaint func()
+
+// Damage é registrado pelo App/harness para acumular DANO PARCIAL: a região
+// dada precisa ser repintada e reenviada à GPU no próximo frame.
+var Damage func(r image.Rectangle)
+
+// Frame é registrado pelo App/harness para agendar um frame SEM acrescentar
+// dano: se nada tiver sido danificado até o render, o frame é pulado.
+var Frame func()
 
 // ClipboardRead e ClipboardWrite são registrados pelo App apontando para a
 // área de transferência do sistema (GLFW).
@@ -43,10 +56,25 @@ func ScheduleAfter(d time.Duration, fn func()) (cancel func()) {
 	return Schedule(d, fn)
 }
 
-// RequestRepaint agenda um redesenho se houver uma aplicação em execução.
+// RequestRepaint agenda um redesenho COMPLETO se houver uma aplicação em
+// execução; sem aplicação, não faz nada.
 func RequestRepaint() {
 	if Repaint != nil {
 		Repaint()
+	}
+}
+
+// AddDamage acumula dano parcial (e agenda um frame), se houver aplicação.
+func AddDamage(r image.Rectangle) {
+	if Damage != nil {
+		Damage(r)
+	}
+}
+
+// RequestFrame agenda um frame sem dano, se houver aplicação.
+func RequestFrame() {
+	if Frame != nil {
+		Frame()
 	}
 }
 
