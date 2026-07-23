@@ -42,7 +42,8 @@ própria lib — [`go run ./docs/gerar`](docs/gerar/main.go).*
   enviada à GPU), zero alocações no caminho quente, ~14µs por frame
   incremental; um golden test prova que o frame incremental é byte a byte
   igual ao completo.
-- **HiDPI, temas em runtime, undo/redo (`History`), timers (`After`/
+- **HiDPI, temas em runtime, drag-and-drop (`StartDrag`/`DropTarget`, com
+  fantasma e realce do alvo), undo/redo (`History`), timers (`After`/
   `Every`), animações (`anim.Tween`) e um inspector de depuração
   (Ctrl/Cmd+I)** de fábrica.
 
@@ -197,6 +198,11 @@ flags de cada widget.
   esquerda, detalhe em abas (`Tabs`) com formulário validado e notas à
   direita; seleção preservada por identidade no filtro, menu de contexto no
   botão direito (`quick.Menu`), exclusão com confirmação e toasts.
+- **`go run ./examples/kanban`** — drag-and-drop: cartões arrastados entre
+  colunas com fantasma e realce do alvo, cancelamento no Escape e a UI
+  reconstruída da projeção do modelo.
+
+![Kanban em pleno arrasto](docs/kanban.png)
 
 Testes de tudo (rodam sem janela):
 
@@ -217,9 +223,9 @@ por foco, overlay, tema) e os números de performance estão em
 ## Fora de escopo (por enquanto)
 
 Acessibilidade, IME (composição de texto asiático), multi-janela, edição
-rica (negrito/itálico), drag-and-drop e árvores. A arquitetura foi pensada
-para recebê-los depois: eventos são tipos abertos, o tema é injetado,
-containers são aninháveis e o desenho é isolado em `render/`.
+rica (negrito/itálico) e árvores. A arquitetura foi pensada para recebê-los
+depois: eventos são tipos abertos, o tema é injetado, containers são
+aninháveis e o desenho é isolado em `render/`.
 
 ## Licença
 

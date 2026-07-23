@@ -57,6 +57,19 @@ var Focus func(w any)
 // padrão do tema.
 var Toast func(text string, d time.Duration)
 
+// StartDrag é registrado pelo App/harness para iniciar um arrasto (ver
+// Session.StartDrag): payload é o dado transportado e label o texto do
+// fantasma que segue o cursor.
+var StartDrag func(payload any, label string)
+
+// RequestDrag inicia um arrasto se houver aplicação em execução; sem
+// aplicação, não faz nada.
+func RequestDrag(payload any, label string) {
+	if StartDrag != nil {
+		StartDrag(payload, label)
+	}
+}
+
 // ShowToast exibe um toast se houver aplicação em execução; sem aplicação,
 // não faz nada.
 func ShowToast(text string, d time.Duration) {

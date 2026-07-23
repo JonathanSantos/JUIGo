@@ -168,6 +168,9 @@ func New(title string, width, height int) (*App, error) {
 	hooks.Toast = func(text string, d time.Duration) {
 		a.session.ShowToast(text, d)
 	}
+	hooks.StartDrag = func(payload any, label string) {
+		a.session.StartDrag(payload, label)
+	}
 	return a, nil
 }
 
@@ -563,6 +566,7 @@ func (a *App) destroy() {
 	hooks.CloseOverlay = nil
 	hooks.Focus = nil
 	hooks.Toast = nil
+	hooks.StartDrag = nil
 	a.blitter.Destroy()
 	a.window.Destroy()
 	glfw.Terminate()

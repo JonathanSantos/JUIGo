@@ -58,6 +58,9 @@ type (
 	Popup = widget.Popup
 	// Tabs organiza páginas de conteúdo em abas.
 	Tabs = widget.Tabs
+	// DropTarget é implementado por widgets que aceitam soltar um arrasto
+	// (ver StartDrag).
+	DropTarget = widget.DropTarget
 	// Table é a tabela de células de texto com cabeçalho fixo e seleção.
 	Table = widget.Table
 	// Grid distribui filhos em grade de N colunas (formulários alinhados).
@@ -224,6 +227,11 @@ func NewPopup(content Widget) *Popup { return widget.NewPopup(content) }
 // NewTabs cria um conjunto de abas vazio; adicione páginas com Add (ver
 // widget.Tabs).
 func NewTabs() *Tabs { return widget.NewTabs() }
+
+// StartDrag inicia um arrasto com o payload e o rótulo do fantasma; chame
+// de um widget fonte durante uma captura de mouse (ver widget.StartDrag e
+// DropTarget).
+func StartDrag(payload any, label string) { widget.StartDrag(payload, label) }
 
 // NewTable cria uma tabela de texto: títulos de coluna, total de linhas e o
 // callback de célula (ver widget.NewTable).

@@ -53,6 +53,13 @@ type Session struct {
 	toastCancel func()
 	toastShown  bool
 
+	// Estado do arrasto (ver drag.go): fantasma seguindo o cursor e o alvo
+	// realçado sob ele.
+	dragging    bool
+	dragPayload any
+	dragView    *TooltipView
+	dragTarget  Widget
+
 	// inspect liga a camada do inspector de depuração (ver inspector.go).
 	inspect bool
 
@@ -198,6 +205,11 @@ func (s *Session) PointerUp(pos image.Point, btn event.MouseButton) {
 			s.AddDamage(c.Bounds())
 		}
 		s.captured = nil
+		s.finishDrag(pos) // solta no alvo sob o cursor, se houver arrasto
+		return
+	}
+	if s.dragging {
+		s.finishDrag(pos)
 		return
 	}
 	if s.overlay != nil {
@@ -225,7 +237,13 @@ func (s *Session) PointerMove(pos image.Point) {
 		if c.HandleEvent(ev) {
 			s.AddDamage(c.Bounds())
 		}
+		// O arrasto pode ter começado NESTE movimento (limiar da fonte);
+		// o fantasma e o alvo seguem o cursor a partir daqui.
+		s.updateDrag(pos)
 		return
+	}
+	if s.dragging {
+		s.updateDrag(pos)
 	}
 	if s.overlay != nil {
 		if pos.In(s.overlay.Bounds()) {
@@ -248,6 +266,10 @@ func (s *Session) PointerMove(pos image.Point) {
 // o foco em um campo interno).
 func (s *Session) KeyPress(k event.Key, mods event.Modifiers) {
 	if k == event.KeyUnknown {
+		return
+	}
+	if s.dragging && k == event.KeyEscape {
+		s.CancelDrag()
 		return
 	}
 	if k == event.KeyTab {
@@ -323,6 +345,7 @@ func (s *Session) OpenOverlay(w Widget) {
 		return
 	}
 	s.hideTooltip()
+	s.CancelDrag() // abrir uma camada no meio de um arrasto o cancela
 	if s.overlay == nil {
 		s.overlayPrevFocus = s.focused
 	}
@@ -605,6 +628,7 @@ func (s *Session) Render(dst *image.RGBA) (image.Rectangle, bool) {
 	if s.toastShown && s.toastView != nil {
 		s.toastView.Draw(target)
 	}
+	s.drawDrag(target)
 	if s.inspect {
 		s.drawInspector(target)
 	}

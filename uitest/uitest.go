@@ -103,6 +103,7 @@ func newWith(t testing.TB, root widget.Widget, th *theme.Theme, width, height in
 	prevClose := hooks.CloseOverlay
 	prevFocus := hooks.Focus
 	prevToast := hooks.Toast
+	prevDrag := hooks.StartDrag
 	hooks.Repaint = func() {
 		h.Repaints++
 		h.session.InvalidateAll()
@@ -129,6 +130,9 @@ func newWith(t testing.TB, root widget.Widget, th *theme.Theme, width, height in
 	hooks.Toast = func(text string, d time.Duration) {
 		h.session.ShowToast(text, d)
 	}
+	hooks.StartDrag = func(payload any, label string) {
+		h.session.StartDrag(payload, label)
+	}
 	t.Cleanup(func() {
 		hooks.Repaint = prevRepaint
 		hooks.Damage = prevDamage
@@ -138,6 +142,7 @@ func newWith(t testing.TB, root widget.Widget, th *theme.Theme, width, height in
 		hooks.CloseOverlay = prevClose
 		hooks.Focus = prevFocus
 		hooks.Toast = prevToast
+		hooks.StartDrag = prevDrag
 	})
 
 	h.session.Resize(h.size)

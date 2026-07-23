@@ -100,6 +100,14 @@ execução só por `internal/hooks`, registrado na inicialização.
   são engolidos, Tab/foco fora fecham, e o foco anterior é restaurado. O
   tooltip (`Tooltip(w, texto)`) é uma camada passiva acima de tudo, fora do
   hit-test.
+- **Drag-and-drop**: `widget.StartDrag(payload, rótulo)` é chamado por um
+  widget FONTE durante uma captura de mouse (tipicamente ao passar de um
+  limiar de movimento); a partir daí a Session mantém um fantasma seguindo
+  o cursor (camada passiva, como o tooltip), realça o `DropTarget` mais
+  profundo sob o ponteiro cujo `CanDrop(payload)` aceite, entrega
+  `Drop(payload, pos)` ao soltar e cancela no Escape ou na abertura de uma
+  overlay. A fonte segue recebendo os eventos da própria captura — o gesto
+  dela termina normalmente no MouseUp.
 - **Tema**: nenhuma cor ou tamanho hardcoded nos widgets — tudo vem de
   `Theme`. `Theme.MeasureString` é a única fonte de verdade para largura de
   texto (layout e posicionamento de cursor). Há dois temas prontos —
