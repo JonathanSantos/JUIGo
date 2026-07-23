@@ -26,13 +26,15 @@ própria lib — [`go run ./docs/gerar`](docs/gerar/main.go).*
 
 - **20+ widgets** — Text, Button, Input (seleção/clipboard/filtro), TextArea
   com soft wrap, Checkbox, Radio, Slider, ProgressBar, Dropdown, Image,
-  Modal, Popup ancorado, Tooltip, Grid, List virtualizada e Table com
+  Tabs, Modal, Popup ancorado, Tooltip, Grid, List virtualizada e Table com
   cabeçalho fixo — ambas com seleção como State.
 - **Reatividade tipada** — `State[T]` + `Map`/`Combine`, bindings de duas
   vias (`BindValue`, `BindChecked`, `BindSelected`, `BindDisabled`,
   `BindInvalid`) e tudo declarável inline, sem variáveis temporárias.
 - **Formulários em uma expressão** — a camada `quick`: campos com handles
-  tipados, validação com mensagens suas, erros por campo e Enter enviando.
+  tipados, validação com mensagens suas, erros por campo e Enter enviando;
+  além de diálogos (`Confirm`/`Alert`/`Prompt`), menu de contexto (`Menu`)
+  e avisos transitórios (`Toast`) de uma chamada.
 - **Testável de verdade** — `uitest` dirige o MESMO núcleo de interação do
   App real, headless, com relógio virtual (nada de sleeps) e screenshots
   determinísticos para golden tests.
@@ -178,6 +180,8 @@ flags de cada widget.
 | --- | --- |
 | ![TodoMVC](docs/todomvc.png) | ![Cells, a mini-planilha do 7GUIs](docs/cells.png) |
 
+![Contatos, o exemplo mestre-detalhe](docs/contatos.png)
+
 - **`go run ./examples/basic`** — a demo reativa: bindings, formulário
   validado num modal, tema escuro ao vivo, lista virtualizada de 500 itens,
   animação de rolagem e trabalho assíncrono com `Post`.
@@ -189,6 +193,10 @@ flags de cada widget.
 - **`go run ./examples/todo`** — TodoMVC em três camadas (domínio puro,
   view-model, composição), com persistência JSON, edição inline por duplo
   clique e testes de domínio e de UI.
+- **`go run ./examples/contatos`** — mestre-detalhe: busca + tabela à
+  esquerda, detalhe em abas (`Tabs`) com formulário validado e notas à
+  direita; seleção preservada por identidade no filtro, menu de contexto no
+  botão direito (`quick.Menu`), exclusão com confirmação e toasts.
 
 Testes de tudo (rodam sem janela):
 

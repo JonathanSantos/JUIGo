@@ -12,6 +12,8 @@ import (
 
 	"github.com/JonathanSantos/JUIGo"
 	"github.com/JonathanSantos/JUIGo/examples/7guis/cells"
+	"github.com/JonathanSantos/JUIGo/examples/contatos/contatos"
+	contatosui "github.com/JonathanSantos/JUIGo/examples/contatos/ui"
 	"github.com/JonathanSantos/JUIGo/examples/todo/tarefas"
 	"github.com/JonathanSantos/JUIGo/examples/todo/ui"
 	"github.com/JonathanSantos/JUIGo/offscreen"
@@ -90,6 +92,24 @@ func todomvc() juigo.Widget {
 	return ui.New(lista, repo).Raiz
 }
 
+// agenda monta o exemplo mestre-detalhe com um contato selecionado.
+func agenda() juigo.Widget {
+	repo := &contatos.RepositorioJSON{Caminho: filepath.Join(os.TempDir(), "docs-contatos.json")}
+	a := contatos.NovaAgenda(nil)
+	ana := a.Adicionar("Ana Lima")
+	a.Atualizar(contatos.Contato{
+		ID: ana.ID, Nome: "Ana Lima", Email: "ana@plataforma.dev",
+		Telefone: "(11) 91234-0000", Empresa: "Plataforma",
+		Notas: "Prefere reuniões pela manhã.",
+	})
+	a.Adicionar("Bruno Reis")
+	carla := a.Adicionar("Carla Dias")
+	a.AlternarFavorito(carla.ID)
+	v := contatosui.New(a, repo)
+	v.Seleciona(ana.ID)
+	return v.Raiz
+}
+
 // planilha monta o Cells do 7GUIs com fórmulas em cena.
 func planilha() juigo.Widget {
 	a := cells.New()
@@ -123,5 +143,6 @@ func main() {
 	salva("vitrine-escuro.png", vitrine(), escuro, 440, 460)
 	salva("quick-form.png", formulario(), claro, 440, 440)
 	salva("todomvc.png", todomvc(), claro, 440, 400)
+	salva("contatos.png", agenda(), claro, 720, 420)
 	salva("cells.png", planilha(), claro, 620, 400)
 }
