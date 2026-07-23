@@ -77,6 +77,11 @@ const (
 	KeyHome
 	// KeyEnd move o cursor ao fim.
 	KeyEnd
+	// KeyUp e KeyDown navegam verticalmente (ex.: itens de um Dropdown).
+	KeyUp
+	KeyDown
+	// KeyEscape cancela/fecha (ex.: popup do Dropdown).
+	KeyEscape
 	// KeyA, KeyC, KeyV e KeyX são as letras dos atalhos de edição —
 	// selecionar tudo, copiar, colar e recortar — quando combinadas com o
 	// modificador de comando. Texto comum não passa por Key: chega como

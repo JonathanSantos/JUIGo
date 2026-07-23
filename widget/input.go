@@ -51,12 +51,18 @@ type Input struct {
 	scrollX int
 	// clip é a visão recortada reutilizada pelo Draw (sem alocação).
 	clip image.RGBA
+
+	// caretOn e blinkCancel implementam a piscada do cursor: com foco, um
+	// timer do App (Theme.CaretBlink) alterna a visibilidade; qualquer
+	// edição ou movimento a reinicia com o cursor visível.
+	caretOn     bool
+	blinkCancel func()
 }
 
 // NewInput cria um campo de texto vazio com o placeholder dado. O tema é
 // herdado no mount.
 func NewInput(placeholder string) *Input {
-	return &Input{Placeholder: placeholder}
+	return &Input{Placeholder: placeholder, caretOn: true}
 }
 
 // Text devolve o conteúdo atual do campo.
@@ -123,6 +129,11 @@ func (in *Input) HandleEvent(ev event.Event) bool {
 		return in.handleKey(e)
 	case event.FocusEvent:
 		in.focused = e.Gained
+		if e.Gained {
+			in.restartBlink()
+		} else {
+			in.stopBlink()
+		}
 		return true
 	case event.MouseEvent:
 		switch e.Kind {
@@ -325,10 +336,43 @@ func (in *Input) paste() bool {
 	return true
 }
 
+// restartBlink reinicia o ciclo de piscada com o cursor visível — chamado ao
+// ganhar foco e a cada edição/movimento, para o cursor não sumir enquanto o
+// usuário digita. Sem aplicação (testes) ou com Theme.CaretBlink zero, o
+// cursor fica sempre visível.
+func (in *Input) restartBlink() {
+	in.stopBlink()
+	in.caretOn = true
+	if !in.focused || in.theme == nil || in.theme.CaretBlink <= 0 {
+		return
+	}
+	in.blinkCancel = hooks.ScheduleAfter(in.theme.CaretBlink, in.blinkTick)
+}
+
+// blinkTick alterna a visibilidade do cursor e agenda a próxima piscada.
+func (in *Input) blinkTick() {
+	if !in.focused {
+		return
+	}
+	in.caretOn = !in.caretOn
+	hooks.RequestRepaint()
+	in.blinkCancel = hooks.ScheduleAfter(in.theme.CaretBlink, in.blinkTick)
+}
+
+// stopBlink cancela a piscada pendente e deixa o cursor visível.
+func (in *Input) stopBlink() {
+	if in.blinkCancel != nil {
+		in.blinkCancel()
+		in.blinkCancel = nil
+	}
+	in.caretOn = true
+}
+
 // sync atualiza os caches derivados (string do texto e X do cursor) após
 // qualquer mudança. Alocar aqui é aceitável: acontece por evento de edição
 // (ou uma única vez após mudança de escala), nunca por frame desenhado.
 func (in *Input) sync() {
+	in.restartBlink()
 	in.text = string(in.runes)
 	if in.theme == nil {
 		// Antes do mount não há como medir; Draw refaz o sync ao detectar a
@@ -449,7 +493,7 @@ func (in *Input) Draw(dst *image.RGBA) {
 		th.DrawText(view, in.Placeholder, image.Pt(textX, baseline), th.Placeholder)
 	}
 
-	if in.focused {
+	if in.focused && in.caretOn {
 		top := baseline - th.Ascent()
 		cx := textX + in.cursorX
 		render.FillRect(view, image.Rect(cx, top, cx+th.BorderPx(), top+th.LineHeight()), th.Cursor)

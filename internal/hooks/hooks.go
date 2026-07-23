@@ -8,6 +8,8 @@
 // podem injetar implementações falsas.
 package hooks
 
+import "time"
+
 // Repaint é registrado pelo App para agendar um redesenho da interface.
 var Repaint func()
 
@@ -17,6 +19,29 @@ var (
 	ClipboardRead  func() string
 	ClipboardWrite func(string)
 )
+
+// Schedule é registrado pelo App: agenda fn para executar na main thread
+// após o atraso dado (o loop usa WaitEventsTimeout para acordar a tempo) e
+// devolve uma função de cancelamento. Base de comportamentos temporais como
+// o cursor piscante e o atraso do tooltip.
+var Schedule func(d time.Duration, fn func()) (cancel func())
+
+// OpenOverlay e CloseOverlay são registrados pelo App para exibir/remover a
+// camada de sobreposição (popups como o do Dropdown). O valor é um
+// widget.Widget — tipado como any para evitar ciclo de import.
+var (
+	OpenOverlay  func(w any)
+	CloseOverlay func(w any)
+)
+
+// ScheduleAfter agenda fn se houver aplicação em execução; sem aplicação,
+// devolve um cancelamento inerte (fn nunca executa).
+func ScheduleAfter(d time.Duration, fn func()) (cancel func()) {
+	if Schedule == nil {
+		return func() {}
+	}
+	return Schedule(d, fn)
+}
 
 // RequestRepaint agenda um redesenho se houver uma aplicação em execução.
 func RequestRepaint() {

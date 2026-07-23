@@ -66,6 +66,8 @@ type BaseWidget struct {
 	// pelas funções Grow, Centered, AtStart e AtEnd (ver flex.go).
 	grow  int
 	cross crossAlign
+	// tooltip é o texto de dica definido pela função Tooltip (tooltip.go).
+	tooltip string
 }
 
 // Layout guarda os bounds absolutos do widget.

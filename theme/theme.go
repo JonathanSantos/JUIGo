@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"time"
 
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
@@ -53,6 +54,12 @@ type Theme struct {
 	// Accent é a cor de destaque dos controles: a marca do Checkbox e o
 	// trilho ativo e a alça do Slider.
 	Accent color.RGBA
+	// HoverBackground é o fundo do item sob o ponteiro em listas (ex.: o
+	// popup do Dropdown).
+	HoverBackground color.RGBA
+	// TooltipBackground e TooltipText são as cores da caixa de dica.
+	TooltipBackground color.RGBA
+	TooltipText       color.RGBA
 
 	// Face é a fonte já rasterizada na escala atual (ver SetScale). É
 	// reconstruída a cada mudança de escala; não guarde referências a ela.
@@ -88,6 +95,13 @@ type Theme struct {
 	// lógicas.
 	ScrollbarWidth int
 
+	// CaretBlink é o intervalo de piscada do cursor de texto; zero desliga
+	// a piscada (cursor sempre visível).
+	CaretBlink time.Duration
+	// TooltipDelay é quanto tempo o ponteiro precisa pausar sobre um widget
+	// com Tooltip até a dica aparecer.
+	TooltipDelay time.Duration
+
 	fnt        *opentype.Font
 	scale      float64
 	ascent     int
@@ -121,6 +135,9 @@ func Default() (*Theme, error) {
 		Selection:          color.RGBA{R: 0xBF, G: 0xDB, B: 0xFE, A: 0xFF},
 		FocusOutline:       color.RGBA{R: 0x1D, G: 0x4E, B: 0xD8, A: 0xFF},
 		Accent:             color.RGBA{R: 0x3B, G: 0x82, B: 0xF6, A: 0xFF},
+		HoverBackground:    color.RGBA{R: 0xE4, G: 0xEC, B: 0xF9, A: 0xFF},
+		TooltipBackground:  color.RGBA{R: 0x2E, G: 0x33, B: 0x3B, A: 0xFF},
+		TooltipText:        color.RGBA{R: 0xF5, G: 0xF7, B: 0xFA, A: 0xFF},
 
 		FontSize: 16,
 
@@ -133,6 +150,9 @@ func Default() (*Theme, error) {
 		SliderHandleSize:     16,
 		ScrollStep:           40,
 		ScrollbarWidth:       4,
+
+		CaretBlink:   530 * time.Millisecond,
+		TooltipDelay: 600 * time.Millisecond,
 
 		fnt: parsed,
 	}

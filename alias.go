@@ -39,6 +39,8 @@ type (
 	Spacer = widget.Spacer
 	// Scroll é o container de rolagem vertical com recorte.
 	Scroll = widget.Scroll
+	// Dropdown é o seletor de uma opção com popup em overlay.
+	Dropdown = widget.Dropdown
 	// Align é o alinhamento horizontal do Text.
 	Align = widget.Align
 	// ButtonState é o estado visual do Button.
@@ -119,6 +121,9 @@ const (
 	KeyRight     = event.KeyRight
 	KeyHome      = event.KeyHome
 	KeyEnd       = event.KeyEnd
+	KeyUp        = event.KeyUp
+	KeyDown      = event.KeyDown
+	KeyEscape    = event.KeyEscape
 	KeyA         = event.KeyA
 	KeyC         = event.KeyC
 	KeyV         = event.KeyV
@@ -161,6 +166,13 @@ func NewSpacer() *Spacer { return widget.NewSpacer() }
 // normalmente combinado com Grow para definir a altura da viewport (ver
 // widget.NewScroll).
 func NewScroll(child Widget) *Scroll { return widget.NewScroll(child) }
+
+// NewDropdown cria um seletor com as opções dadas (ver widget.NewDropdown).
+func NewDropdown(options ...string) *Dropdown { return widget.NewDropdown(options...) }
+
+// Tooltip associa a w um texto de dica exibido quando o ponteiro pausa sobre
+// o widget, devolvendo o próprio w (ver widget.Tooltip).
+func Tooltip[W Widget](w W, texto string) W { return widget.Tooltip(w, texto) }
 
 // Grow marca w para expandir no eixo principal do VBox/HBox com o peso dado,
 // devolvendo o próprio w (ver widget.Grow).

@@ -5,6 +5,7 @@ import (
 	"image"
 	"math"
 	"runtime"
+	"time"
 
 	"github.com/go-gl/glfw/v3.3/glfw"
 
@@ -54,6 +55,28 @@ type App struct {
 	// cursores padrão do GLFW já criados.
 	cursorShape widget.CursorShape
 	stdCursors  map[widget.CursorShape]*glfw.Cursor
+	// timers são os agendamentos pendentes (hooks.Schedule): o loop usa
+	// WaitEventsTimeout para acordar no vencimento mais próximo.
+	timers   []appTimer
+	timerSeq int
+	// overlay é a camada de sobreposição (popups): desenhada por cima e com
+	// prioridade nos eventos; clique fora a fecha. overlayPrevFocus guarda o
+	// foco a restaurar no fechamento.
+	overlay          widget.Widget
+	overlayPrevFocus widget.Widget
+	// Estado do tooltip: a caixa (lazy), o cancelamento do timer de espera,
+	// se está visível e a última posição do cursor em pixels do buffer.
+	tipView    *widget.TooltipView
+	tipCancel  func()
+	tipShown   bool
+	lastCursor image.Point
+}
+
+// appTimer é um agendamento pendente de hooks.Schedule.
+type appTimer struct {
+	id int
+	at time.Time
+	fn func()
 }
 
 // New cria a janela com o título e tamanho dados e inicializa o contexto
@@ -127,7 +150,135 @@ func New(title string, width, height int) (*App, error) {
 	hooks.Repaint = a.Invalidate
 	hooks.ClipboardRead = window.GetClipboardString
 	hooks.ClipboardWrite = window.SetClipboardString
+	hooks.Schedule = a.schedule
+	hooks.OpenOverlay = a.openOverlay
+	hooks.CloseOverlay = a.closeOverlayIf
 	return a, nil
+}
+
+// schedule agenda fn para executar na main thread após d e devolve o
+// cancelamento. Implementação de hooks.Schedule.
+func (a *App) schedule(d time.Duration, fn func()) func() {
+	a.timerSeq++
+	id := a.timerSeq
+	a.timers = append(a.timers, appTimer{id: id, at: time.Now().Add(d), fn: fn})
+	glfw.PostEmptyEvent() // acorda o loop para recalcular o timeout
+	return func() {
+		for i := range a.timers {
+			if a.timers[i].id == id {
+				a.timers = append(a.timers[:i], a.timers[i+1:]...)
+				return
+			}
+		}
+	}
+}
+
+// nextTimerWait devolve quanto falta para o agendamento mais próximo.
+func (a *App) nextTimerWait() (time.Duration, bool) {
+	if len(a.timers) == 0 {
+		return 0, false
+	}
+	next := a.timers[0].at
+	for _, t := range a.timers[1:] {
+		if t.at.Before(next) {
+			next = t.at
+		}
+	}
+	return time.Until(next), true
+}
+
+// runDueTimers executa os agendamentos vencidos. Os callbacks rodam após a
+// remoção da lista e podem agendar novos timers com segurança.
+func (a *App) runDueTimers() {
+	now := time.Now()
+	var due []func()
+	kept := a.timers[:0]
+	for _, t := range a.timers {
+		if t.at.After(now) {
+			kept = append(kept, t)
+		} else {
+			due = append(due, t.fn)
+		}
+	}
+	a.timers = kept
+	for _, fn := range due {
+		fn()
+	}
+}
+
+// openOverlay exibe w como camada de sobreposição (hooks.OpenOverlay).
+func (a *App) openOverlay(v any) {
+	w, ok := v.(widget.Widget)
+	if !ok || w == nil {
+		return
+	}
+	a.hideTooltip()
+	if a.overlay == nil {
+		a.overlayPrevFocus = a.focused
+	}
+	a.overlay = w
+	widget.Mount(w, a.theme)
+	if w.Focusable() {
+		a.setFocus(w)
+	}
+	a.dirty = true
+}
+
+// closeOverlayIf fecha a camada se v for a camada atual (hooks.CloseOverlay).
+func (a *App) closeOverlayIf(v any) {
+	if w, ok := v.(widget.Widget); ok && w == a.overlay {
+		a.closeOverlay()
+	}
+}
+
+// closeOverlay remove a camada de sobreposição e restaura o foco anterior.
+func (a *App) closeOverlay() {
+	if a.overlay == nil {
+		return
+	}
+	a.overlay = nil
+	a.setFocus(a.overlayPrevFocus)
+	a.overlayPrevFocus = nil
+	a.dirty = true
+}
+
+// showTooltip exibe a caixa de dica próxima ao cursor, limitada à janela.
+func (a *App) showTooltip(text string) {
+	if a.tipView == nil {
+		a.tipView = widget.NewTooltipView()
+	}
+	widget.Mount(a.tipView, a.theme)
+	a.tipView.SetText(text)
+	pref := a.tipView.PreferredSize()
+	off := a.theme.PaddingPx()
+	pos := a.lastCursor.Add(image.Pt(off, off*2))
+	if pos.X+pref.X > a.width {
+		pos.X = a.width - pref.X
+	}
+	if pos.Y+pref.Y > a.height {
+		pos.Y = a.lastCursor.Y - off - pref.Y
+	}
+	if pos.X < 0 {
+		pos.X = 0
+	}
+	if pos.Y < 0 {
+		pos.Y = 0
+	}
+	a.tipView.Layout(image.Rectangle{Min: pos, Max: pos.Add(pref)})
+	a.tipShown = true
+	a.dirty = true
+}
+
+// hideTooltip cancela a espera pendente e esconde a dica, se visível.
+func (a *App) hideTooltip() {
+	if a.tipCancel != nil {
+		a.tipCancel()
+		a.tipCancel = nil
+	}
+	if a.tipShown {
+		a.tipShown = false
+		a.dirty = true
+	}
 }
 
 // Run cria a aplicação com New, define root como raiz da árvore e executa o
@@ -176,7 +327,7 @@ func (a *App) installCallbacks() {
 		ev := event.MouseEvent{Kind: event.MouseDown, Pos: pos, Button: mapMouseButton(button)}
 		if action == glfw.Release {
 			ev.Kind = event.MouseUp
-			// Fim da captura: o widget capturado recebe o event.MouseUp mesmo
+			// Fim da captura: o widget capturado recebe o MouseUp mesmo
 			// que o cursor esteja fora dele.
 			if a.captured != nil {
 				if a.captured.HandleEvent(ev) {
@@ -185,11 +336,36 @@ func (a *App) installCallbacks() {
 				a.captured = nil
 				return
 			}
+			if a.overlay != nil {
+				if pos.In(a.overlay.Bounds()) {
+					if widget.DispatchMouse(a.overlay, ev) != nil {
+						a.dirty = true
+					}
+				}
+				return
+			}
 			a.dispatch(ev)
 			return
 		}
+		a.hideTooltip()
+		// Com overlay aberta, ela tem prioridade: clique dentro roteia nela;
+		// clique fora a fecha e é ENGOLIDO (não ativa o que está por baixo).
+		if a.overlay != nil {
+			if !pos.In(a.overlay.Bounds()) {
+				a.closeOverlay()
+				return
+			}
+			if f := widget.FocusableAt(a.overlay, pos); f != nil {
+				a.setFocus(f)
+			}
+			if c := widget.DispatchMouse(a.overlay, ev); c != nil {
+				a.captured = c
+				a.dirty = true
+			}
+			return
+		}
 		// Clique em widget focável muda o foco; em área sem widget focável,
-		// limpa o foco. Quem consumir o event.MouseDown captura o mouse.
+		// limpa o foco. Quem consumir o MouseDown captura o mouse.
 		a.setFocus(widget.FocusableAt(a.root, pos))
 		a.captured = a.dispatch(ev)
 	})
@@ -229,14 +405,28 @@ func (a *App) installCallbacks() {
 		}
 		x, y := a.window.GetCursorPos()
 		pos := a.toBufferCoords(x, y)
+		a.hideTooltip()
+		ev := event.ScrollEvent{Pos: pos, DX: dx, DY: dy}
+		if a.overlay != nil {
+			// Dentro da overlay, roteia nela; fora, fecha e engole.
+			if pos.In(a.overlay.Bounds()) {
+				if widget.DispatchScroll(a.overlay, ev) != nil {
+					a.dirty = true
+				}
+			} else {
+				a.closeOverlay()
+			}
+			return
+		}
 		// Rolagem roteia por GEOMETRIA, como o mouse: vai ao widget mais
 		// profundo sob o cursor e propaga para cima se não consumida.
-		if widget.DispatchScroll(a.root, event.ScrollEvent{Pos: pos, DX: dx, DY: dy}) != nil {
+		if widget.DispatchScroll(a.root, ev) != nil {
 			a.dirty = true
 		}
 	})
 	a.window.SetCursorPosCallback(func(_ *glfw.Window, x, y float64) {
 		pos := a.toBufferCoords(x, y)
+		a.lastCursor = pos
 		ev := event.MouseEvent{Kind: event.MouseMove, Pos: pos, Button: event.MouseButtonLeft}
 		if a.captured != nil {
 			// Durante a captura, os movimentos vão direto ao capturado e o
@@ -244,6 +434,18 @@ func (a *App) installCallbacks() {
 			// de um arraste).
 			if a.captured.HandleEvent(ev) {
 				a.dirty = true
+			}
+			return
+		}
+		if a.overlay != nil {
+			// Hover e movimento restritos à overlay; fora dela, nada realça.
+			if pos.In(a.overlay.Bounds()) {
+				a.updateHoverIn(a.overlay, pos)
+				if widget.DispatchMouse(a.overlay, ev) != nil {
+					a.dirty = true
+				}
+			} else {
+				a.updateHoverIn(nil, pos)
 			}
 			return
 		}
@@ -283,7 +485,17 @@ func (a *App) dispatch(ev event.MouseEvent) widget.Widget {
 // updateHover mantém o widget sob o cursor, entregando event.MouseLeave ao widget
 // anterior e event.MouseEnter ao novo quando o alvo muda.
 func (a *App) updateHover(pos image.Point) {
-	target := widget.DeepestAt(a.root, pos)
+	a.updateHoverIn(a.root, pos)
+}
+
+// updateHoverIn rastreia o hover contra a árvore dada (a raiz normal ou a
+// overlay; nil limpa o hover), entregando MouseLeave/MouseEnter, aplicando o
+// cursor e agendando o tooltip do novo alvo.
+func (a *App) updateHoverIn(root widget.Widget, pos image.Point) {
+	var target widget.Widget
+	if root != nil {
+		target = widget.DeepestAt(root, pos)
+	}
 	if target == a.hovered {
 		return
 	}
@@ -302,6 +514,18 @@ func (a *App) updateHover(pos image.Point) {
 		shape = widget.CursorShapeOf(target)
 	}
 	a.applyCursor(shape)
+
+	// Tooltip: cancela o do alvo anterior e, se o novo tem dica, agenda a
+	// exibição após a pausa do tema.
+	a.hideTooltip()
+	if target != nil && a.overlay == nil {
+		if text := widget.TooltipTextOf(target); text != "" {
+			a.tipCancel = a.schedule(a.theme.TooltipDelay, func() {
+				a.tipCancel = nil
+				a.showTooltip(text)
+			})
+		}
+	}
 }
 
 // applyCursor troca o cursor da janela para o formato dado, criando (e
@@ -332,8 +556,12 @@ func (a *App) applyCursor(shape widget.CursorShape) {
 }
 
 // setFocus move o foco de teclado para w (ou o limpa, se w for nil),
-// notificando os widgets envolvidos com event.FocusEvent.
+// notificando os widgets envolvidos com event.FocusEvent. Focar um widget
+// fora da overlay aberta a fecha (Tab, clique em outro campo).
 func (a *App) setFocus(w widget.Widget) {
+	if a.overlay != nil && w != nil && !widget.Contains(a.overlay, w) {
+		a.closeOverlay()
+	}
 	if a.focused == w {
 		return
 	}
@@ -418,6 +646,12 @@ func mapKey(key glfw.Key) event.Key {
 		return event.KeyHome
 	case glfw.KeyEnd:
 		return event.KeyEnd
+	case glfw.KeyUp:
+		return event.KeyUp
+	case glfw.KeyDown:
+		return event.KeyDown
+	case glfw.KeyEscape:
+		return event.KeyEscape
 	case glfw.KeyA:
 		return event.KeyA
 	case glfw.KeyC:
@@ -452,6 +686,9 @@ func (a *App) resize(w, h int) {
 	a.width, a.height = w, h
 	a.buf = image.NewRGBA(image.Rect(0, 0, w, h))
 	a.pixelRatio = pixelRatio(a.window, w)
+	// Popups e tooltips têm posição absoluta ancorada no layout antigo.
+	a.closeOverlay()
+	a.hideTooltip()
 	a.dirty = true
 }
 
@@ -499,6 +736,15 @@ func (a *App) render() {
 		a.root.Layout(a.buf.Bounds())
 		a.root.Draw(a.buf)
 	}
+	// Camadas superiores: overlay (popups) e, por cima, o tooltip.
+	if a.overlay != nil {
+		widget.Mount(a.overlay, a.theme)
+		a.overlay.Layout(a.overlay.Bounds())
+		a.overlay.Draw(a.buf)
+	}
+	if a.tipShown && a.tipView != nil {
+		a.tipView.Draw(a.buf)
+	}
 
 	a.blitter.Upload(a.buf)
 	fbw, fbh := a.window.GetFramebufferSize()
@@ -515,7 +761,16 @@ func (a *App) render() {
 func (a *App) Run() error {
 	a.render()
 	for !a.window.ShouldClose() {
-		glfw.WaitEvents()
+		// Com timers pendentes (piscada do cursor, tooltip), o loop acorda
+		// no vencimento mais próximo; sem timers, bloqueia como sempre.
+		if wait, ok := a.nextTimerWait(); ok {
+			if wait > 0 {
+				glfw.WaitEventsTimeout(wait.Seconds())
+			}
+		} else {
+			glfw.WaitEvents()
+		}
+		a.runDueTimers()
 		if a.fatalErr != nil {
 			a.destroy()
 			return a.fatalErr
@@ -533,6 +788,9 @@ func (a *App) destroy() {
 	hooks.Repaint = nil
 	hooks.ClipboardRead = nil
 	hooks.ClipboardWrite = nil
+	hooks.Schedule = nil
+	hooks.OpenOverlay = nil
+	hooks.CloseOverlay = nil
 	a.blitter.Destroy()
 	a.window.Destroy()
 	glfw.Terminate()
