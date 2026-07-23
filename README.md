@@ -306,6 +306,16 @@ tecla), use setas/Home/End para mover o cursor, Tab para alternar o foco e
 Enter/Espaço para acionar o botão focado. Clicar em **Enviar** atualiza o
 título com o texto digitado.
 
+E o clássico [7GUIs](https://eugenkiss.github.io/7guis/) — as sete GUIs de
+referência (contador, conversor, reserva de voo, cronômetro, CRUD, desenho
+de círculos com undo/redo e mini-planilha com fórmulas), cada uma num
+pacote com testes de uitest; as limitações encontradas no exercício estão
+registradas em [examples/7guis/GAPS.md](examples/7guis/GAPS.md):
+
+```bash
+go run ./examples/7guis
+```
+
 Testes da arquitetura (rodam sem janela):
 
 ```bash

@@ -248,6 +248,33 @@ func (h *Harness) Find(sel Selector) widget.Widget {
 	return findIn(h.session.Root(), sel)
 }
 
+// FindAll devolve TODOS os widgets que casam com o seletor, em ordem de
+// árvore (overlay primeiro, depois a raiz). Útil quando vários widgets
+// compartilham o mesmo texto ou tipo.
+func (h *Harness) FindAll(sel Selector) []widget.Widget {
+	var out []widget.Widget
+	if ov := h.session.Overlay(); ov != nil {
+		collectIn(ov, sel, &out)
+	}
+	collectIn(h.session.Root(), sel, &out)
+	return out
+}
+
+// collectIn acumula em out todos os widgets da árvore que casam com sel.
+func collectIn(root widget.Widget, sel Selector, out *[]widget.Widget) {
+	if root == nil {
+		return
+	}
+	if sel.Match(root) {
+		*out = append(*out, root)
+	}
+	if p, ok := root.(widget.ParentWidget); ok {
+		for _, ch := range p.Children() {
+			collectIn(ch, sel, out)
+		}
+	}
+}
+
 func (h *Harness) mustFind(sel Selector) widget.Widget {
 	h.t.Helper()
 	w := h.Find(sel)
