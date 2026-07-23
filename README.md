@@ -37,6 +37,10 @@ juigo/
   form/                      validação declarativa sobre estados: Field/
                              Check/Rule, validadores, Valid/Invalid,
                              ErrorOf com semântica touched e Submit
+  quick/                     camada de conveniência: Form validado em uma
+                             expressão, diálogos Confirm/Alert/Prompt,
+                             Labeled e Buttons — compõe widget+form, aceita
+                             e devolve widgets comuns (sem segundo dialeto)
   anim/                      Tween de State[float64] com easing sobre os
                              timers — determinístico no uitest (Advance)
   theme/                     Theme: cores, métricas, escala HiDPI, cache de
@@ -163,8 +167,16 @@ if err := juigo.Run("JUIGo — demo", 480, 240, ui); err != nil {
 }
 ```
 
-Três ideias sustentam essa DX:
+As ideias que sustentam essa DX:
 
+- **Tudo declarável inline** — callbacks e opções são métodos encadeáveis
+  que devolvem o tipo concreto, no estilo dos `Bind*`:
+  `NewInput("E-mail").BindValue(mail).OnSubmit(enviar)`,
+  `NewSlider(0, 1).Step(0.1).OnChange(f)`,
+  `NewModal(conteúdo).CloseOnBackdrop(false).OnClose(f)`,
+  `NewText("").BindText(erro).Danger()`. Qualquer interface cabe em uma
+  única expressão, sem variáveis temporárias; dados simples (`Label`,
+  `Options`, `Min`/`Max`) continuam campos públicos.
 - **Tema ambiente** — construtores não pedem tema: o App o injeta na árvore
   no *mount* (e a cada render, cobrindo widgets adicionados dinamicamente).
   `SetTheme` dá a um widget — ou a uma subárvore inteira, quando aplicado a
@@ -194,10 +206,28 @@ Três ideias sustentam essa DX:
 - **Validação declarativa (`juigo/form`)** — campos são os mesmos States dos
   bindings; `form.Field(nome, form.Required(…), form.MinRunes(3, …))` deriva
   erros e validade como States: `BindDisabled(salvar, f.Invalid())`,
-  `NewText("").BindText(f.ErrorOf(nome))` com `Theme.Danger`. Erros aparecem
-  no blur (`campo.OnBlur = func(){ f.Touch(nome) }`) ou no primeiro
-  `Submit`, e daí acompanham a digitação ao vivo. `Rule` cobre regras
-  multi-fonte (senhas coincidem) e `Check`, booleanas (aceite os termos).
+  `NewText("").BindText(f.ErrorOf(nome)).Danger()`. Erros aparecem no blur
+  (`campo.OnBlur(func(){ f.Touch(nome) })`) ou no primeiro `Submit`, e daí
+  acompanham a digitação ao vivo. `Rule` cobre regras multi-fonte (senhas
+  coincidem) e `Check`, booleanas (aceite os termos).
+- **Camada rápida (`juigo/quick`)** — os rituais mais comuns em uma
+  expressão, compondo widget+form por convenção:
+
+  ```go
+  quick.Form(
+      quick.Text("Nome:", nome).Required("Informe o nome").Min(3, "Mínimo de 3"),
+      quick.Text("E-mail:", mail).Email("E-mail inválido"),
+      quick.Check("Aceito os termos", termos).Required("Aceite os termos"),
+  ).Submit("Salvar", salvar)
+  ```
+
+  monta a grade alinhada com erros por campo e Enter enviando;
+  `quick.Confirm/Alert/Prompt` abrem diálogos de uma chamada — o campo do
+  `Prompt` (e o botão do `Alert`) já nascem focados, porque overlays focam o
+  primeiro focável do conteúdo; `quick.Labeled` e `quick.Buttons` cobrem
+  rótulo+campo e a barra de ações. A regra da rampa: tudo aceita e devolve
+  widgets comuns — quando o padrão pronto não servir, desça um nível naquele
+  ponto (`Model()` dá o form; monte o Modal à mão) sem reescrever a tela.
 - **Animações (`juigo/anim`)** — `anim.Tween(estado, alvo, duração, easing)`
   interpola qualquer `State[float64]` sobre os timers da aplicação, com
   retarget automático; compõe com os bindings (barra de progresso, rolagem

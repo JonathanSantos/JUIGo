@@ -18,7 +18,7 @@ import (
 
 	"juigo"
 	"juigo/anim"
-	"juigo/form"
+	"juigo/quick"
 )
 
 func main() {
@@ -47,42 +47,23 @@ func main() {
 		return fmt.Sprintf("Volume: %.0f%%", v*100)
 	})
 
-	// Modal de cadastro com validação declarativa (juigo/form): erros
-	// aparecem no blur ou no Submit; Salvar só passa com tudo válido.
+	// Modal de cadastro montado pelo juigo/quick: grade alinhada, erros por
+	// campo (no blur ou no envio), Enter enviando — o formulário inteiro em
+	// uma expressão. O campo Nome abre focado (autofoco da overlay).
 	nome := juigo.NewState("")
 	mail := juigo.NewState("")
-	cadastro := form.New(
-		form.Field(nome, form.Required("Informe o nome"), form.MinRunes(3, "Mínimo de 3 caracteres")),
-		form.Field(mail, form.Required("Informe o e-mail"), form.Email("E-mail inválido")),
-	)
-	erroDe := func(chave any) *juigo.Text {
-		t := juigo.NewText("").BindText(cadastro.ErrorOf(chave))
-		t.Danger()
-		return t
-	}
-	campoNome := juigo.NewInput("Nome").BindValue(nome)
-	campoNome.OnBlur(func() { cadastro.Touch(nome) })
-	campoMail := juigo.NewInput("E-mail").BindValue(mail)
-	campoMail.OnBlur(func() { cadastro.Touch(mail) })
-
 	var sobre *juigo.Modal
 	sobre = juigo.NewModal(juigo.NewVBox(
 		juigo.NewText("Cadastro").Center(),
-		juigo.NewGrid(2,
-			juigo.NewText("Nome:"), juigo.Grow(campoNome, 1),
-			juigo.NewText(""), erroDe(nome),
-			juigo.NewText("E-mail:"), juigo.Grow(campoMail, 1),
-			juigo.NewText(""), erroDe(mail),
-		),
-		juigo.NewHBox(
-			juigo.NewSpacer(),
-			juigo.NewButton("Salvar", func() {
-				cadastro.Submit(func() {
-					sobre.Close()
-					eco.Set("Cadastrado: " + nome.Get())
-				})
-			}),
-		),
+		quick.Form(
+			quick.Text("Nome:", nome).Placeholder("Nome").
+				Required("Informe o nome").Min(3, "Mínimo de 3 caracteres"),
+			quick.Text("E-mail:", mail).Placeholder("E-mail").
+				Required("Informe o e-mail").Email("E-mail inválido"),
+		).Submit("Salvar", func() {
+			sobre.Close()
+			eco.Set("Cadastrado: " + nome.Get())
+		}),
 	))
 
 	// Enviar: desabilitado enquanto o campo está vazio (reativo) e com
@@ -158,6 +139,14 @@ func main() {
 		juigo.NewTextArea("Observações (Enter quebra linha)…"),
 		juigo.NewHBox(
 			juigo.NewSpacer(),
+			juigo.Tooltip(juigo.NewButton("Limpar…", func() {
+				quick.Confirm("Limpar o texto digitado?", func(ok bool) {
+					if ok {
+						valor.Set("")
+						eco.Set("Digite algo e clique em Enviar")
+					}
+				})
+			}), "Pede confirmação antes de limpar"),
 			aoTopo,
 			juigo.Tooltip(juigo.NewButton("Cadastrar…", sobre.Show), "Abre o formulário validado"),
 		),

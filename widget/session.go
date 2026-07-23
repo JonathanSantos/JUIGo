@@ -322,6 +322,13 @@ func (s *Session) OpenOverlay(w Widget) {
 	}
 	s.overlay = w
 	Mount(w, s.theme)
+	// Layout imediato: a camada nasce com geometria válida, pronta para
+	// eventos e foco antes mesmo do primeiro frame (como o Render faria).
+	if spansWindow(w) {
+		w.Layout(image.Rectangle{Max: s.size})
+	} else {
+		w.Layout(w.Bounds())
+	}
 	// Foca o primeiro focável DENTRO da camada (um campo de diálogo fica
 	// pronto para digitar); sem descendentes focáveis, a própria camada.
 	// Escape segue fechando modais pela entrega de fallback à overlay.
