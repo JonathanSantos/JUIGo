@@ -458,6 +458,12 @@ func (s *Session) hideTooltip() {
 	}
 }
 
+// Focus move o foco de teclado para w (nil limpa) — a versão pública do
+// setFocus, para foco programático (hooks.Focus, widget.Focus).
+func (s *Session) Focus(w Widget) {
+	s.setFocus(w)
+}
+
 // setFocus move o foco para w (nil limpa), notificando com FocusEvent.
 // Focar fora da overlay aberta a fecha (Tab, clique em outro campo).
 func (s *Session) setFocus(w Widget) {

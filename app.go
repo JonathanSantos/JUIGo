@@ -161,6 +161,10 @@ func New(title string, width, height int) (*App, error) {
 			a.session.CloseOverlayIf(w)
 		}
 	}
+	hooks.Focus = func(v any) {
+		w, _ := v.(widget.Widget)
+		a.session.Focus(w)
+	}
 	return a, nil
 }
 
@@ -554,6 +558,7 @@ func (a *App) destroy() {
 	hooks.Schedule = nil
 	hooks.OpenOverlay = nil
 	hooks.CloseOverlay = nil
+	hooks.Focus = nil
 	a.blitter.Destroy()
 	a.window.Destroy()
 	glfw.Terminate()

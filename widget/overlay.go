@@ -23,6 +23,18 @@ func CloseOverlay(w Widget) {
 	}
 }
 
+// Focus move o foco de teclado para w programaticamente — um campo de
+// edição recém-criado, por exemplo. Focar fora de uma overlay aberta a
+// fecha (mesma regra do Tab). Fora de uma aplicação, é um no-op.
+func Focus(w Widget) {
+	hooks.RequestFocus(w)
+}
+
+// Blur limpa o foco de teclado programaticamente.
+func Blur() {
+	hooks.RequestFocus(nil)
+}
+
 // Contains informa se w pertence à árvore enraizada em root (inclusive se
 // w == root).
 func Contains(root, w Widget) bool {

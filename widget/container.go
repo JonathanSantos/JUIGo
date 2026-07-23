@@ -37,6 +37,14 @@ func (c *Container) Add(ws ...Widget) {
 	c.children = append(c.children, ws...)
 }
 
+// Clear remove todos os filhos e agenda um redesenho — o par do Add para
+// interfaces reconstruídas a partir de dados (listas dinâmicas: Clear +
+// Add a cada mudança; o mount do próximo frame tematiza os novos filhos).
+func (c *Container) Clear() {
+	c.children = c.children[:0]
+	c.Invalidate()
+}
+
 // SetTheme define um tema explícito para o container e o propaga
 // imediatamente à subárvore atual (filhos adicionados depois o herdam no
 // próximo mount). Também permite montar árvores sem App — testes e

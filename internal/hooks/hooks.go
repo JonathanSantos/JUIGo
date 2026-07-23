@@ -47,6 +47,18 @@ var (
 	CloseOverlay func(w any)
 )
 
+// Focus é registrado pelo App para mover o foco de teclado
+// programaticamente (nil limpa). O valor é um widget.Widget — tipado como
+// any para evitar ciclo de import.
+var Focus func(w any)
+
+// RequestFocus move o foco para w se houver aplicação em execução.
+func RequestFocus(w any) {
+	if Focus != nil {
+		Focus(w)
+	}
+}
+
 // ScheduleAfter agenda fn se houver aplicação em execução; sem aplicação,
 // devolve um cancelamento inerte (fn nunca executa).
 func ScheduleAfter(d time.Duration, fn func()) (cancel func()) {

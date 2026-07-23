@@ -292,3 +292,9 @@ func NewEventBus() *EventBus { return event.NewBus() }
 // Mount injeta um tema em uma árvore de widgets sem App — útil para testes e
 // renderização offscreen (ver widget.Mount).
 func Mount(w Widget, t *Theme) { widget.Mount(w, t) }
+
+// Focus move o foco de teclado para w programaticamente (ver widget.Focus).
+func Focus(w Widget) { widget.Focus(w) }
+
+// Blur limpa o foco de teclado programaticamente (ver widget.Blur).
+func Blur() { widget.Blur() }

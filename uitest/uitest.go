@@ -101,6 +101,7 @@ func newWith(t testing.TB, root widget.Widget, th *theme.Theme, width, height in
 	prevSchedule := hooks.Schedule
 	prevOpen := hooks.OpenOverlay
 	prevClose := hooks.CloseOverlay
+	prevFocus := hooks.Focus
 	hooks.Repaint = func() {
 		h.Repaints++
 		h.session.InvalidateAll()
@@ -120,6 +121,10 @@ func newWith(t testing.TB, root widget.Widget, th *theme.Theme, width, height in
 			h.session.CloseOverlayIf(w)
 		}
 	}
+	hooks.Focus = func(v any) {
+		w, _ := v.(widget.Widget)
+		h.session.Focus(w)
+	}
 	t.Cleanup(func() {
 		hooks.Repaint = prevRepaint
 		hooks.Damage = prevDamage
@@ -127,6 +132,7 @@ func newWith(t testing.TB, root widget.Widget, th *theme.Theme, width, height in
 		hooks.Schedule = prevSchedule
 		hooks.OpenOverlay = prevOpen
 		hooks.CloseOverlay = prevClose
+		hooks.Focus = prevFocus
 	})
 
 	h.session.Resize(h.size)
@@ -183,6 +189,13 @@ func (h *Harness) Layout() {
 	h.session.Render(h.buf)
 }
 
+// sync garante um frame antes de interações por GEOMETRIA — a cadência do
+// App real (um frame por evento): árvores recém-montadas ou reconstruídas
+// ganham bounds antes de Find/cliques calcularem posições.
+func (h *Harness) sync() {
+	h.session.Render(h.buf)
+}
+
 // Screenshot compõe o frame atual como o App faria (render INCREMENTAL sobre
 // o framebuffer persistente: só as regiões danificadas são repintadas) e
 // devolve uma CÓPIA da imagem — determinística e segura para comparar entre
@@ -201,6 +214,7 @@ func (h *Harness) Focused() widget.Widget {
 
 // MoveTo move o ponteiro para pos (hover, cursor, tooltip agendado).
 func (h *Harness) MoveTo(pos image.Point) {
+	h.sync()
 	h.session.PointerMove(pos)
 }
 
@@ -212,6 +226,7 @@ func (h *Harness) Hover(sel Selector) {
 
 // ClickAt faz um clique completo (move, pressiona, solta) na posição dada.
 func (h *Harness) ClickAt(pos image.Point) {
+	h.sync()
 	h.MoveTo(pos)
 	h.session.PointerDown(pos, event.MouseButtonLeft)
 	h.session.PointerUp(pos, event.MouseButtonLeft)
@@ -226,6 +241,7 @@ func (h *Harness) Click(sel Selector) {
 // RightClickAt faz um clique completo com o botão DIREITO na posição dada
 // (menus de contexto, ajustes).
 func (h *Harness) RightClickAt(pos image.Point) {
+	h.sync()
 	h.MoveTo(pos)
 	h.session.PointerDown(pos, event.MouseButtonRight)
 	h.session.PointerUp(pos, event.MouseButtonRight)
@@ -241,6 +257,7 @@ func (h *Harness) RightClick(sel Selector) {
 // Drag pressiona em from, arrasta (com captura, como no App real) e solta em
 // to.
 func (h *Harness) Drag(from, to image.Point) {
+	h.sync()
 	h.MoveTo(from)
 	h.session.PointerDown(from, event.MouseButtonLeft)
 	h.session.PointerMove(to)
@@ -272,6 +289,7 @@ func (h *Harness) Scroll(sel Selector, dy float64) {
 // Find procura o primeiro widget que casa com o seletor, na overlay (se
 // aberta) e depois na árvore, em pré-ordem. Devolve nil se não encontrar.
 func (h *Harness) Find(sel Selector) widget.Widget {
+	h.sync()
 	if ov := h.session.Overlay(); ov != nil {
 		if w := findIn(ov, sel); w != nil {
 			return w
@@ -284,6 +302,7 @@ func (h *Harness) Find(sel Selector) widget.Widget {
 // árvore (overlay primeiro, depois a raiz). Útil quando vários widgets
 // compartilham o mesmo texto ou tipo.
 func (h *Harness) FindAll(sel Selector) []widget.Widget {
+	h.sync()
 	var out []widget.Widget
 	if ov := h.session.Overlay(); ov != nil {
 		collectIn(ov, sel, &out)

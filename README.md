@@ -324,6 +324,15 @@ registradas em [examples/7guis/GAPS.md](examples/7guis/GAPS.md):
 go run ./examples/7guis
 ```
 
+E o TodoMVC — o exercício canônico de lista dinâmica, em três camadas
+(domínio puro em `tarefas/`, view-model em `ui/`, composição no `main`),
+com persistência JSON, edição inline por duplo clique e testes de domínio
+e de UI:
+
+```bash
+go run ./examples/todo
+```
+
 Testes da arquitetura (rodam sem janela):
 
 ```bash
