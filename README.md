@@ -17,8 +17,9 @@ shells alternativos, renderização offscreen).
 
 ```
 juigo/
-  doc.go, app.go, alias.go   fachada: App (janela, buffer, foco, captura,
-                             loop dirty) + reexports dos subpacotes
+  doc.go, app.go, alias.go   fachada: App (janela GLFW, buffer, timers, loop
+                             dirty — casca fina sobre a widget.Session) +
+                             reexports dos subpacotes
   widget/                    contrato Widget, BaseWidget, roteamento
                              (DispatchAt/DispatchMouse/DispatchScroll,
                              DeepestAt/FocusableAt/Focusables), Mount,
@@ -29,6 +30,9 @@ juigo/
                              Slider, ProgressBar, Radio, Image, Dropdown, Modal
   offscreen/                 Render/SavePNG: árvore → *image.RGBA sem janela
                              (golden tests, screenshots, depuração)
+  uitest/                    harness de testes de UI: dirige a Session real
+                             com cliques/teclas/hover sintéticos, seletores,
+                             relógio virtual e screenshots determinísticos
   theme/                     Theme: cores, métricas, escala HiDPI, cache de
                              glyphs e a fonte embutida (theme/assets/)
   event/                     tipos de evento, modificadores e o Bus síncrono
@@ -165,6 +169,36 @@ Três ideias sustentam essa DX:
   qualquer árvore em um `*image.RGBA` sem janela nem GL, deterministicamente
   (mesma árvore ⇒ mesmos bytes): golden tests, screenshots de documentação e
   depuração de layout com `offscreen.Render` + `offscreen.SavePNG`.
+
+## Testando sua aplicação
+
+Toda a lógica de interação (roteamento, foco, captura, hover, overlay,
+tooltip) vive na `widget.Session`, sem GLFW — o App real é uma casca fina
+sobre ela. O `juigo/uitest` dirige a MESMA Session sinteticamente, então
+testar pelo harness é testar o comportamento real, headless e sem sleeps:
+
+```go
+func TestFormulario(t *testing.T) {
+    valor := juigo.NewState("")
+    ui := juigo.NewVBox(
+        juigo.NewInput("Digite…").BindValue(valor),
+        juigo.Tooltip(juigo.NewButton("Enviar", enviar), "Envia o formulário"),
+    )
+
+    h := uitest.New(t, ui, 480, 240)
+    h.Click(uitest.Placeholder("Digite…")) // foca de verdade (Session)
+    h.Type("olá, ação")                    // runes, com acentos
+    h.Key(juigo.KeyTab)                    // navegação de foco real
+    h.Hover(uitest.Text("Enviar"))
+    h.Advance(600 * time.Millisecond)      // relógio virtual: tooltip aparece
+    img := h.Screenshot()                  // determinístico → golden tests
+}
+```
+
+Seletores: `uitest.Text`, `uitest.Placeholder`, `uitest.OfType[*juigo.Button]()`
+e `uitest.Where(desc, predicado)`. `h.Session()` expõe foco, overlay, cursor e
+tooltip para asserções; `h.Advance` dispara timers (piscada de cursor, atraso
+de tooltip) na ordem, sem dormir.
 
 ## Rodando a demo
 
