@@ -35,6 +35,8 @@ type (
 	Checkbox = widget.Checkbox
 	// Slider é o controle deslizante de float64.
 	Slider = widget.Slider
+	// Spacer é o widget invisível que expande para empurrar os irmãos.
+	Spacer = widget.Spacer
 	// Align é o alinhamento horizontal do Text.
 	Align = widget.Align
 	// ButtonState é o estado visual do Button.
@@ -141,6 +143,25 @@ func NewVBox(children ...Widget) *VBox { return widget.NewVBox(children...) }
 
 // NewHBox cria um HBox (ver widget.NewHBox).
 func NewHBox(children ...Widget) *HBox { return widget.NewHBox(children...) }
+
+// NewSpacer cria um Spacer com peso 1 (ver widget.NewSpacer).
+func NewSpacer() *Spacer { return widget.NewSpacer() }
+
+// Grow marca w para expandir no eixo principal do VBox/HBox com o peso dado,
+// devolvendo o próprio w (ver widget.Grow).
+func Grow[W Widget](w W, peso int) W { return widget.Grow(w, peso) }
+
+// Centered posiciona w no eixo transversal do box com o tamanho preferido,
+// centralizado (ver widget.Centered).
+func Centered[W Widget](w W) W { return widget.Centered(w) }
+
+// AtStart posiciona w no eixo transversal com o tamanho preferido, alinhado
+// ao início (ver widget.AtStart).
+func AtStart[W Widget](w W) W { return widget.AtStart(w) }
+
+// AtEnd posiciona w no eixo transversal com o tamanho preferido, alinhado ao
+// fim (ver widget.AtEnd).
+func AtEnd[W Widget](w W) W { return widget.AtEnd(w) }
 
 // NewState cria um State com o valor inicial dado (ver state.New).
 func NewState[T any](v T) *State[T] { return state.New(v) }

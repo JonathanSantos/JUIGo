@@ -62,6 +62,10 @@ type BaseWidget struct {
 	// themeExplicit protege um tema definido via SetTheme de ser
 	// sobrescrito pela injeção do mount.
 	themeExplicit bool
+	// grow e cross são os parâmetros de layout em VBox/HBox, definidos
+	// pelas funções Grow, Centered, AtStart e AtEnd (ver flex.go).
+	grow  int
+	cross crossAlign
 }
 
 // Layout guarda os bounds absolutos do widget.

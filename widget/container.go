@@ -117,18 +117,56 @@ func (v *VBox) Pad(padding int) *VBox {
 	return v
 }
 
-// Layout posiciona os filhos de cima para baixo dentro de bounds.
+// Layout posiciona os filhos de cima para baixo dentro de bounds. Filhos
+// marcados com Grow dividem a altura que sobrar, proporcionalmente ao peso;
+// os demais recebem a altura preferida. No eixo transversal (largura), o
+// padrão é esticar — Centered/AtStart/AtEnd usam a largura preferida.
 func (v *VBox) Layout(bounds image.Rectangle) {
 	v.BaseWidget.Layout(bounds)
+	children := v.Children()
+	if len(children) == 0 {
+		return
+	}
 	spacing, padding := v.metrics()
 	x0 := bounds.Min.X + padding
 	x1 := bounds.Max.X - padding
 	y := bounds.Min.Y + padding
-	for _, ch := range v.Children() {
-		h := ch.PreferredSize().Y
-		ch.Layout(image.Rect(x0, y, x1, y+h))
+
+	leftover, weightSum := boxLeftover(children, bounds.Max.Y-padding-y, spacing,
+		func(w Widget) int { return w.PreferredSize().Y })
+	d := distributor{leftover: leftover, weightSum: weightSum}
+
+	for _, ch := range children {
+		h := 0
+		if g := growOf(ch); g > 0 {
+			h = d.next(g)
+		} else {
+			h = ch.PreferredSize().Y
+		}
+		v.placeChild(ch, x0, x1, y, h)
 		y += h + spacing
 	}
+}
+
+// placeChild aplica o alinhamento transversal de um filho do VBox.
+func (v *VBox) placeChild(ch Widget, x0, x1, y, h int) {
+	align := crossOf(ch)
+	if align == crossStretch {
+		ch.Layout(image.Rect(x0, y, x1, y+h))
+		return
+	}
+	w := ch.PreferredSize().X
+	if max := x1 - x0; w > max {
+		w = max
+	}
+	x := x0
+	switch align {
+	case crossCenter:
+		x = x0 + (x1-x0-w)/2
+	case crossEnd:
+		x = x1 - w
+	}
+	ch.Layout(image.Rect(x, y, x+w, y+h))
 }
 
 // PreferredSize devolve a maior largura preferida entre os filhos e a soma
@@ -179,17 +217,56 @@ func (h *HBox) Pad(padding int) *HBox {
 }
 
 // Layout posiciona os filhos da esquerda para a direita dentro de bounds.
+// Filhos marcados com Grow dividem a largura que sobrar, proporcionalmente
+// ao peso; os demais recebem a largura preferida. No eixo transversal
+// (altura), o padrão é esticar — Centered/AtStart/AtEnd usam a altura
+// preferida.
 func (h *HBox) Layout(bounds image.Rectangle) {
 	h.BaseWidget.Layout(bounds)
+	children := h.Children()
+	if len(children) == 0 {
+		return
+	}
 	spacing, padding := h.metrics()
 	y0 := bounds.Min.Y + padding
 	y1 := bounds.Max.Y - padding
 	x := bounds.Min.X + padding
-	for _, ch := range h.Children() {
-		w := ch.PreferredSize().X
-		ch.Layout(image.Rect(x, y0, x+w, y1))
+
+	leftover, weightSum := boxLeftover(children, bounds.Max.X-padding-x, spacing,
+		func(w Widget) int { return w.PreferredSize().X })
+	d := distributor{leftover: leftover, weightSum: weightSum}
+
+	for _, ch := range children {
+		w := 0
+		if g := growOf(ch); g > 0 {
+			w = d.next(g)
+		} else {
+			w = ch.PreferredSize().X
+		}
+		h.placeChild(ch, y0, y1, x, w)
 		x += w + spacing
 	}
+}
+
+// placeChild aplica o alinhamento transversal de um filho do HBox.
+func (h *HBox) placeChild(ch Widget, y0, y1, x, w int) {
+	align := crossOf(ch)
+	if align == crossStretch {
+		ch.Layout(image.Rect(x, y0, x+w, y1))
+		return
+	}
+	ph := ch.PreferredSize().Y
+	if max := y1 - y0; ph > max {
+		ph = max
+	}
+	y := y0
+	switch align {
+	case crossCenter:
+		y = y0 + (y1-y0-ph)/2
+	case crossEnd:
+		y = y1 - ph
+	}
+	ch.Layout(image.Rect(x, y, x+w, y+ph))
 }
 
 // PreferredSize devolve a soma das larguras preferidas dos filhos e a maior
