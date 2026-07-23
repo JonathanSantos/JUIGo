@@ -80,6 +80,14 @@ execução só por `internal/hooks`, registrado na inicialização.
   frames e só é realocado no resize. Com timers pendentes (cursor piscante,
   atraso do tooltip), o loop usa `WaitEventsTimeout` para acordar no
   vencimento — sem goroutines: os callbacks executam na main thread.
+- **Dirty regions**: o dano nasce nos widgets (setters invalidam os próprios
+  bounds; o diff de bounds no Layout cobre cascatas de geometria sozinho) e
+  a Session acumula a união: cada frame repinta SÓ a região suja (visão
+  `render.Clip`) e sobe só esse retângulo à GPU (`TexSubImage2D` parcial).
+  Um golden test garante que o frame incremental é byte a byte igual a uma
+  repintura completa após dezenas de interações. Regra prática: mude a
+  interface por setters/States; mutação direta de campos públicos exige
+  `App.Invalidate()`.
 - **Overlay**: uma camada de sobreposição (popup do Dropdown) desenhada por
   cima da árvore, com prioridade nos eventos: clique/rolagem fora fecham e
   são engolidos, Tab/foco fora fecham, e o foco anterior é restaurado. O
