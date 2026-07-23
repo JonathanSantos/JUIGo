@@ -138,6 +138,7 @@ const (
 	KeyUp        = event.KeyUp
 	KeyDown      = event.KeyDown
 	KeyEscape    = event.KeyEscape
+	KeyI         = event.KeyI
 	KeyA         = event.KeyA
 	KeyC         = event.KeyC
 	KeyV         = event.KeyV

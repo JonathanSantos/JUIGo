@@ -82,6 +82,8 @@ const (
 	KeyDown
 	// KeyEscape cancela/fecha (ex.: popup do Dropdown).
 	KeyEscape
+	// KeyI é a letra do atalho do inspector de depuração (Ctrl/Cmd+I).
+	KeyI
 	// KeyA, KeyC, KeyV e KeyX são as letras dos atalhos de edição —
 	// selecionar tudo, copiar, colar e recortar — quando combinadas com o
 	// modificador de comando. Texto comum não passa por Key: chega como

@@ -46,6 +46,9 @@ type Session struct {
 	tipView   *TooltipView
 	tipCancel func()
 	tipShown  bool
+
+	// inspect liga a camada do inspector de depuração (ver inspector.go).
+	inspect bool
 }
 
 // NewSession cria uma sessão com o tema dado.
@@ -185,6 +188,10 @@ func (s *Session) PointerUp(pos image.Point, btn event.MouseButton) {
 // hover e roteia por geometria.
 func (s *Session) PointerMove(pos image.Point) {
 	s.lastCursor = pos
+	if s.inspect {
+		// O crachá segue o ponteiro: redesenha a cada movimento.
+		s.markDirty()
+	}
 	ev := event.MouseEvent{Kind: event.MouseMove, Pos: pos, Button: event.MouseButtonLeft}
 	if s.captured != nil {
 		if s.captured.HandleEvent(ev) {
@@ -221,6 +228,10 @@ func (s *Session) KeyPress(k event.Key, mods event.Modifiers) {
 		} else {
 			s.focusNext()
 		}
+		return
+	}
+	if k == event.KeyI && mods.Command() {
+		s.ToggleInspector()
 		return
 	}
 	ke := event.KeyEvent{Key: k, Mods: mods}
@@ -489,5 +500,8 @@ func (s *Session) Render(dst *image.RGBA) {
 	}
 	if s.tipShown && s.tipView != nil {
 		s.tipView.Draw(dst)
+	}
+	if s.inspect {
+		s.drawInspector(dst)
 	}
 }

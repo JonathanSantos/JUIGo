@@ -362,6 +362,8 @@ func mapKey(key glfw.Key) event.Key {
 		return event.KeyDown
 	case glfw.KeyEscape:
 		return event.KeyEscape
+	case glfw.KeyI:
+		return event.KeyI
 	case glfw.KeyA:
 		return event.KeyA
 	case glfw.KeyC:
