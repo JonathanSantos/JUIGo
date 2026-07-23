@@ -383,12 +383,24 @@ func (a *App) installCallbacks() {
 			return
 		}
 		k := mapKey(key)
-		if k == event.KeyUnknown || a.focused == nil {
+		if k == event.KeyUnknown {
 			return
 		}
 		// Teclado roteia por FOCO: direto ao widget focado, sem hit-test.
-		if a.focused.HandleEvent(event.KeyEvent{Key: k, Mods: mods}) {
-			a.dirty = true
+		ke := event.KeyEvent{Key: k, Mods: mods}
+		consumed := false
+		if a.focused != nil {
+			consumed = a.focused.HandleEvent(ke)
+			if consumed {
+				a.dirty = true
+			}
+		}
+		// Escape não consumido com overlay aberta vai à própria overlay
+		// (fecha o Modal mesmo com o foco em um campo interno).
+		if !consumed && k == event.KeyEscape && a.overlay != nil {
+			if a.overlay.HandleEvent(ke) {
+				a.dirty = true
+			}
 		}
 	})
 	a.window.SetCharCallback(func(_ *glfw.Window, r rune) {
@@ -578,7 +590,7 @@ func (a *App) setFocus(w widget.Widget) {
 // focusNext avança o foco para o próximo widget focável na ordem da árvore,
 // com wraparound. Sem widgets focáveis, não faz nada.
 func (a *App) focusNext() {
-	order := widget.Focusables(a.root)
+	order := widget.Focusables(a.focusRoot())
 	if len(order) == 0 {
 		return
 	}
@@ -595,7 +607,7 @@ func (a *App) focusNext() {
 // focusPrev recua o foco para o widget focável anterior na ordem da árvore
 // (Shift+Tab), com wraparound.
 func (a *App) focusPrev() {
-	order := widget.Focusables(a.root)
+	order := widget.Focusables(a.focusRoot())
 	if len(order) == 0 {
 		return
 	}
@@ -607,6 +619,21 @@ func (a *App) focusPrev() {
 		}
 	}
 	a.setFocus(order[prev])
+}
+
+// focusRoot devolve a árvore onde Tab/Shift+Tab circulam: a overlay quando
+// aberta (o foco não escapa de um Modal), senão a raiz.
+func (a *App) focusRoot() widget.Widget {
+	if a.overlay != nil {
+		return a.overlay
+	}
+	return a.root
+}
+
+// spansWindow informa se a overlay atual cobre a janela inteira.
+func spansWindow(w widget.Widget) bool {
+	s, ok := w.(widget.OverlaySpanning)
+	return ok && s.SpansWindow()
 }
 
 // mapMods converte os modificadores do GLFW para o tipo do JUIGo.
@@ -686,8 +713,11 @@ func (a *App) resize(w, h int) {
 	a.width, a.height = w, h
 	a.buf = image.NewRGBA(image.Rect(0, 0, w, h))
 	a.pixelRatio = pixelRatio(a.window, w)
-	// Popups e tooltips têm posição absoluta ancorada no layout antigo.
-	a.closeOverlay()
+	// Popups ancorados no layout antigo fecham; overlays de janela inteira
+	// (Modal) apenas se reacomodam no próximo layout.
+	if a.overlay != nil && !spansWindow(a.overlay) {
+		a.closeOverlay()
+	}
 	a.hideTooltip()
 	a.dirty = true
 }
@@ -736,10 +766,14 @@ func (a *App) render() {
 		a.root.Layout(a.buf.Bounds())
 		a.root.Draw(a.buf)
 	}
-	// Camadas superiores: overlay (popups) e, por cima, o tooltip.
+	// Camadas superiores: overlay (popups/modais) e, por cima, o tooltip.
 	if a.overlay != nil {
 		widget.Mount(a.overlay, a.theme)
-		a.overlay.Layout(a.overlay.Bounds())
+		if spansWindow(a.overlay) {
+			a.overlay.Layout(a.buf.Bounds())
+		} else {
+			a.overlay.Layout(a.overlay.Bounds())
+		}
 		a.overlay.Draw(a.buf)
 	}
 	if a.tipShown && a.tipView != nil {

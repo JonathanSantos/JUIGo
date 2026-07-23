@@ -3,6 +3,8 @@ package render
 import (
 	"image"
 	"image/color"
+	"image/draw"
+	"math"
 
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
@@ -69,6 +71,33 @@ func DrawText(dst *image.RGBA, face font.Face, s string, dot image.Point, c colo
 // Theme.MeasureString, a única fonte de verdade para largura de texto.
 func MeasureText(face font.Face, s string) int {
 	return font.MeasureString(face, s).Ceil()
+}
+
+// fillColor e fillSrc são reutilizados por FillRectOver (mesmo padrão de
+// textSrc: ponteiro estável para evitar boxing por chamada). Single-threaded.
+var (
+	fillColor color.RGBA
+	fillSrc   = &image.Uniform{C: &fillColor}
+)
+
+// FillRectOver preenche r com a cor c APLICANDO blending alfa (src-over) —
+// ao contrário de FillRect, que sobrescreve. Usa o caminho rápido da
+// stdlib; não aloca.
+func FillRectOver(dst *image.RGBA, r image.Rectangle, c color.RGBA) {
+	fillColor = c
+	draw.Draw(dst, r, fillSrc, image.Point{}, draw.Over)
+}
+
+// FillCircle preenche o círculo de centro c e raio r (em pixels), sem
+// blending, por varredura de linhas. Não aloca.
+func FillCircle(dst *image.RGBA, c image.Point, r int, col color.RGBA) {
+	if r <= 0 {
+		return
+	}
+	for dy := -r; dy <= r; dy++ {
+		dx := int(math.Sqrt(float64(r*r - dy*dy)))
+		FillRect(dst, image.Rect(c.X-dx, c.Y+dy, c.X+dx, c.Y+dy+1), col)
+	}
 }
 
 // Clip preenche out com uma VISÃO de dst recortada a r — mesmos pixels, sem

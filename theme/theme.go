@@ -101,6 +101,10 @@ type Theme struct {
 	// TooltipDelay é quanto tempo o ponteiro precisa pausar sobre um widget
 	// com Tooltip até a dica aparecer.
 	TooltipDelay time.Duration
+	// TextAreaMinLines é a altura preferida da TextArea, em linhas.
+	TextAreaMinLines int
+	// Backdrop é a cor translúcida do pano de fundo do Modal.
+	Backdrop color.RGBA
 
 	fnt        *opentype.Font
 	scale      float64
@@ -151,8 +155,10 @@ func Default() (*Theme, error) {
 		ScrollStep:           40,
 		ScrollbarWidth:       4,
 
-		CaretBlink:   530 * time.Millisecond,
-		TooltipDelay: 600 * time.Millisecond,
+		CaretBlink:       530 * time.Millisecond,
+		TooltipDelay:     600 * time.Millisecond,
+		TextAreaMinLines: 4,
+		Backdrop:         color.RGBA{A: 0x66},
 
 		fnt: parsed,
 	}

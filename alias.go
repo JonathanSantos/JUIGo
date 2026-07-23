@@ -1,6 +1,8 @@
 package juigo
 
 import (
+	"image"
+
 	"juigo/event"
 	"juigo/state"
 	"juigo/theme"
@@ -41,6 +43,16 @@ type (
 	Scroll = widget.Scroll
 	// Dropdown é o seletor de uma opção com popup em overlay.
 	Dropdown = widget.Dropdown
+	// ProgressBar é o indicador só-leitura de progresso.
+	ProgressBar = widget.ProgressBar
+	// Image exibe uma image.Image com proporção preservada.
+	Image = widget.Image
+	// Radio é a opção de escolha exclusiva (grupo = State compartilhado).
+	Radio = widget.Radio
+	// TextArea é o editor de texto multilinha.
+	TextArea = widget.TextArea
+	// Modal é o diálogo centralizado sobre pano de fundo translúcido.
+	Modal = widget.Modal
 	// Align é o alinhamento horizontal do Text.
 	Align = widget.Align
 	// ButtonState é o estado visual do Button.
@@ -169,6 +181,23 @@ func NewScroll(child Widget) *Scroll { return widget.NewScroll(child) }
 
 // NewDropdown cria um seletor com as opções dadas (ver widget.NewDropdown).
 func NewDropdown(options ...string) *Dropdown { return widget.NewDropdown(options...) }
+
+// NewProgressBar cria uma barra de progresso (ver widget.NewProgressBar).
+func NewProgressBar(min, max float64) *ProgressBar { return widget.NewProgressBar(min, max) }
+
+// NewImage cria um widget de imagem (ver widget.NewImage).
+func NewImage(src image.Image) *Image { return widget.NewImage(src) }
+
+// NewRadio cria um rádio de escolha exclusiva; agrupe vários vinculando ao
+// mesmo State com BindValue (ver widget.NewRadio).
+func NewRadio(label, value string) *Radio { return widget.NewRadio(label, value) }
+
+// NewTextArea cria um editor multilinha (ver widget.NewTextArea).
+func NewTextArea(placeholder string) *TextArea { return widget.NewTextArea(placeholder) }
+
+// NewModal cria um diálogo modal com o conteúdo dado; exiba com Show (ver
+// widget.NewModal).
+func NewModal(content Widget) *Modal { return widget.NewModal(content) }
 
 // Tooltip associa a w um texto de dica exibido quando o ponteiro pausa sobre
 // o widget, devolvendo o próprio w (ver widget.Tooltip).
