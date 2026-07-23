@@ -192,6 +192,15 @@ Três ideias sustentam essa DX:
   (mesma árvore ⇒ mesmos bytes): golden tests, screenshots de documentação e
   depuração de layout com `offscreen.Render` + `offscreen.SavePNG`.
 
+## Inspector de depuração
+
+**Ctrl/Cmd+I** em qualquer app JUIGo abre o inspector: contornos de todos os
+widgets, realce do widget sob o ponteiro (inclusive desabilitados) e um
+crachá com tipo, tamanho, posição, tamanho preferido e flags. A interface
+continua interativa; aperte de novo para fechar. Funciona também no uitest
+(`h.Key(juigo.KeyI, juigo.ModControl)`) e headless via
+`Session.SetInspector`.
+
 ## Testando sua aplicação
 
 Toda a lógica de interação (roteamento, foco, captura, hover, overlay,
