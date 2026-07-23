@@ -81,10 +81,18 @@ var (
 )
 
 // FillRectOver preenche r com a cor c APLICANDO blending alfa (src-over) —
-// ao contrário de FillRect, que sobrescreve. Usa o caminho rápido da
-// stdlib; não aloca.
+// ao contrário de FillRect, que sobrescreve. A cor é interpretada com alfa
+// NÃO pré-multiplicado (straight): informe R/G/B plenos e A com a opacidade;
+// a pré-multiplicação exigida pelo draw.Over da stdlib acontece aqui dentro.
+// Usa o caminho rápido da stdlib; não aloca.
 func FillRectOver(dst *image.RGBA, r image.Rectangle, c color.RGBA) {
-	fillColor = c
+	a := uint32(c.A)
+	fillColor = color.RGBA{
+		R: uint8(uint32(c.R) * a / 255),
+		G: uint8(uint32(c.G) * a / 255),
+		B: uint8(uint32(c.B) * a / 255),
+		A: c.A,
+	}
 	draw.Draw(dst, r, fillSrc, image.Point{}, draw.Over)
 }
 
