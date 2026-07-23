@@ -25,8 +25,8 @@ juigo/
                              flex (Grow/Spacer/Centered/AtStart/AtEnd),
                              Container/VBox/HBox, Scroll (clipping),
                              overlay (OpenOverlay/CloseOverlay), CursorShape,
-                             Tooltip, Text, Button, Input, Checkbox, Slider,
-                             Dropdown
+                             Tooltip, Text, Button, Input, TextArea, Checkbox,
+                             Slider, ProgressBar, Radio, Image, Dropdown, Modal
   offscreen/                 Render/SavePNG: árvore → *image.RGBA sem janela
                              (golden tests, screenshots, depuração)
   theme/                     Theme: cores, métricas, escala HiDPI, cache de
@@ -185,8 +185,8 @@ go test ./...
 
 ## Fora de escopo (por enquanto)
 
-Animações, dirty regions, temas alternáveis, acessibilidade, IME, outros
-widgets (radio/modal/TextArea multilinha). A arquitetura
+Animações, dirty regions, temas alternáveis, acessibilidade, IME, quebra
+automática de linha na TextArea (soft wrap), tabelas/árvores. A arquitetura
 foi pensada para recebê-los depois: eventos são tipos abertos, o tema é
 injetado, containers são aninháveis e o desenho é isolado em `render/`.
 
