@@ -4,6 +4,8 @@ import (
 	"image"
 	"unicode/utf8"
 
+	"golang.org/x/image/font"
+
 	"juigo/event"
 	"juigo/internal/hooks"
 	"juigo/render"
@@ -49,7 +51,7 @@ type TextArea struct {
 	caretX     int
 	anchorLine int
 	anchorX    int
-	syncScale  float64
+	syncFace   font.Face
 
 	// goalX é a coluna (px) desejada nas navegações verticais; -1 usa a
 	// posição atual do cursor.
@@ -149,9 +151,9 @@ func (t *TextArea) sync() {
 		t.caretX = t.theme.MeasureString(string(t.runes[t.lineStarts[t.caretLine]:t.cursor]))
 		t.anchorLine = t.lineOf(t.anchor)
 		t.anchorX = t.theme.MeasureString(string(t.runes[t.lineStarts[t.anchorLine]:t.anchor]))
-		t.syncScale = t.theme.Scale()
+		t.syncFace = t.theme.Face
 	} else {
-		t.caretLine, t.caretX, t.anchorLine, t.anchorX, t.syncScale = 0, 0, 0, 0, 0
+		t.caretLine, t.caretX, t.anchorLine, t.anchorX, t.syncFace = 0, 0, 0, 0, nil
 	}
 	t.restartBlink()
 }
@@ -552,7 +554,7 @@ func (t *TextArea) Draw(dst *image.RGBA) {
 	}
 	th := t.theme
 	bounds := t.Bounds()
-	if t.syncScale != th.Scale() {
+	if t.syncFace != th.Face {
 		t.sync()
 	}
 

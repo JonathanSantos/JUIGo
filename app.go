@@ -416,6 +416,22 @@ func (a *App) Session() *widget.Session {
 	return a.session
 }
 
+// SetTheme troca o tema da aplicação em runtime (ex.: claro ↔ escuro): o
+// novo tema é levado à escala atual da janela e re-propagado pela árvore no
+// próximo frame — widgets com SetTheme explícito mantêm o próprio tema.
+func (a *App) SetTheme(th *theme.Theme) error {
+	if th == nil || th == a.theme {
+		return nil
+	}
+	if err := th.SetScale(a.theme.Scale()); err != nil {
+		return err
+	}
+	a.theme = th
+	a.session.SetTheme(th)
+	a.dirty = true
+	return nil
+}
+
 // SetRoot define o widget raiz da árvore de interface, injeta o tema da
 // aplicação na árvore (mount) e agenda um redesenho.
 func (a *App) SetRoot(w widget.Widget) {

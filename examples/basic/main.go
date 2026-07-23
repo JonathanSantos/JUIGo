@@ -26,6 +26,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	temaEscuro, err := juigo.DarkTheme()
+	if err != nil {
+		log.Fatal(err)
+	}
+	temaClaro := app.Theme()
+
 	valor := juigo.NewState("")
 	eco := juigo.NewState("Digite algo e clique em Enviar")
 	notif := juigo.NewState(true)
@@ -91,6 +97,19 @@ func main() {
 	}), "Atualiza o título com o texto digitado"),
 		juigo.Map(valor, func(s string) bool { return s == "" }))
 
+	// Tema claro ↔ escuro ao vivo: o Watch troca o tema da aplicação e o
+	// mount re-propaga a nova paleta pela árvore no próximo frame.
+	escuro := juigo.NewState(false)
+	escuro.Watch(func(v bool) {
+		t := temaClaro
+		if v {
+			t = temaEscuro
+		}
+		if err := app.SetTheme(t); err != nil {
+			log.Print(err)
+		}
+	})
+
 	lista := juigo.NewVBox().Gap(4).Pad(0)
 	for i := 1; i <= 25; i++ {
 		lista.Add(juigo.NewText(fmt.Sprintf("Item %02d da lista rolável — use a roda do mouse", i)))
@@ -110,7 +129,11 @@ func main() {
 			juigo.NewRadio("Grátis", "free").BindValue(plano),
 			juigo.NewRadio("Pro", "pro").BindValue(plano),
 		),
-		juigo.NewCheckbox("Notificações").BindChecked(notif),
+		juigo.NewHBox(
+			juigo.NewCheckbox("Notificações").BindChecked(notif),
+			juigo.NewSpacer(),
+			juigo.NewCheckbox("Tema escuro").BindChecked(escuro),
+		),
 		juigo.NewSlider(0, 1).BindValue(volume),
 		juigo.NewProgressBar(0, 1).BindValue(volume),
 		juigo.NewText("").BindText(volTxt).Right(),

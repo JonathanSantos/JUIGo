@@ -236,6 +236,10 @@ func Combine[T any](compute func() T, fontes ...Observable) *State[T] {
 	return state.Combine(compute, fontes...)
 }
 
+// DarkTheme constrói o tema escuro na escala 1; troque em runtime com
+// App.SetTheme (ver theme.Dark).
+func DarkTheme() (*Theme, error) { return theme.Dark() }
+
 // DefaultTheme constrói o tema padrão na escala 1 (ver theme.Default).
 func DefaultTheme() (*Theme, error) { return theme.Default() }
 

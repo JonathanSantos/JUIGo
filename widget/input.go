@@ -3,6 +3,8 @@ package widget
 import (
 	"image"
 
+	"golang.org/x/image/font"
+
 	"juigo/event"
 	"juigo/internal/hooks"
 	"juigo/render"
@@ -42,13 +44,13 @@ type Input struct {
 	bound     *state.State[string] // binding de duas vias (ver BindValue)
 
 	// Caches atualizados a cada edição, para que Draw não aloque.
-	// syncScale registra a escala do tema usada no último sync: se a escala
-	// mudar (ex.: janela movida para outro monitor), são recalculados.
-	text      string
-	cursorX   int
-	anchorX   int
-	textW     int
-	syncScale float64
+	// syncFace registra a face usada no último sync: se ela mudar (escala
+	// nova OU troca de tema em runtime), as medidas são recalculadas.
+	text     string
+	cursorX  int
+	anchorX  int
+	textW    int
+	syncFace font.Face
 
 	// scrollX é a rolagem horizontal do texto, em pixels: quando o texto é
 	// maior que a área útil, o campo rola para manter o cursor visível.
@@ -386,14 +388,14 @@ func (in *Input) sync() {
 	in.text = string(in.runes)
 	if in.theme == nil {
 		// Antes do mount não há como medir; Draw refaz o sync ao detectar a
-		// mudança de escala (0 → escala do tema).
-		in.cursorX, in.anchorX, in.syncScale = 0, 0, 0
+		// primeira face real (nil → face do tema).
+		in.cursorX, in.anchorX, in.syncFace = 0, 0, nil
 		return
 	}
 	in.cursorX = in.theme.MeasureString(string(in.runes[:in.cursor]))
 	in.anchorX = in.theme.MeasureString(string(in.runes[:in.anchor]))
 	in.textW = in.theme.MeasureString(in.text)
-	in.syncScale = in.theme.Scale()
+	in.syncFace = in.theme.Face
 }
 
 // emitChange propaga uma edição para o State vinculado (se houver) e para o
@@ -445,8 +447,8 @@ func (in *Input) Draw(dst *image.RGBA) {
 	bounds := in.Bounds()
 	th := in.theme
 
-	// A escala mudou desde o último sync? Recalcula as medidas uma vez.
-	if in.syncScale != th.Scale() {
+	// A face mudou desde o último sync (escala ou tema)? Recalcula uma vez.
+	if in.syncFace != th.Face {
 		in.sync()
 	}
 

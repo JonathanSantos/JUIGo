@@ -47,3 +47,25 @@ func TestTemaEscala(t *testing.T) {
 		t.Fatal("SetScale(0) deveria devolver erro")
 	}
 }
+
+// TestTemaEscuro garante que o escuro compartilha métricas com o padrão e
+// diverge na paleta, mantendo o contrato de escala.
+func TestTemaEscuro(t *testing.T) {
+	claro := newTestTheme(t)
+	escuro, err := Dark()
+	if err != nil {
+		t.Fatalf("Dark: %v", err)
+	}
+	if escuro.LineHeight() != claro.LineHeight() || escuro.Padding != claro.Padding {
+		t.Fatal("escuro deveria compartilhar métricas com o padrão")
+	}
+	if escuro.Background == claro.Background || escuro.Text == claro.Text {
+		t.Fatal("escuro deveria divergir na paleta")
+	}
+	if err := escuro.SetScale(2); err != nil {
+		t.Fatalf("SetScale no escuro: %v", err)
+	}
+	if escuro.Px(8) != 16 {
+		t.Fatalf("Px na escala 2 = %d, esperado 16", escuro.Px(8))
+	}
+}

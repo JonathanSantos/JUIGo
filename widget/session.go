@@ -79,6 +79,16 @@ func (s *Session) Theme() *theme.Theme {
 	return s.theme
 }
 
+// SetTheme troca o tema da sessão em runtime: o próximo Render re-propaga o
+// novo tema pela árvore (widgets com SetTheme explícito mantêm o próprio).
+func (s *Session) SetTheme(th *theme.Theme) {
+	if th == nil || th == s.theme {
+		return
+	}
+	s.theme = th
+	s.markDirty()
+}
+
 // Focused devolve o widget com o foco de teclado (nil se nenhum).
 func (s *Session) Focused() Widget {
 	return s.focused
