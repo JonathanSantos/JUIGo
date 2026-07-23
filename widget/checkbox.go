@@ -1,14 +1,17 @@
-package juigo
+package widget
 
 import (
 	"image"
 
+	"juigo/event"
+	"juigo/internal/hooks"
 	"juigo/render"
+	"juigo/state"
 )
 
 // Checkbox é uma caixa de marcação com rótulo. A semântica de acionamento é
-// a mesma do Button: MouseDown dentro arma, MouseUp dentro alterna,
-// MouseLeave pressionado cancela. É focável; Enter ou Espaço alternam quando
+// a mesma do Button: event.MouseDown dentro arma, event.MouseUp dentro alterna,
+// event.MouseLeave pressionado cancela. É focável; Enter ou Espaço alternam quando
 // focado.
 //
 // Nasce pronto para reatividade: BindChecked vincula o valor a um
@@ -25,7 +28,7 @@ type Checkbox struct {
 	pressed bool
 	hover   bool
 	focused bool
-	bound   *State[bool]
+	bound   *state.State[bool]
 }
 
 // NewCheckbox cria um checkbox desmarcado com o rótulo dado. O tema é
@@ -46,12 +49,12 @@ func (c *Checkbox) SetChecked(v bool) {
 		return
 	}
 	c.checked = v
-	requestRepaint()
+	hooks.RequestRepaint()
 }
 
 // BindChecked vincula o valor ao State em DUAS vias: alternâncias do usuário
 // fazem Set no State, e um Set externo atualiza a caixa. Encadeável.
-func (c *Checkbox) BindChecked(s *State[bool]) *Checkbox {
+func (c *Checkbox) BindChecked(s *state.State[bool]) *Checkbox {
 	c.bound = s
 	c.SetChecked(s.Get())
 	s.Watch(func(v bool) {
@@ -82,35 +85,35 @@ func (c *Checkbox) PreferredSize() image.Point {
 
 // HandleEvent implementa o acionamento por mouse e teclado e o registro de
 // foco.
-func (c *Checkbox) HandleEvent(ev Event) bool {
+func (c *Checkbox) HandleEvent(ev event.Event) bool {
 	switch e := ev.(type) {
-	case KeyEvent:
-		if e.Key == KeyEnter || e.Key == KeySpace {
+	case event.KeyEvent:
+		if e.Key == event.KeyEnter || e.Key == event.KeySpace {
 			c.toggle()
 			return true
 		}
 		return false
-	case FocusEvent:
+	case event.FocusEvent:
 		c.focused = e.Gained
 		return true
-	case MouseEvent:
+	case event.MouseEvent:
 		switch e.Kind {
-		case MouseEnter:
+		case event.MouseEnter:
 			c.hover = true
 			return true
-		case MouseLeave:
+		case event.MouseLeave:
 			// Sair com o botão pressionado cancela sem alternar.
 			c.hover = false
 			c.pressed = false
 			return true
-		case MouseDown:
-			if e.Button != MouseButtonLeft {
+		case event.MouseDown:
+			if e.Button != event.MouseButtonLeft {
 				return false
 			}
 			c.pressed = true
 			return true
-		case MouseUp:
-			if e.Button != MouseButtonLeft || !c.pressed {
+		case event.MouseUp:
+			if e.Button != event.MouseButtonLeft || !c.pressed {
 				return false
 			}
 			c.pressed = false

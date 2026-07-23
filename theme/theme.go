@@ -1,4 +1,4 @@
-package juigo
+package theme
 
 import (
 	_ "embed"
@@ -89,10 +89,10 @@ type Theme struct {
 	cache      *render.GlyphCache
 }
 
-// DefaultTheme constrói o tema padrão do JUIGo na escala 1, interpretando a
+// Default constrói o tema padrão do JUIGo na escala 1, interpretando a
 // fonte embutida. Falhas na fonte são devolvidas como erro. O App ajusta a
 // escala para o monitor via SetScale.
-func DefaultTheme() (*Theme, error) {
+func Default() (*Theme, error) {
 	parsed, err := opentype.Parse(embeddedFontTTF)
 	if err != nil {
 		return nil, fmt.Errorf("juigo: falha ao interpretar a fonte embutida: %w", err)

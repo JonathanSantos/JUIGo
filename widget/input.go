@@ -1,15 +1,18 @@
-package juigo
+package widget
 
 import (
 	"image"
 
+	"juigo/event"
+	"juigo/internal/hooks"
 	"juigo/render"
+	"juigo/state"
 )
 
 // Input é um campo de texto de linha única. Toda manipulação opera sobre
 // []rune — nunca sobre bytes — para que acentuação e qualquer texto UTF-8
 // funcionem corretamente. É focável; quando focado, desenha o cursor como
-// uma linha vertical e recebe caracteres (CharEvent) e teclas de edição:
+// uma linha vertical e recebe caracteres (event.CharEvent) e teclas de edição:
 // Backspace, Delete, setas, Home e End.
 //
 // Suporta seleção de texto — arrastando com o mouse (via captura do App) ou
@@ -32,7 +35,7 @@ type Input struct {
 	anchor    int
 	selecting bool // arraste de seleção com o mouse em andamento
 	focused   bool
-	bound     *State[string] // binding de duas vias (ver BindValue)
+	bound     *state.State[string] // binding de duas vias (ver BindValue)
 
 	// Caches atualizados a cada edição, para que Draw não aloque.
 	// syncScale registra a escala do tema usada no último sync: se a escala
@@ -61,13 +64,13 @@ func (in *Input) SetText(s string) {
 	in.cursor = len(in.runes)
 	in.anchor = in.cursor
 	in.sync()
-	requestRepaint()
+	hooks.RequestRepaint()
 }
 
 // BindValue vincula o conteúdo do campo ao State em DUAS vias: edições do
 // usuário fazem Set no State, e um Set externo atualiza o campo (movendo o
 // cursor para o fim). Encadeável.
-func (in *Input) BindValue(s *State[string]) *Input {
+func (in *Input) BindValue(s *state.State[string]) *Input {
 	in.bound = s
 	in.SetText(s.Get())
 	s.Watch(func(v string) {
@@ -104,34 +107,34 @@ func (in *Input) PreferredSize() image.Point {
 
 // HandleEvent trata caracteres digitados, teclas de edição e atalhos, foco,
 // clique e arraste de seleção.
-func (in *Input) HandleEvent(ev Event) bool {
+func (in *Input) HandleEvent(ev event.Event) bool {
 	switch e := ev.(type) {
-	case CharEvent:
+	case event.CharEvent:
 		in.insert(e.Rune)
 		return true
-	case KeyEvent:
+	case event.KeyEvent:
 		return in.handleKey(e)
-	case FocusEvent:
+	case event.FocusEvent:
 		in.focused = e.Gained
 		return true
-	case MouseEvent:
+	case event.MouseEvent:
 		switch e.Kind {
-		case MouseDown:
-			if e.Button != MouseButtonLeft {
+		case event.MouseDown:
+			if e.Button != event.MouseButtonLeft {
 				return false
 			}
 			// Posiciona o cursor no ponto clicado (via MeasureString, a
 			// única fonte de verdade de largura) e inicia a seleção por
-			// arraste — os MouseMove seguintes chegam pela captura do App.
+			// arraste — os event.MouseMove seguintes chegam pela captura do App.
 			in.selecting = true
 			in.moveCursor(in.runeIndexAt(e.Pos.X), false)
 			return true
-		case MouseMove:
+		case event.MouseMove:
 			if !in.selecting {
 				return false
 			}
 			return in.moveCursor(in.runeIndexAt(e.Pos.X), true)
-		case MouseUp:
+		case event.MouseUp:
 			in.selecting = false
 			return false
 		}
@@ -154,9 +157,9 @@ func (in *Input) insert(r rune) {
 
 // handleKey aplica uma tecla de edição ou atalho. Devolve true se algo
 // mudou (texto, cursor ou seleção).
-func (in *Input) handleKey(e KeyEvent) bool {
+func (in *Input) handleKey(e event.KeyEvent) bool {
 	switch e.Key {
-	case KeyBackspace:
+	case event.KeyBackspace:
 		if in.deleteSelection() {
 			in.sync()
 			in.emitChange()
@@ -171,7 +174,7 @@ func (in *Input) handleKey(e KeyEvent) bool {
 		in.sync()
 		in.emitChange()
 		return true
-	case KeyDelete:
+	case event.KeyDelete:
 		if in.deleteSelection() {
 			in.sync()
 			in.emitChange()
@@ -185,36 +188,36 @@ func (in *Input) handleKey(e KeyEvent) bool {
 		in.sync()
 		in.emitChange()
 		return true
-	case KeyLeft:
+	case event.KeyLeft:
 		// Sem Shift, uma seleção existente recolhe para a própria borda.
 		if !e.Mods.Shift() && in.hasSelection() {
 			start, _ := in.selection()
 			return in.moveCursor(start, false)
 		}
 		return in.moveCursor(in.cursor-1, e.Mods.Shift())
-	case KeyRight:
+	case event.KeyRight:
 		if !e.Mods.Shift() && in.hasSelection() {
 			_, end := in.selection()
 			return in.moveCursor(end, false)
 		}
 		return in.moveCursor(in.cursor+1, e.Mods.Shift())
-	case KeyHome:
+	case event.KeyHome:
 		return in.moveCursor(0, e.Mods.Shift())
-	case KeyEnd:
+	case event.KeyEnd:
 		return in.moveCursor(len(in.runes), e.Mods.Shift())
-	case KeyA:
+	case event.KeyA:
 		if !e.Mods.Command() {
 			return false
 		}
 		in.anchor, in.cursor = 0, len(in.runes)
 		in.sync()
 		return true
-	case KeyC:
+	case event.KeyC:
 		if !e.Mods.Command() {
 			return false
 		}
 		return in.copySelection()
-	case KeyX:
+	case event.KeyX:
 		if !e.Mods.Command() || !in.copySelection() {
 			return false
 		}
@@ -222,7 +225,7 @@ func (in *Input) handleKey(e KeyEvent) bool {
 		in.sync()
 		in.emitChange()
 		return true
-	case KeyV:
+	case event.KeyV:
 		if !e.Mods.Command() {
 			return false
 		}
@@ -285,7 +288,7 @@ func (in *Input) copySelection() bool {
 		return false
 	}
 	start, end := in.selection()
-	clipboardWriteText(string(in.runes[start:end]))
+	hooks.WriteClipboard(string(in.runes[start:end]))
 	return true
 }
 
@@ -294,7 +297,7 @@ func (in *Input) copySelection() bool {
 // são descartados: o campo é de linha única. Devolve true se algo mudou.
 func (in *Input) paste() bool {
 	var clean []rune
-	for _, r := range clipboardReadText() {
+	for _, r := range hooks.ReadClipboard() {
 		if r >= 0x20 && r != 0x7F {
 			clean = append(clean, r)
 		}

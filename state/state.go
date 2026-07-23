@@ -1,4 +1,6 @@
-package juigo
+package state
+
+import "juigo/internal/hooks"
 
 // State é um valor observável tipado — a base da reatividade do JUIGo.
 // Widgets podem ser vinculados a um State (Text.BindText, Input.BindValue);
@@ -12,7 +14,7 @@ type State[T any] struct {
 }
 
 // NewState cria um State com o valor inicial dado.
-func NewState[T any](v T) *State[T] {
+func New[T any](v T) *State[T] {
 	return &State[T]{value: v}
 }
 
@@ -29,7 +31,7 @@ func (s *State[T]) Set(v T) {
 	for _, fn := range s.watchers {
 		fn(v)
 	}
-	requestRepaint()
+	hooks.RequestRepaint()
 }
 
 // Watch registra fn para ser chamada a cada Set, com o novo valor.
@@ -41,7 +43,7 @@ func (s *State[T]) Watch(fn func(T)) {
 // original. Trate o derivado como somente-leitura — Sets diretos nele serão
 // sobrescritos pela próxima atualização do original.
 func Map[A, B any](s *State[A], f func(A) B) *State[B] {
-	d := NewState(f(s.Get()))
+	d := New(f(s.Get()))
 	s.Watch(func(v A) {
 		d.Set(f(v))
 	})

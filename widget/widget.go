@@ -1,12 +1,25 @@
-package juigo
+// Package widget contém o contrato central Widget, o BaseWidget embutível,
+// o roteamento de eventos pela árvore, a injeção de tema (Mount) e todos os
+// widgets do JUIGo: containers (Container, VBox, HBox) e controles (Text,
+// Button, Input, Checkbox, Slider).
+//
+// O pacote raiz juigo reexporta tudo isto — aplicações comuns importam só
+// "juigo"; importe widget diretamente para construir shells ou widgets
+// próprios.
+package widget
 
-import "image"
+import (
+	"image"
+
+	"juigo/event"
+	"juigo/theme"
+)
 
 // Widget é o contrato central de todo elemento de interface do JUIGo.
 //
 // O ciclo de vida em cada frame é: o App chama Layout na raiz com os limites
 // do buffer, depois Draw. Eventos chegam via HandleEvent conforme as regras
-// de roteamento descritas em Event.
+// de roteamento descritas em event.Event.
 type Widget interface {
 	// Layout posiciona o widget dentro de bounds (coordenadas absolutas da
 	// janela). Containers usam Layout para posicionar os filhos.
@@ -15,7 +28,7 @@ type Widget interface {
 	Draw(dst *image.RGBA)
 	// HandleEvent processa um evento e devolve true se o consumiu. Consumir
 	// um evento interrompe a propagação e marca a interface como suja.
-	HandleEvent(ev Event) bool
+	HandleEvent(ev event.Event) bool
 	// Bounds devolve o retângulo absoluto ocupado pelo widget.
 	Bounds() image.Rectangle
 	// Focusable indica se o widget participa da cadeia de foco de teclado.
@@ -45,7 +58,7 @@ type ParentWidget interface {
 // próprio.
 type BaseWidget struct {
 	bounds image.Rectangle
-	theme  *Theme
+	theme  *theme.Theme
 	// themeExplicit protege um tema definido via SetTheme de ser
 	// sobrescrito pela injeção do mount.
 	themeExplicit bool
@@ -65,7 +78,7 @@ func (b *BaseWidget) Bounds() image.Rectangle {
 func (b *BaseWidget) Draw(dst *image.RGBA) {}
 
 // HandleEvent não consome eventos por padrão.
-func (b *BaseWidget) HandleEvent(ev Event) bool {
+func (b *BaseWidget) HandleEvent(ev event.Event) bool {
 	return false
 }
 
@@ -82,19 +95,19 @@ func (b *BaseWidget) PreferredSize() image.Point {
 // SetTheme define um tema explícito para este widget. Na injeção do mount,
 // os descendentes herdam o tema explícito do ancestral mais próximo, então
 // definir o tema de um container tematiza a subárvore inteira.
-func (b *BaseWidget) SetTheme(t *Theme) {
+func (b *BaseWidget) SetTheme(t *theme.Theme) {
 	b.theme = t
 	b.themeExplicit = t != nil
 }
 
 // Theme devolve o tema efetivo do widget — nil antes do mount.
-func (b *BaseWidget) Theme() *Theme {
+func (b *BaseWidget) Theme() *theme.Theme {
 	return b.theme
 }
 
 // inheritTheme aplica o tema herdado no mount e devolve o tema efetivo que
 // os descendentes devem herdar.
-func (b *BaseWidget) inheritTheme(t *Theme) *Theme {
+func (b *BaseWidget) inheritTheme(t *theme.Theme) *theme.Theme {
 	if b.themeExplicit {
 		return b.theme
 	}
@@ -105,35 +118,36 @@ func (b *BaseWidget) inheritTheme(t *Theme) *Theme {
 // themeHost é satisfeito por todo widget que embute BaseWidget; o App o usa
 // para injetar o tema na árvore durante o mount.
 type themeHost interface {
-	inheritTheme(t *Theme) *Theme
+	inheritTheme(t *theme.Theme) *theme.Theme
 }
 
-// propagateTheme injeta o tema na árvore (mount). Widgets sem tema explícito
-// herdam o do ancestral; os com SetTheme mantêm o próprio e o repassam aos
-// descendentes. Idempotente e sem alocações — o App a executa a cada
-// renderização para cobrir widgets adicionados dinamicamente.
-func propagateTheme(w Widget, t *Theme) {
+// Mount injeta o tema na árvore. Widgets sem tema explícito herdam o do
+// ancestral; os com SetTheme mantêm o próprio e o repassam aos descendentes.
+// Idempotente e sem alocações — o App a executa a cada renderização para
+// cobrir widgets adicionados dinamicamente. Também é o caminho para montar
+// árvores sem App (testes, renderização offscreen).
+func Mount(w Widget, t *theme.Theme) {
 	if h, ok := w.(themeHost); ok {
 		t = h.inheritTheme(t)
 	}
 	if p, ok := w.(ParentWidget); ok {
 		for _, ch := range p.Children() {
-			propagateTheme(ch, t)
+			Mount(ch, t)
 		}
 	}
 }
 
-// dispatchMouse roteia um evento de mouse por GEOMETRIA: desce a árvore até
+// DispatchMouse roteia um evento de mouse por GEOMETRIA: desce a árvore até
 // o widget mais profundo que contém o ponto (entre irmãos sobrepostos, vence
 // o desenhado por último) e, se ninguém no ramo consumir, propaga para cima
 // entregando ao próprio w. Devolve o widget que consumiu o evento (usado
 // pelo App para a captura de mouse), ou nil.
-func dispatchMouse(w Widget, ev MouseEvent) Widget {
+func DispatchMouse(w Widget, ev event.MouseEvent) Widget {
 	if p, ok := w.(ParentWidget); ok {
 		children := p.Children()
 		for i := len(children) - 1; i >= 0; i-- {
 			if ev.Pos.In(children[i].Bounds()) {
-				if consumer := dispatchMouse(children[i], ev); consumer != nil {
+				if consumer := DispatchMouse(children[i], ev); consumer != nil {
 					return consumer
 				}
 				break // só o ramo do topo; depois propaga para o pai
@@ -146,16 +160,16 @@ func dispatchMouse(w Widget, ev MouseEvent) Widget {
 	return nil
 }
 
-// focusableAt devolve o widget FOCÁVEL mais profundo cujo Bounds contém p,
+// FocusableAt devolve o widget FOCÁVEL mais profundo cujo Bounds contém p,
 // ou nil. Usado pelo App para mover o foco no clique.
-func focusableAt(w Widget, p image.Point) Widget {
+func FocusableAt(w Widget, p image.Point) Widget {
 	if w == nil || !p.In(w.Bounds()) {
 		return nil
 	}
 	if pw, ok := w.(ParentWidget); ok {
 		children := pw.Children()
 		for i := len(children) - 1; i >= 0; i-- {
-			if deep := focusableAt(children[i], p); deep != nil {
+			if deep := FocusableAt(children[i], p); deep != nil {
 				return deep
 			}
 		}
@@ -166,8 +180,15 @@ func focusableAt(w Widget, p image.Point) Widget {
 	return nil
 }
 
-// collectFocusable acumula em out os widgets focáveis na ordem da árvore
-// (pré-ordem, filhos na ordem de inserção). Define a ordem do Tab.
+// Focusables devolve os widgets focáveis na ordem da árvore (pré-ordem,
+// filhos na ordem de inserção). Define a ordem do Tab.
+func Focusables(w Widget) []Widget {
+	var out []Widget
+	collectFocusable(w, &out)
+	return out
+}
+
+// collectFocusable acumula em out os widgets focáveis em pré-ordem.
 func collectFocusable(w Widget, out *[]Widget) {
 	if w == nil {
 		return
@@ -182,16 +203,16 @@ func collectFocusable(w Widget, out *[]Widget) {
 	}
 }
 
-// widgetAt devolve o widget mais profundo cujo Bounds contém p, ou nil.
-// Usado pelo App para rastrear hover (MouseEnter/MouseLeave).
-func widgetAt(w Widget, p image.Point) Widget {
+// DeepestAt devolve o widget mais profundo cujo Bounds contém p, ou nil.
+// Usado pelo App para rastrear hover (event.MouseEnter/event.MouseLeave).
+func DeepestAt(w Widget, p image.Point) Widget {
 	if w == nil || !p.In(w.Bounds()) {
 		return nil
 	}
 	if pw, ok := w.(ParentWidget); ok {
 		children := pw.Children()
 		for i := len(children) - 1; i >= 0; i-- {
-			if deep := widgetAt(children[i], p); deep != nil {
+			if deep := DeepestAt(children[i], p); deep != nil {
 				return deep
 			}
 		}

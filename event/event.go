@@ -1,4 +1,4 @@
-package juigo
+package event
 
 import "image"
 
@@ -140,27 +140,27 @@ type FocusEvent struct {
 
 func (FocusEvent) isEvent() {}
 
-// EventBus é um barramento publish/subscribe simples para comunicação entre
+// Bus é um barramento publish/subscribe simples para comunicação entre
 // partes da aplicação. O Publish é SÍNCRONO: os handlers executam na mesma
 // goroutine, antes do retorno. Não é seguro para uso concorrente — como todo
 // o JUIGo, deve ser usado apenas na main thread.
-type EventBus struct {
+type Bus struct {
 	subs map[string][]func(any)
 }
 
-// NewEventBus cria um barramento vazio.
-func NewEventBus() *EventBus {
-	return &EventBus{subs: make(map[string][]func(any))}
+// NewBus cria um barramento vazio.
+func NewBus() *Bus {
+	return &Bus{subs: make(map[string][]func(any))}
 }
 
 // Subscribe registra fn para receber publicações do tópico dado.
-func (b *EventBus) Subscribe(topic string, fn func(any)) {
+func (b *Bus) Subscribe(topic string, fn func(any)) {
 	b.subs[topic] = append(b.subs[topic], fn)
 }
 
 // Publish entrega data, sincronamente, a todos os inscritos do tópico, na
 // ordem de inscrição.
-func (b *EventBus) Publish(topic string, data any) {
+func (b *Bus) Publish(topic string, data any) {
 	for _, fn := range b.subs[topic] {
 		fn(data)
 	}

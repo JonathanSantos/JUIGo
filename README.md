@@ -9,26 +9,33 @@ fase é a arquitetura dos widgets básicos, não features.
 
 ## Arquitetura
 
+O código é organizado em pacotes coesos; o pacote raiz `juigo` é uma
+**fachada**: contém o `App` (janela + loop) e reexporta os tipos e
+construtores dos subpacotes por alias. Aplicações comuns importam **apenas
+`"juigo"`**; os subpacotes existem para casos avançados (widgets próprios,
+shells alternativos, renderização offscreen).
+
 ```
 juigo/
-  juigo.go         App: janela, buffer RGBA, árvore, foco, captura de mouse, loop
-  widget.go        interface Widget, BaseWidget embutível, roteamento e mount
-  container.go     Container (absoluto), VBox, HBox (Gap/Pad)
-  button.go        Button (normal|hover|pressed, OnClick)
-  input.go         Input (runes, seleção, clipboard, OnChange, BindValue)
-  checkbox.go      Checkbox (BindChecked)
-  slider.go        Slider (arraste com captura, BindValue)
-  text.go          Text (alinhamento, BindText)
-  state.go         State[T]: reatividade (Get/Set/Watch) + Map
-  theme.go         Theme: cores, fonte embutida, métricas, espaçamentos, escala
-  event.go         eventos internos (mouse/tecla+mods/char/foco) + EventBus
-  render/
-    gl.go          Blitter: init GL, shader do quad, upload de textura
-    draw.go        primitivas: FillRect, StrokeRect, DrawText, MeasureText
-    glyph.go       GlyphCache: texto sem alocação por frame
-  examples/
-    basic/main.go  demo reativa: input, contador, checkbox, slider, botão
+  doc.go, app.go, alias.go   fachada: App (janela, buffer, foco, captura,
+                             loop dirty) + reexports dos subpacotes
+  widget/                    contrato Widget, BaseWidget, roteamento
+                             (DispatchMouse/DeepestAt/FocusableAt/Focusables),
+                             Mount (injeção de tema), Container/VBox/HBox,
+                             Text, Button, Input, Checkbox, Slider
+  theme/                     Theme: cores, métricas, escala HiDPI, cache de
+                             glyphs e a fonte embutida (theme/assets/)
+  event/                     tipos de evento, modificadores e o Bus síncrono
+  state/                     State[T] (Get/Set/Watch) e Map — reatividade
+  render/                    Blitter GL, primitivas de desenho, GlyphCache
+  internal/hooks/            fiação App↔widgets: repaint e clipboard (fora
+                             da API pública)
+  examples/basic/            demo reativa: input, contador, checkbox, slider
 ```
+
+Dependências entre pacotes (sempre acíclicas): `widget` → `theme`, `event`,
+`state`, `render`; `theme` → `render`; `state` e `widget` alcançam o App em
+execução só por `internal/hooks`, registrado na inicialização.
 
 ### Contratos centrais
 

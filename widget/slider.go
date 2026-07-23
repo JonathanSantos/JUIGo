@@ -1,9 +1,12 @@
-package juigo
+package widget
 
 import (
 	"image"
 
+	"juigo/event"
+	"juigo/internal/hooks"
 	"juigo/render"
+	"juigo/state"
 )
 
 // Slider é um controle deslizante horizontal para escolher um float64 no
@@ -28,7 +31,7 @@ type Slider struct {
 	dragging bool
 	hover    bool
 	focused  bool
-	bound    *State[float64]
+	bound    *state.State[float64]
 }
 
 // NewSlider cria um slider com o intervalo dado e o valor inicial em min.
@@ -53,12 +56,12 @@ func (s *Slider) SetValue(v float64) {
 		return
 	}
 	s.value = v
-	requestRepaint()
+	hooks.RequestRepaint()
 }
 
 // BindValue vincula o valor ao State em DUAS vias: ajustes do usuário fazem
 // Set no State, e um Set externo move o slider. Encadeável.
-func (s *Slider) BindValue(st *State[float64]) *Slider {
+func (s *Slider) BindValue(st *state.State[float64]) *Slider {
 	s.bound = st
 	s.SetValue(st.Get())
 	st.Watch(func(v float64) {
@@ -87,36 +90,36 @@ func (s *Slider) PreferredSize() image.Point {
 }
 
 // HandleEvent implementa clique/arraste (com captura), teclado e foco.
-func (s *Slider) HandleEvent(ev Event) bool {
+func (s *Slider) HandleEvent(ev event.Event) bool {
 	switch e := ev.(type) {
-	case KeyEvent:
+	case event.KeyEvent:
 		return s.handleKey(e.Key)
-	case FocusEvent:
+	case event.FocusEvent:
 		s.focused = e.Gained
 		return true
-	case MouseEvent:
+	case event.MouseEvent:
 		switch e.Kind {
-		case MouseEnter:
+		case event.MouseEnter:
 			s.hover = true
 			return true
-		case MouseLeave:
+		case event.MouseLeave:
 			// O arraste continua fora dos bounds (captura); só o realce sai.
 			s.hover = false
 			return true
-		case MouseDown:
-			if e.Button != MouseButtonLeft {
+		case event.MouseDown:
+			if e.Button != event.MouseButtonLeft {
 				return false
 			}
 			s.dragging = true
 			s.setFromUser(s.valueAt(e.Pos.X))
 			return true
-		case MouseMove:
+		case event.MouseMove:
 			if !s.dragging {
 				return false
 			}
 			return s.setFromUser(s.valueAt(e.Pos.X))
-		case MouseUp:
-			if e.Button != MouseButtonLeft || !s.dragging {
+		case event.MouseUp:
+			if e.Button != event.MouseButtonLeft || !s.dragging {
 				return false
 			}
 			s.dragging = false
@@ -127,19 +130,19 @@ func (s *Slider) HandleEvent(ev Event) bool {
 }
 
 // handleKey ajusta o valor pelo teclado. Devolve true se algo mudou.
-func (s *Slider) handleKey(k Key) bool {
+func (s *Slider) handleKey(k event.Key) bool {
 	step := s.Step
 	if step <= 0 {
 		step = (s.Max - s.Min) / 20
 	}
 	switch k {
-	case KeyLeft:
+	case event.KeyLeft:
 		return s.setFromUser(s.value - step)
-	case KeyRight:
+	case event.KeyRight:
 		return s.setFromUser(s.value + step)
-	case KeyHome:
+	case event.KeyHome:
 		return s.setFromUser(s.Min)
-	case KeyEnd:
+	case event.KeyEnd:
 		return s.setFromUser(s.Max)
 	}
 	return false

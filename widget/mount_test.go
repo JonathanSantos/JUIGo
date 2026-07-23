@@ -1,8 +1,10 @@
-package juigo
+package widget
 
 import (
 	"image"
 	"testing"
+
+	"juigo/event"
 )
 
 // TestTemaAmbienteMount cobre a injeção de tema no mount: herança pela
@@ -17,7 +19,7 @@ func TestTemaAmbienteMount(t *testing.T) {
 	if txt.Theme() != nil {
 		t.Fatal("widget recém-criado não deveria ter tema antes do mount")
 	}
-	propagateTheme(root, th)
+	Mount(root, th)
 	if txt.Theme() != th || btn.Theme() != th || root.Theme() != th {
 		t.Fatal("mount deveria injetar o tema do App em toda a árvore")
 	}
@@ -25,7 +27,7 @@ func TestTemaAmbienteMount(t *testing.T) {
 	// Override explícito sobrevive a novas propagações.
 	custom := newTestTheme(t)
 	btn.SetTheme(custom)
-	propagateTheme(root, th)
+	Mount(root, th)
 	if btn.Theme() != custom {
 		t.Fatal("SetTheme explícito não deveria ser sobrescrito pelo mount")
 	}
@@ -42,7 +44,7 @@ func TestTemaAmbienteMount(t *testing.T) {
 		t.Fatal("SetTheme em container deveria propagar imediatamente aos filhos")
 	}
 	outer := NewVBox(sub)
-	propagateTheme(outer, th)
+	Mount(outer, th)
 	if outer.Theme() != th {
 		t.Fatal("container externo deveria herdar o tema do App")
 	}
@@ -59,7 +61,7 @@ func TestContainerMetricsPadrao(t *testing.T) {
 	a := NewButton("A", nil)
 	b := NewButton("B", nil)
 	v := NewVBox(a, b)
-	propagateTheme(v, th)
+	Mount(v, th)
 	v.Layout(image.Rect(0, 0, 200, 300))
 
 	gap := b.Bounds().Min.Y - a.Bounds().Max.Y
@@ -109,7 +111,7 @@ func TestPreMountSemPanico(t *testing.T) {
 	// Após o mount, o Draw ressincroniza o cursor com o tema real.
 	in.SetTheme(newTestTheme(t))
 	in.Layout(image.Rect(0, 0, 200, 30))
-	in.HandleEvent(FocusEvent{Gained: true})
+	in.HandleEvent(event.FocusEvent{Gained: true})
 	in.Draw(buf)
 	if in.cursorX == 0 {
 		t.Fatal("cursorX deveria ter sido recalculado no primeiro Draw pós-mount")

@@ -1,8 +1,11 @@
-package juigo
+package widget
 
 import (
 	"image"
 	"image/color"
+
+	"juigo/internal/hooks"
+	"juigo/state"
 )
 
 // Align define o alinhamento horizontal do texto dentro dos bounds.
@@ -49,7 +52,7 @@ func (t *Text) Right() *Text {
 
 // BindText vincula o conteúdo ao State: o Text passa a exibir o valor atual
 // e é atualizado — com redesenho automático — a cada Set. Encadeável.
-func (t *Text) BindText(s *State[string]) *Text {
+func (t *Text) BindText(s *state.State[string]) *Text {
 	t.SetText(s.Get())
 	s.Watch(func(v string) {
 		t.SetText(v)
@@ -68,7 +71,7 @@ func (t *Text) SetText(s string) {
 		return
 	}
 	t.text = s
-	requestRepaint()
+	hooks.RequestRepaint()
 }
 
 // PreferredSize devolve a largura medida do texto e a altura de uma linha.

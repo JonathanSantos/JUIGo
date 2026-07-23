@@ -1,8 +1,9 @@
-package juigo
+package widget
 
 import (
 	"image"
 
+	"juigo/event"
 	"juigo/render"
 )
 
@@ -19,9 +20,9 @@ const (
 )
 
 // Button é um botão de ação com rótulo. Semântica de clique:
-//   - MouseDown dentro: passa a pressed.
-//   - MouseUp dentro E pressed: dispara OnClick.
-//   - MouseLeave enquanto pressed: cancela sem disparar.
+//   - event.MouseDown dentro: passa a pressed.
+//   - event.MouseUp dentro E pressed: dispara OnClick.
+//   - event.MouseLeave enquanto pressed: cancela sem disparar.
 //
 // É focável; Enter ou Espaço disparam OnClick quando focado.
 type Button struct {
@@ -68,47 +69,47 @@ func (b *Button) State() ButtonState {
 
 // HandleEvent implementa a máquina de estados do clique, o acionamento por
 // teclado (Enter/Espaço quando focado) e o registro de foco.
-func (b *Button) HandleEvent(ev Event) bool {
+func (b *Button) HandleEvent(ev event.Event) bool {
 	switch e := ev.(type) {
-	case KeyEvent:
-		if e.Key == KeyEnter || e.Key == KeySpace {
+	case event.KeyEvent:
+		if e.Key == event.KeyEnter || e.Key == event.KeySpace {
 			b.fire()
 			return true
 		}
 		return false
-	case FocusEvent:
+	case event.FocusEvent:
 		b.focused = e.Gained
 		return true
-	case MouseEvent:
+	case event.MouseEvent:
 		return b.handleMouse(e)
 	}
 	return false
 }
 
 // handleMouse trata a parte de mouse da máquina de estados.
-func (b *Button) handleMouse(e MouseEvent) bool {
+func (b *Button) handleMouse(e event.MouseEvent) bool {
 	switch e.Kind {
-	case MouseEnter:
+	case event.MouseEnter:
 		if b.state == ButtonStateNormal {
 			b.state = ButtonStateHover
 			return true
 		}
-	case MouseLeave:
+	case event.MouseLeave:
 		// Sair com o botão pressionado cancela o clique sem disparar.
 		b.pressed = false
 		if b.state != ButtonStateNormal {
 			b.state = ButtonStateNormal
 			return true
 		}
-	case MouseDown:
-		if e.Button != MouseButtonLeft {
+	case event.MouseDown:
+		if e.Button != event.MouseButtonLeft {
 			return false
 		}
 		b.pressed = true
 		b.state = ButtonStatePressed
 		return true
-	case MouseUp:
-		if e.Button != MouseButtonLeft || !b.pressed {
+	case event.MouseUp:
+		if e.Button != event.MouseButtonLeft || !b.pressed {
 			return false
 		}
 		b.pressed = false

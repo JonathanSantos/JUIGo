@@ -1,10 +1,3 @@
-// Package juigo é uma biblioteca minimalista de interface gráfica para Go.
-//
-// A renderização é feita por software (CPU) sobre um buffer *image.RGBA;
-// GLFW fornece a janela e os eventos do sistema operacional, e o OpenGL é
-// usado apenas para apresentar o buffer na tela (blit de textura em um quad
-// fullscreen). Toda a biblioteca é single-threaded: janela, eventos e
-// desenho vivem na main thread do processo.
 package juigo
 
 import (
@@ -15,7 +8,11 @@ import (
 
 	"github.com/go-gl/glfw/v3.3/glfw"
 
+	"juigo/event"
+	"juigo/internal/hooks"
 	"juigo/render"
+	"juigo/theme"
+	"juigo/widget"
 )
 
 func init() {
@@ -34,15 +31,16 @@ type App struct {
 	window  *glfw.Window
 	blitter *render.Blitter
 	buf     *image.RGBA
-	theme   *Theme
-	root    Widget
-	hovered Widget
-	focused Widget
+	theme   *theme.Theme
+	bus     *event.Bus
+	root    widget.Widget
+	hovered widget.Widget
+	focused widget.Widget
 	// captured é o widget que consumiu o último MouseDown: até o botão ser
 	// solto, ele recebe MouseMove/MouseUp DIRETAMENTE (captura de mouse),
 	// mesmo com o cursor fora dos seus bounds — essencial para arrastar
 	// (Slider, seleção de texto).
-	captured Widget
+	captured widget.Widget
 	width    int // dimensões do buffer, em pixels físicos
 	height   int
 	// pixelRatio converte coordenadas lógicas da janela (mouse) em pixels
@@ -89,7 +87,7 @@ func New(title string, width, height int) (*App, error) {
 		return nil, err
 	}
 
-	theme, err := DefaultTheme()
+	th, err := theme.Default()
 	if err != nil {
 		blitter.Destroy()
 		window.Destroy()
@@ -100,7 +98,7 @@ func New(title string, width, height int) (*App, error) {
 	// Escala o tema (fonte, métricas) para o monitor onde a janela abriu.
 	scaleX, _ := window.GetContentScale()
 	if scaleX > 0 && scaleX != 1 {
-		if err := theme.SetScale(float64(scaleX)); err != nil {
+		if err := th.SetScale(float64(scaleX)); err != nil {
 			blitter.Destroy()
 			window.Destroy()
 			glfw.Terminate()
@@ -111,7 +109,8 @@ func New(title string, width, height int) (*App, error) {
 	a := &App{
 		window:     window,
 		blitter:    blitter,
-		theme:      theme,
+		theme:      th,
+		bus:        event.NewBus(),
 		buf:        image.NewRGBA(image.Rect(0, 0, fbw, fbh)),
 		width:      fbw,
 		height:     fbh,
@@ -121,16 +120,16 @@ func New(title string, width, height int) (*App, error) {
 	a.installCallbacks()
 	// Setters de widgets e State.Set redesenham através deste hook; o Input
 	// copia/cola através da área de transferência do sistema.
-	repaintHook = a.Invalidate
-	clipboardRead = window.GetClipboardString
-	clipboardWrite = window.SetClipboardString
+	hooks.Repaint = a.Invalidate
+	hooks.ClipboardRead = window.GetClipboardString
+	hooks.ClipboardWrite = window.SetClipboardString
 	return a, nil
 }
 
 // Run cria a aplicação com New, define root como raiz da árvore e executa o
 // loop de eventos até a janela ser fechada. É o caminho curto para a maioria
 // das aplicações; use New quando precisar do *App (tema, Invalidate, Bus).
-func Run(title string, width, height int, root Widget) error {
+func Run(title string, width, height int, root widget.Widget) error {
 	app, err := New(title, width, height)
 	if err != nil {
 		return err
@@ -170,10 +169,10 @@ func (a *App) installCallbacks() {
 	a.window.SetMouseButtonCallback(func(_ *glfw.Window, button glfw.MouseButton, action glfw.Action, _ glfw.ModifierKey) {
 		x, y := a.window.GetCursorPos()
 		pos := a.toBufferCoords(x, y)
-		ev := MouseEvent{Kind: MouseDown, Pos: pos, Button: mapMouseButton(button)}
+		ev := event.MouseEvent{Kind: event.MouseDown, Pos: pos, Button: mapMouseButton(button)}
 		if action == glfw.Release {
-			ev.Kind = MouseUp
-			// Fim da captura: o widget capturado recebe o MouseUp mesmo
+			ev.Kind = event.MouseUp
+			// Fim da captura: o widget capturado recebe o event.MouseUp mesmo
 			// que o cursor esteja fora dele.
 			if a.captured != nil {
 				if a.captured.HandleEvent(ev) {
@@ -186,8 +185,8 @@ func (a *App) installCallbacks() {
 			return
 		}
 		// Clique em widget focável muda o foco; em área sem widget focável,
-		// limpa o foco. Quem consumir o MouseDown captura o mouse.
-		a.setFocus(focusableAt(a.root, pos))
+		// limpa o foco. Quem consumir o event.MouseDown captura o mouse.
+		a.setFocus(widget.FocusableAt(a.root, pos))
 		a.captured = a.dispatch(ev)
 	})
 	a.window.SetKeyCallback(func(_ *glfw.Window, key glfw.Key, _ int, action glfw.Action, rawMods glfw.ModifierKey) {
@@ -204,11 +203,11 @@ func (a *App) installCallbacks() {
 			return
 		}
 		k := mapKey(key)
-		if k == KeyUnknown || a.focused == nil {
+		if k == event.KeyUnknown || a.focused == nil {
 			return
 		}
 		// Teclado roteia por FOCO: direto ao widget focado, sem hit-test.
-		if a.focused.HandleEvent(KeyEvent{Key: k, Mods: mods}) {
+		if a.focused.HandleEvent(event.KeyEvent{Key: k, Mods: mods}) {
 			a.dirty = true
 		}
 	})
@@ -216,13 +215,13 @@ func (a *App) installCallbacks() {
 		if a.focused == nil {
 			return
 		}
-		if a.focused.HandleEvent(CharEvent{Rune: r}) {
+		if a.focused.HandleEvent(event.CharEvent{Rune: r}) {
 			a.dirty = true
 		}
 	})
 	a.window.SetCursorPosCallback(func(_ *glfw.Window, x, y float64) {
 		pos := a.toBufferCoords(x, y)
-		ev := MouseEvent{Kind: MouseMove, Pos: pos, Button: MouseButtonLeft}
+		ev := event.MouseEvent{Kind: event.MouseMove, Pos: pos, Button: event.MouseButtonLeft}
 		if a.captured != nil {
 			// Durante a captura, os movimentos vão direto ao capturado e o
 			// hover fica suspenso (nada de realçar outros widgets no meio
@@ -254,45 +253,45 @@ func (a *App) toBufferCoords(x, y float64) image.Point {
 
 // dispatch roteia um evento de mouse pela árvore (por geometria), marca a
 // interface como suja se alguém o consumir e devolve o widget consumidor.
-func (a *App) dispatch(ev MouseEvent) Widget {
+func (a *App) dispatch(ev event.MouseEvent) widget.Widget {
 	if a.root == nil {
 		return nil
 	}
-	consumer := dispatchMouse(a.root, ev)
+	consumer := widget.DispatchMouse(a.root, ev)
 	if consumer != nil {
 		a.dirty = true
 	}
 	return consumer
 }
 
-// updateHover mantém o widget sob o cursor, entregando MouseLeave ao widget
-// anterior e MouseEnter ao novo quando o alvo muda.
+// updateHover mantém o widget sob o cursor, entregando event.MouseLeave ao widget
+// anterior e event.MouseEnter ao novo quando o alvo muda.
 func (a *App) updateHover(pos image.Point) {
-	target := widgetAt(a.root, pos)
+	target := widget.DeepestAt(a.root, pos)
 	if target == a.hovered {
 		return
 	}
-	if a.hovered != nil && a.hovered.HandleEvent(MouseEvent{Kind: MouseLeave, Pos: pos}) {
+	if a.hovered != nil && a.hovered.HandleEvent(event.MouseEvent{Kind: event.MouseLeave, Pos: pos}) {
 		a.dirty = true
 	}
 	a.hovered = target
-	if target != nil && target.HandleEvent(MouseEvent{Kind: MouseEnter, Pos: pos}) {
+	if target != nil && target.HandleEvent(event.MouseEvent{Kind: event.MouseEnter, Pos: pos}) {
 		a.dirty = true
 	}
 }
 
 // setFocus move o foco de teclado para w (ou o limpa, se w for nil),
-// notificando os widgets envolvidos com FocusEvent.
-func (a *App) setFocus(w Widget) {
+// notificando os widgets envolvidos com event.FocusEvent.
+func (a *App) setFocus(w widget.Widget) {
 	if a.focused == w {
 		return
 	}
 	if a.focused != nil {
-		a.focused.HandleEvent(FocusEvent{Gained: false})
+		a.focused.HandleEvent(event.FocusEvent{Gained: false})
 	}
 	a.focused = w
 	if w != nil {
-		w.HandleEvent(FocusEvent{Gained: true})
+		w.HandleEvent(event.FocusEvent{Gained: true})
 	}
 	a.dirty = true
 }
@@ -300,8 +299,7 @@ func (a *App) setFocus(w Widget) {
 // focusNext avança o foco para o próximo widget focável na ordem da árvore,
 // com wraparound. Sem widgets focáveis, não faz nada.
 func (a *App) focusNext() {
-	var order []Widget
-	collectFocusable(a.root, &order)
+	order := widget.Focusables(a.root)
 	if len(order) == 0 {
 		return
 	}
@@ -318,8 +316,7 @@ func (a *App) focusNext() {
 // focusPrev recua o foco para o widget focável anterior na ordem da árvore
 // (Shift+Tab), com wraparound.
 func (a *App) focusPrev() {
-	var order []Widget
-	collectFocusable(a.root, &order)
+	order := widget.Focusables(a.root)
 	if len(order) == 0 {
 		return
 	}
@@ -334,64 +331,64 @@ func (a *App) focusPrev() {
 }
 
 // mapMods converte os modificadores do GLFW para o tipo do JUIGo.
-func mapMods(m glfw.ModifierKey) Modifiers {
-	var mods Modifiers
+func mapMods(m glfw.ModifierKey) event.Modifiers {
+	var mods event.Modifiers
 	if m&glfw.ModShift != 0 {
-		mods |= ModShift
+		mods |= event.ModShift
 	}
 	if m&glfw.ModControl != 0 {
-		mods |= ModControl
+		mods |= event.ModControl
 	}
 	if m&glfw.ModAlt != 0 {
-		mods |= ModAlt
+		mods |= event.ModAlt
 	}
 	if m&glfw.ModSuper != 0 {
-		mods |= ModSuper
+		mods |= event.ModSuper
 	}
 	return mods
 }
 
 // mapKey converte teclas do GLFW para as teclas reconhecidas pelo JUIGo.
-func mapKey(key glfw.Key) Key {
+func mapKey(key glfw.Key) event.Key {
 	switch key {
 	case glfw.KeyEnter, glfw.KeyKPEnter:
-		return KeyEnter
+		return event.KeyEnter
 	case glfw.KeySpace:
-		return KeySpace
+		return event.KeySpace
 	case glfw.KeyBackspace:
-		return KeyBackspace
+		return event.KeyBackspace
 	case glfw.KeyDelete:
-		return KeyDelete
+		return event.KeyDelete
 	case glfw.KeyLeft:
-		return KeyLeft
+		return event.KeyLeft
 	case glfw.KeyRight:
-		return KeyRight
+		return event.KeyRight
 	case glfw.KeyHome:
-		return KeyHome
+		return event.KeyHome
 	case glfw.KeyEnd:
-		return KeyEnd
+		return event.KeyEnd
 	case glfw.KeyA:
-		return KeyA
+		return event.KeyA
 	case glfw.KeyC:
-		return KeyC
+		return event.KeyC
 	case glfw.KeyV:
-		return KeyV
+		return event.KeyV
 	case glfw.KeyX:
-		return KeyX
+		return event.KeyX
 	default:
-		return KeyUnknown
+		return event.KeyUnknown
 	}
 }
 
 // mapMouseButton converte o botão do GLFW para o tipo do JUIGo.
-func mapMouseButton(b glfw.MouseButton) MouseButton {
+func mapMouseButton(b glfw.MouseButton) event.MouseButton {
 	switch b {
 	case glfw.MouseButtonRight:
-		return MouseButtonRight
+		return event.MouseButtonRight
 	case glfw.MouseButtonMiddle:
-		return MouseButtonMiddle
+		return event.MouseButtonMiddle
 	default:
-		return MouseButtonLeft
+		return event.MouseButtonLeft
 	}
 }
 
@@ -408,17 +405,23 @@ func (a *App) resize(w, h int) {
 }
 
 // Theme devolve o tema da aplicação, usado na construção dos widgets.
-func (a *App) Theme() *Theme {
+// Bus devolve o barramento de eventos da aplicação (Publish síncrono), para
+// comunicação entre partes do código do usuário.
+func (a *App) Bus() *event.Bus {
+	return a.bus
+}
+
+func (a *App) Theme() *theme.Theme {
 	return a.theme
 }
 
 // SetRoot define o widget raiz da árvore de interface, injeta o tema da
 // aplicação na árvore (mount) e agenda um redesenho. A raiz recebe Layout
 // com os limites do buffer a cada renderização.
-func (a *App) SetRoot(w Widget) {
+func (a *App) SetRoot(w widget.Widget) {
 	a.root = w
 	if w != nil {
-		propagateTheme(w, a.theme)
+		widget.Mount(w, a.theme)
 	}
 	a.dirty = true
 }
@@ -441,7 +444,7 @@ func (a *App) render() {
 	if a.root != nil {
 		// Re-injeta o tema antes do layout para cobrir widgets adicionados
 		// dinamicamente à árvore (idempotente, sem alocações).
-		propagateTheme(a.root, a.theme)
+		widget.Mount(a.root, a.theme)
 		a.root.Layout(a.buf.Bounds())
 		a.root.Draw(a.buf)
 	}
@@ -476,9 +479,9 @@ func (a *App) Run() error {
 
 // destroy libera os recursos GL e a janela.
 func (a *App) destroy() {
-	repaintHook = nil
-	clipboardRead = nil
-	clipboardWrite = nil
+	hooks.Repaint = nil
+	hooks.ClipboardRead = nil
+	hooks.ClipboardWrite = nil
 	a.blitter.Destroy()
 	a.window.Destroy()
 	glfw.Terminate()

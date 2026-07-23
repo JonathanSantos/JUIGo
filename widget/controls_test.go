@@ -1,13 +1,16 @@
-package juigo
+package widget
 
 import (
 	"image"
 	"testing"
+
+	"juigo/event"
+	"juigo/state"
 )
 
 func TestCheckboxToggleEBinding(t *testing.T) {
 	th := newTestTheme(t)
-	ligado := NewState(false)
+	ligado := state.New(false)
 	var changes []bool
 
 	c := NewCheckbox("Notificações").BindChecked(ligado)
@@ -17,22 +20,22 @@ func TestCheckboxToggleEBinding(t *testing.T) {
 	inside := image.Pt(10, 12)
 
 	// Clique completo alterna e propaga ao State.
-	c.HandleEvent(MouseEvent{Kind: MouseDown, Pos: inside, Button: MouseButtonLeft})
-	c.HandleEvent(MouseEvent{Kind: MouseUp, Pos: inside, Button: MouseButtonLeft})
+	c.HandleEvent(event.MouseEvent{Kind: event.MouseDown, Pos: inside, Button: event.MouseButtonLeft})
+	c.HandleEvent(event.MouseEvent{Kind: event.MouseUp, Pos: inside, Button: event.MouseButtonLeft})
 	if !c.Checked() || !ligado.Get() {
 		t.Fatalf("após clique: Checked=%v, State=%v; esperado true/true", c.Checked(), ligado.Get())
 	}
 
-	// MouseLeave pressionado cancela sem alternar.
-	c.HandleEvent(MouseEvent{Kind: MouseDown, Pos: inside, Button: MouseButtonLeft})
-	c.HandleEvent(MouseEvent{Kind: MouseLeave, Pos: image.Pt(300, 12)})
-	c.HandleEvent(MouseEvent{Kind: MouseUp, Pos: image.Pt(300, 12), Button: MouseButtonLeft})
+	// event.MouseLeave pressionado cancela sem alternar.
+	c.HandleEvent(event.MouseEvent{Kind: event.MouseDown, Pos: inside, Button: event.MouseButtonLeft})
+	c.HandleEvent(event.MouseEvent{Kind: event.MouseLeave, Pos: image.Pt(300, 12)})
+	c.HandleEvent(event.MouseEvent{Kind: event.MouseUp, Pos: image.Pt(300, 12), Button: event.MouseButtonLeft})
 	if !c.Checked() {
 		t.Fatal("cancelamento não deveria ter alternado o valor")
 	}
 
 	// Espaço alterna quando focado; Set externo atualiza a caixa.
-	c.HandleEvent(KeyEvent{Key: KeySpace})
+	c.HandleEvent(event.KeyEvent{Key: event.KeySpace})
 	if c.Checked() || ligado.Get() {
 		t.Fatal("Espaço deveria ter desmarcado e propagado ao State")
 	}
@@ -49,7 +52,7 @@ func TestCheckboxToggleEBinding(t *testing.T) {
 
 func TestSliderMouseTecladoEBinding(t *testing.T) {
 	th := newTestTheme(t)
-	vol := NewState(0.0)
+	vol := state.New(0.0)
 
 	s := NewSlider(0, 100).BindValue(vol)
 	s.SetTheme(th)
@@ -57,33 +60,33 @@ func TestSliderMouseTecladoEBinding(t *testing.T) {
 	s.Layout(image.Rect(0, 0, 116, 24))
 
 	// Clique no meio do curso posiciona o valor e inicia o arraste.
-	s.HandleEvent(MouseEvent{Kind: MouseDown, Pos: image.Pt(58, 12), Button: MouseButtonLeft})
+	s.HandleEvent(event.MouseEvent{Kind: event.MouseDown, Pos: image.Pt(58, 12), Button: event.MouseButtonLeft})
 	if s.Value() != 50 || vol.Get() != 50 {
 		t.Fatalf("após clique no meio: Value=%v, State=%v; esperado 50", s.Value(), vol.Get())
 	}
 
 	// Arraste com captura: o movimento vale mesmo fora dos bounds (clamp).
-	s.HandleEvent(MouseEvent{Kind: MouseMove, Pos: image.Pt(83, 12), Button: MouseButtonLeft})
+	s.HandleEvent(event.MouseEvent{Kind: event.MouseMove, Pos: image.Pt(83, 12), Button: event.MouseButtonLeft})
 	if s.Value() != 75 {
 		t.Fatalf("após arrastar até 83px: Value=%v, esperado 75", s.Value())
 	}
-	s.HandleEvent(MouseEvent{Kind: MouseMove, Pos: image.Pt(500, -40), Button: MouseButtonLeft})
+	s.HandleEvent(event.MouseEvent{Kind: event.MouseMove, Pos: image.Pt(500, -40), Button: event.MouseButtonLeft})
 	if s.Value() != 100 {
 		t.Fatalf("arraste além do fim deveria limitar ao Max; Value=%v", s.Value())
 	}
-	s.HandleEvent(MouseEvent{Kind: MouseUp, Pos: image.Pt(500, -40), Button: MouseButtonLeft})
+	s.HandleEvent(event.MouseEvent{Kind: event.MouseUp, Pos: image.Pt(500, -40), Button: event.MouseButtonLeft})
 
 	// Solto: mover sem arrastar não muda nada.
-	if s.HandleEvent(MouseEvent{Kind: MouseMove, Pos: image.Pt(58, 12), Button: MouseButtonLeft}) {
-		t.Fatal("MouseMove sem arraste não deveria ser consumido")
+	if s.HandleEvent(event.MouseEvent{Kind: event.MouseMove, Pos: image.Pt(58, 12), Button: event.MouseButtonLeft}) {
+		t.Fatal("event.MouseMove sem arraste não deveria ser consumido")
 	}
 
 	// Teclado: setas usam Step (5% = 5), Home/End vão aos extremos.
-	s.HandleEvent(KeyEvent{Key: KeyLeft})
+	s.HandleEvent(event.KeyEvent{Key: event.KeyLeft})
 	if s.Value() != 95 || vol.Get() != 95 {
 		t.Fatalf("após seta esquerda: Value=%v, State=%v; esperado 95", s.Value(), vol.Get())
 	}
-	s.HandleEvent(KeyEvent{Key: KeyHome})
+	s.HandleEvent(event.KeyEvent{Key: event.KeyHome})
 	if s.Value() != 0 {
 		t.Fatalf("Home deveria ir ao Min; Value=%v", s.Value())
 	}

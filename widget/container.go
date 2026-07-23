@@ -1,6 +1,10 @@
-package juigo
+package widget
 
-import "image"
+import (
+	"image"
+
+	"juigo/theme"
+)
 
 // Container agrupa widgets filhos com posicionamento ABSOLUTO: cada filho
 // mantém os bounds que recebeu no próprio Layout; o Container não os move.
@@ -37,9 +41,9 @@ func (c *Container) Add(ws ...Widget) {
 // imediatamente à subárvore atual (filhos adicionados depois o herdam no
 // próximo mount). Também permite montar árvores sem App — testes e
 // renderização offscreen — aplicando o tema pela raiz.
-func (c *Container) SetTheme(t *Theme) {
+func (c *Container) SetTheme(t *theme.Theme) {
 	c.BaseWidget.SetTheme(t)
-	propagateTheme(c, t)
+	Mount(c, t)
 }
 
 // Children devolve os filhos na ordem de desenho.

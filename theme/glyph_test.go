@@ -1,4 +1,4 @@
-package juigo
+package theme
 
 import (
 	"bytes"
@@ -69,4 +69,14 @@ func TestFillRectSemAlocacao(t *testing.T) {
 	if allocs != 0 {
 		t.Fatalf("FillRect/StrokeRect alocaram %.1f vezes por chamada, esperado 0", allocs)
 	}
+}
+
+// newTestTheme falha o teste se o tema padrão (fonte embutida) não carregar.
+func newTestTheme(t *testing.T) *Theme {
+	t.Helper()
+	th, err := Default()
+	if err != nil {
+		t.Fatalf("theme.Default: %v", err)
+	}
+	return th
 }

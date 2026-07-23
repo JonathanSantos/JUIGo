@@ -1,4 +1,4 @@
-package juigo
+package theme
 
 import "testing"
 
@@ -41,18 +41,6 @@ func TestTemaEscala(t *testing.T) {
 	w2 := th.MeasureString("Ação métrica")
 	if w2 < 2*w1-8 || w2 > 2*w1+8 {
 		t.Fatalf("MeasureString na escala 2 = %d, esperado ~%d", w2, 2*w1)
-	}
-
-	// PreferredSize dos widgets acompanha a escala.
-	b := NewButton("OK", nil)
-	b.SetTheme(th)
-	if got := b.PreferredSize().Y; got != lh2+2*16 {
-		t.Fatalf("Button.PreferredSize().Y = %d, esperado %d", got, lh2+2*16)
-	}
-	in := NewInput("")
-	in.SetTheme(th)
-	if got := in.PreferredSize().X; got != 440 {
-		t.Fatalf("Input.PreferredSize().X = %d, esperado 440", got)
 	}
 
 	if err := th.SetScale(0); err == nil {
