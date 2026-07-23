@@ -163,8 +163,17 @@ Três ideias sustentam essa DX:
   `Centered`/`AtStart`/`AtEnd` controlam o eixo transversal (padrão:
   esticar). As funções devolvem o próprio widget com o tipo concreto — uso
   inline na árvore, sem nó extra, metadados internos no `BaseWidget`.
+- **Disabled e loading** — `SetDisabled`/`BindDisabled(w, estado)` tiram o
+  widget (e a subárvore) da interação de forma CENTRAL, no roteamento: sem
+  clique, foco, Tab, hover ou tooltip, com esmaecimento visual
+  (`Theme.DisabledWash`). `Button.SetLoading`/`BindLoading` mostram um
+  spinner animado e implicam desabilitado.
+- **Trabalho assíncrono com `App.Post`** — o ÚNICO método seguro para chamar
+  de outras goroutines: entrega um callback à main thread na próxima volta
+  do loop. Padrão: `SetLoading(true)` → goroutine faz o trabalho →
+  `app.Post(func(){ SetLoading(false); estado.Set(resultado) })`.
 - **Boot em uma linha** — `juigo.Run(título, w, h, raiz)`. `juigo.New`
-  continua disponível para quem precisa do `*App`.
+  continua disponível para quem precisa do `*App` (tema, `Post`, `Bus`).
 - **Renderização offscreen de primeira classe** — `juigo/offscreen` desenha
   qualquer árvore em um `*image.RGBA` sem janela nem GL, deterministicamente
   (mesma árvore ⇒ mesmos bytes): golden tests, screenshots de documentação e
