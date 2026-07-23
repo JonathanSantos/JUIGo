@@ -1,0 +1,24 @@
+# Roda a suíte inteira (headless: os testes usam a Session e a renderização
+# offscreen — nenhuma janela é aberta; os headers de GL/X11 são necessários
+# só para compilar o GLFW via cgo).
+name: testes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Dependências do GLFW (cgo)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev xorg-dev
+      - run: go vet ./...
+      - run: go test ./...
