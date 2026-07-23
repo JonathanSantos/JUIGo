@@ -113,7 +113,9 @@ execução só por `internal/hooks`, registrado na inicialização.
   cheias no miolo, zero alocação, custo de 0–6% no frame completo. Com
   `Radius` zero as primitivas degradam byte a byte para as retas — o visual
   clássico (`ClassicTheme`) é o mesmo de antes, verificado por render
-  idêntico; `ButtonBorder` com alfa zero desliga a borda do botão.
+  idêntico; `ButtonBorder` com alfa zero desliga a borda do botão. Círculos
+  (`FillCircle`/`StrokeCircle` — Radio, spinner) têm o mesmo antialiasing
+  em todos os temas: qualidade de desenho, não uma escolha de visual.
 - **Texto**: o Input opera sobre `[]rune` (cursor e âncora de seleção em
   runes, nunca bytes); acentuação e UTF-8 em geral funcionam. Suporta
   **seleção** (arraste do mouse ou Shift+setas/Home/End), **clipboard** do

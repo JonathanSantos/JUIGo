@@ -96,20 +96,51 @@ func FillRectOver(dst *image.RGBA, r image.Rectangle, c color.RGBA) {
 	draw.Draw(dst, r, fillSrc, image.Point{}, draw.Over)
 }
 
-// FillCircle preenche o círculo de centro c e raio r (em pixels), sem
-// blending, por varredura de linhas. Não aloca.
+// FillCircle preenche o círculo de centro c e raio r (em pixels),
+// sobrescrevendo como FillRect, com antialiasing na borda: os pixels do
+// traço do arco misturam a cor com o conteúdo já desenhado em dst (rampa
+// de 1px de cobertura) — desenhe o fundo antes. O miolo de cada linha é
+// preenchido em faixa cheia. Não aloca.
 func FillCircle(dst *image.RGBA, c image.Point, r int, col color.RGBA) {
 	if r <= 0 {
 		return
 	}
-	for dy := -r; dy <= r; dy++ {
-		dx := int(math.Sqrt(float64(r*r - dy*dy)))
-		FillRect(dst, image.Rect(c.X-dx, c.Y+dy, c.X+dx, c.Y+dy+1), col)
+	clip := dst.Bounds()
+	for y := c.Y - r - 1; y < c.Y+r+1; y++ {
+		if y < clip.Min.Y || y >= clip.Max.Y {
+			continue
+		}
+		py := float64(y) + 0.5 - float64(c.Y)
+		outer := (float64(r)+0.5)*(float64(r)+0.5) - py*py
+		if outer <= 0 {
+			continue
+		}
+		xo := math.Sqrt(outer) // além disso, cobertura zero
+		// Faixa sólida: pixels cujo centro dista até r-0.5 do centro.
+		xi := -1.0
+		if inner := (float64(r)-0.5)*(float64(r)-0.5) - py*py; inner > 0 {
+			xi = math.Sqrt(inner)
+		}
+		solid0, solid1 := c.X, c.X
+		if xi >= 0 {
+			solid0 = int(math.Ceil(float64(c.X) - xi - 0.5))
+			solid1 = int(math.Floor(float64(c.X)+xi-0.5)) + 1
+			FillRect(dst, image.Rect(solid0, y, solid1, y+1), col)
+		}
+		// Beiradas com antialiasing: poucos pixels por lado.
+		edge0 := int(math.Floor(float64(c.X) - xo + 0.5))
+		edge1 := int(math.Ceil(float64(c.X)+xo-0.5)) + 1
+		for x := edge0; x < solid0; x++ {
+			blendRingPixel(dst, clip, x, y, c, r, 0, col)
+		}
+		for x := solid1; x < edge1; x++ {
+			blendRingPixel(dst, clip, x, y, c, r, 0, col)
+		}
 	}
 }
 
-// StrokeCircle desenha um anel (contorno de círculo) com a espessura dada,
-// por varredura de linhas — a versão vazada do FillCircle.
+// StrokeCircle desenha um anel (contorno de círculo) com a espessura dada e
+// antialiasing nos dois arcos — a versão vazada do FillCircle. Não aloca.
 func StrokeCircle(dst *image.RGBA, c image.Point, r, w int, col color.RGBA) {
 	if r <= 0 || w <= 0 {
 		return
@@ -119,17 +150,81 @@ func StrokeCircle(dst *image.RGBA, c image.Point, r, w int, col color.RGBA) {
 		return
 	}
 	inner := r - w
-	for dy := -r; dy <= r; dy++ {
-		dx := int(math.Sqrt(float64(r*r - dy*dy)))
-		if dy < -inner || dy > inner {
-			// Fora do miolo: a linha inteira pertence ao anel.
-			FillRect(dst, image.Rect(c.X-dx, c.Y+dy, c.X+dx, c.Y+dy+1), col)
+	clip := dst.Bounds()
+	for y := c.Y - r - 1; y < c.Y+r+1; y++ {
+		if y < clip.Min.Y || y >= clip.Max.Y {
 			continue
 		}
-		di := int(math.Sqrt(float64(inner*inner - dy*dy)))
-		FillRect(dst, image.Rect(c.X-dx, c.Y+dy, c.X-di, c.Y+dy+1), col)
-		FillRect(dst, image.Rect(c.X+di, c.Y+dy, c.X+dx, c.Y+dy+1), col)
+		py := float64(y) + 0.5 - float64(c.Y)
+		outer := (float64(r)+0.5)*(float64(r)+0.5) - py*py
+		if outer <= 0 {
+			continue
+		}
+		xo := math.Sqrt(outer)
+		edge0 := int(math.Floor(float64(c.X) - xo + 0.5))
+		edge1 := int(math.Ceil(float64(c.X)+xo-0.5)) + 1
+		// Miolo poupado: pixels cujo centro dista menos que inner-0.5 do
+		// centro têm cobertura zero no anel.
+		hole := -1.0
+		if h := (float64(inner)-0.5)*(float64(inner)-0.5) - py*py; h > 0 {
+			hole = math.Sqrt(h)
+		}
+		if hole < 0 {
+			// Linha sem miolo: o anel atravessa inteiro.
+			for x := edge0; x < edge1; x++ {
+				blendRingPixel(dst, clip, x, y, c, r, inner, col)
+			}
+			continue
+		}
+		hole0 := int(math.Ceil(float64(c.X) - hole - 0.5))
+		hole1 := int(math.Floor(float64(c.X)+hole-0.5)) + 1
+		for x := edge0; x < hole0; x++ {
+			blendRingPixel(dst, clip, x, y, c, r, inner, col)
+		}
+		for x := hole1; x < edge1; x++ {
+			blendRingPixel(dst, clip, x, y, c, r, inner, col)
+		}
 	}
+}
+
+// blendRingPixel mistura col no pixel (x,y) com a cobertura do anel entre
+// os raios inner e r do círculo de centro c (inner <= 0 preenche até o arco
+// externo — o caso do FillCircle). É a rampa de 1px do antialiasing.
+func blendRingPixel(dst *image.RGBA, clip image.Rectangle, x, y int, c image.Point, r, inner int, col color.RGBA) {
+	if x < clip.Min.X || x >= clip.Max.X {
+		return
+	}
+	d := math.Hypot(float64(x)+0.5-float64(c.X), float64(y)+0.5-float64(c.Y))
+	cov := float64(r) - d + 0.5
+	if cov <= 0 {
+		return
+	}
+	if cov > 1 {
+		cov = 1
+	}
+	if inner > 0 {
+		if ci := float64(inner) - d + 0.5; ci > 0 {
+			if ci > 1 {
+				ci = 1
+			}
+			cov -= ci
+		}
+		if cov <= 0 {
+			return
+		}
+	}
+	f := uint32(cov*255 + 0.5)
+	i := dst.PixOffset(x, y)
+	p := dst.Pix[i : i+4 : i+4]
+	if f == 255 {
+		p[0], p[1], p[2], p[3] = col.R, col.G, col.B, col.A
+		return
+	}
+	inv := 255 - f
+	p[0] = uint8((uint32(col.R)*f + uint32(p[0])*inv + 127) / 255)
+	p[1] = uint8((uint32(col.G)*f + uint32(p[1])*inv + 127) / 255)
+	p[2] = uint8((uint32(col.B)*f + uint32(p[2])*inv + 127) / 255)
+	p[3] = uint8((uint32(col.A)*f + uint32(p[3])*inv + 127) / 255)
 }
 
 // Clip preenche out com uma VISÃO de dst recortada a r — mesmos pixels, sem

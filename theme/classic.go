@@ -5,9 +5,10 @@ import "image/color"
 // Classic constrói o tema claro com o visual clássico do JUIGo (anterior ao
 // Theme.Radius): os mesmos valores de Default, sem cantos arredondados
 // (Radius zero) e sem borda de botão. Com Radius zero as primitivas
-// arredondadas degradam pixel a pixel para retângulos retos, então o
-// resultado é idêntico ao antigo. Para um tema escuro clássico, zere os
-// mesmos dois campos em um tema vindo de Dark:
+// arredondadas degradam pixel a pixel para retângulos retos. Círculos
+// (Radio, spinner) têm antialiasing em todos os temas — qualidade de
+// desenho, não uma escolha de visual. Para um tema escuro clássico, zere
+// os mesmos dois campos em um tema vindo de Dark:
 //
 //	t, _ := theme.Dark()
 //	t.Radius = 0
