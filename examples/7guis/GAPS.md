@@ -1,81 +1,44 @@
-# 7GUIs — limitações do JUIGo encontradas e melhorias de DX candidatas
+# 7GUIs — gaps encontrados e RESOLVIDOS
 
-Registro do exercício: cada GUI foi implementada até onde a lib alcança;
-o que faltou (ou saiu deselegante) está aqui, por app, com candidatos de
-melhoria. Itens marcados ✅ já foram resolvidos durante o próprio exercício.
+O exercício dos 7GUIs foi feito em duas rodadas: a primeira implementou as
+sete GUIs até onde a lib alcançava e registrou aqui cada limitação; a
+segunda transformou o registro em componentes da lib e reescreveu os
+exemplos por cima deles. Estado atual: **todos os gaps acionáveis foram
+resolvidos** — este arquivo vira o changelog do que a lib ganhou e de onde
+cada peça é demonstrada.
 
-## 3 · Flight Booker
+## O que a lib ganhou (e onde ver funcionando)
 
-- **Sem campo de data** — usei `Input` + validador de formato (`DD/MM/AAAA`),
-  sem máscara de digitação nem calendário. Candidato: `quick.Date` sobre o
-  molde `Field[T]` (com `Input.Filter` de dígitos/barras já dá uma máscara
-  razoável).
-- **Sem cor de fundo por instância no Input** — o 7GUIs original pinta o
-  FUNDO do campo inválido de vermelho; nosso `Input` não expõe isso, então o
-  erro aparece como texto `Danger` (o padrão da lib). Candidato: variação
-  visual de erro no próprio Input (`Invalid(state)`?).
-- **quick.Form não expõe o controle** — o campo de volta precisa de
-  `BindDisabled` próprio (desabilitado quando "só ida"), o que forçou montar
-  o formulário com `form` + `Grid` à mão. Candidato: `.Disabled(state)` no
-  Field do quick, ou expor o controle do handle.
+| Componente | O que é | Demonstrado em |
+| --- | --- | --- |
+| `quick.Date` | Campo de data DD/MM/AAAA: máscara por `Input.Filter`, valor `time.Time`, `Required` e regra multi-fonte `.Rule` | Flight Booker |
+| `Field.Disabled(state)` | Desabilitado reativo em qualquer campo do quick | Flight Booker (volta presa ao "só ida") |
+| `Input/TextArea.BindInvalid` | Borda `Theme.Danger` reativa; o quick liga sozinho ao `ErrorOf` do campo | Flight Booker (datas inválidas ficam vermelhas) |
+| `juigo.After` / `juigo.Every` | Timers públicos na main thread (relógio virtual no uitest) | `uitest/timers_test.go` |
+| `uitest.NewLazy` | Harness que constrói a raiz DEPOIS de ligar os hooks (UIs que agendam timers na construção) | Timer |
+| `Table` | Tabela de texto com colunas, cabeçalho FIXO na viewport, virtualização de desenho e seleção | CRUD |
+| `List.BindSelected` / `Table.BindSelected` | Seleção de linha como State (clique seleciona, Set externo move o realce, `Theme.Selection` de fundo) | CRUD |
+| `Popup` | Painel ancorado num ponto, sem escurecer o fundo — a base de menus de contexto | Circle Drawer (ajuste de diâmetro no ponto do clique) |
+| `uitest.RightClickAt/RightClick` | Clique direito sintético | Circle Drawer |
+| `render.StrokeCircle` | Anel de círculo por varredura (sem o truque dos dois FillCircle) | Circle Drawer |
+| `juigo.History` + `juigo.Not` | Undo/redo genérico (pilhas + `CanUndo`/`CanRedo` prontos para `BindDisabled`) | Circle Drawer |
+| `Scroll.Horizontal()` | Eixo X na rolagem (delta horizontal do trackpad, indicador inferior) | Cells |
+| `uitest.FindAll` | Todos os widgets que casam com um seletor | Flight Booker, CRUD |
 
-## 4 · Timer
+Tudo coberto pelo segundo golden test de dirty regions
+(`uitest/damage_test.go`, `TestIncrementalNovosComponentes`): seleção de
+tabela, cabeçalho fixo sob rolagem, popup abrindo/reposicionando/fechando,
+rolagem horizontal e o realce de erro — frame incremental byte a byte igual
+ao completo.
 
-- **Aplicações não têm timers públicos** — `internal/hooks` é inacessível;
-  `anim.Tween` cobriu este caso com elegância (1s de animação = 1s de
-  relógio), mas um timer que NÃO é interpolação (polling, relógio de parede)
-  não tem API. Candidato: `App.After(d, fn)` / `App.Every(d, fn)` públicos,
-  espelhados no relógio virtual do uitest.
-- **UI que agenda timers na construção × uitest** — `uitest.New(t, UI(), …)`
-  avalia `UI()` ANTES de ligar os hooks: o tween nasce sem scheduler e salta
-  ao alvo. O contorno é `New` com raiz vazia + `Session().SetRoot(UI())` +
-  `h.Layout()`. Candidato: `uitest.NewLazy(t, func() Widget, w, h)`.
+## Simplificações assumidas (deliberadas, não gaps)
 
-## 5 · CRUD
-
-- **Seleção de lista não é nativa** — a `List` virtualizada não tem noção de
-  linha selecionada; fiz um widget custom de linha (desenha o realce, trata
-  o clique) e o modelo chama `lista.Refresh()` a cada mudança. Funcionou bem
-  (e provou o roteamento de eventos nas linhas do pool), mas é cerimônia
-  para um padrão comum. Candidato: `SelectableList` no quick, ou seleção na
-  própria `List`.
-- **Escrever widget custom foi BOM** — `BaseWidget` + `Draw` + `HandleEvent`
-  + `Invalidate` bastaram; tema via `Theme()`, primitivas via `juigo/render`.
-  Nenhum gap aqui — registrado como ponto forte.
-
-## 6 · Circle Drawer
-
-- **Sem menu de contexto** — o ajuste de diâmetro abriu num `Modal` (que
-  funcionou bem, com o slider ao vivo). Candidato: popup ancorado no ponto
-  do clique (a infra de overlay já existe — o Dropdown faz isso).
-- **Sem clique direito no uitest** — `Click`/`ClickAt` são só botão esquerdo;
-  o teste usou `Session().PointerDown/Up` direto. Candidato:
-  `h.RightClickAt(pos)`.
-- **Sem `StrokeCircle` no render** — o anel do círculo são dois `FillCircle`
-  (borda + miolo). Funciona, mas um traço de círculo evitaria o truque.
-- **Sem infra de undo/redo** — snapshots à mão no modelo (30 linhas,
-  aceitável). Candidato: `state.History` genérico (pilhas + estados
-  `CanUndo`/`CanRedo` prontos para `BindDisabled`).
-
-## 7 · Cells
-
-- **Sem widget de tabela** — a planilha inteira é um widget custom que
-  desenha cabeçalhos, grade, valores e seleção, e resolve cliques por
-  coordenada. Viável (e rápido), mas é o maior gap da lib para apps de
-  dados. Candidato: `Table` com colunas, cabeçalho e células viewportadas
-  (a `List` já dá o modelo de virtualização).
-- **Scroll é só vertical** — a grade A–H cabe na janela, mas uma planilha
-  real precisaria de rolagem horizontal. Candidato: eixo X no `Scroll`.
-- **Edição in-place não rola** — editar a célula NELA (em vez da barra de
-  fórmulas) exigiria um Input posicionado sobre a célula selecionada; a
-  barra de fórmulas foi a saída idiomática (e fiel ao Excel).
-- Simplificação assumida: recálculo TOTAL a cada edição (grade pequena); o
-  original propaga por grafo de dependências.
-
-## Resolvidos durante o exercício ✅
-
-- **`uitest.FindAll`** — não existia; necessário para "os 2 campos de data"
-  e "quantas linhas a lista mostra". Adicionado à lib.
-- **`h.Layout()` após `SetRoot`** — trocar a raiz sem renderizar deixa a
-  árvore sem geometria e cliques caem no vazio; o helper já existia e os
-  testes documentam o padrão.
+- **Cells recalcula tudo a cada edição** — a grade é A–H × 1–12; o 7GUIs
+  original propaga por grafo de dependências. Vira interessante só com
+  planilhas grandes.
+- **Cells edita pela barra de fórmulas** (fiel ao Excel) — edição in-place
+  exigiria um Input flutuando sobre a célula selecionada.
+- **Table é de células de TEXTO** — conteúdo rico em linhas fica com a
+  List (widgets de verdade por linha) ou widgets custom.
+- **Seleção de lista/tabela é única e por clique** — multi-seleção e
+  navegação por teclado ficam para quando um app real pedir.

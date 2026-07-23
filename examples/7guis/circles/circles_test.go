@@ -54,24 +54,25 @@ func TestDesenhoComUndoRedo(t *testing.T) {
 		t.Fatal("longe dos círculos, nada deveria estar realçado")
 	}
 
-	// Clique direito no círculo abre o diálogo de ajuste; arrastar o slider
+	// Clique direito no círculo abre o POPUP ancorado; arrastar o slider
 	// muda o diâmetro AO VIVO; fechar registra UMA entrada de undo.
-	h.MoveTo(dentro(60, 60))
-	h.Session().PointerDown(dentro(60, 60), juigo.MouseButtonRight)
-	h.Session().PointerUp(dentro(60, 60), juigo.MouseButtonRight)
-	if h.Session().Overlay() == nil {
-		t.Fatal("clique direito deveria abrir o diálogo de ajuste")
+	h.RightClickAt(dentro(60, 60))
+	popup, ok := h.Session().Overlay().(*juigo.Popup)
+	if !ok {
+		t.Fatalf("clique direito deveria abrir um Popup; got %T", h.Session().Overlay())
 	}
-	h.Layout()
+	if !popup.Shown() {
+		t.Fatal("o popup deveria estar aberto")
+	}
 	sl := h.Find(uitest.OfType[*juigo.Slider]()).(*juigo.Slider)
 	meio := sl.Bounds().Min.Add(sl.Bounds().Size().Div(2))
 	h.Drag(meio, meio.Add(image.Pt(200, 0))) // arrasta ao máximo (diâmetro 200)
 	if r := m.Circulos()[0].r; r != 100 {
 		t.Fatalf("o slider no máximo deveria deixar o raio em 100; got %d", r)
 	}
-	h.Key(juigo.KeyEscape) // fecha o diálogo → 1 entrada de undo
+	h.Key(juigo.KeyEscape) // fecha o popup → 1 entrada de undo
 	if h.Session().Overlay() != nil {
-		t.Fatal("Escape deveria fechar o diálogo")
+		t.Fatal("Escape deveria fechar o popup")
 	}
 	h.Click(uitest.Text("Desfazer"))
 	if r := m.Circulos()[0].r; r == 100 {

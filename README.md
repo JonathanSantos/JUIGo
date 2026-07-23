@@ -24,11 +24,13 @@ juigo/
                              (DispatchAt/DispatchMouse/DispatchScroll,
                              DeepestAt/FocusableAt/Focusables), Mount,
                              flex (Grow/Spacer/Centered/AtStart/AtEnd),
-                             Container/VBox/HBox, Grid, Scroll (clipping),
-                             List virtualizada, overlay, CursorShape, Tooltip,
-                             Text, Button, Input, TextArea (soft wrap),
-                             Checkbox, Slider, ProgressBar, Radio, Image,
-                             Dropdown, Modal
+                             Container/VBox/HBox, Grid, Scroll (clipping,
+                             eixo horizontal opcional), List virtualizada
+                             (com seleção), Table (cabeçalho fixo, seleção),
+                             overlay, CursorShape, Tooltip, Text, Button,
+                             Input, TextArea (soft wrap), Checkbox, Slider,
+                             ProgressBar, Radio, Image, Dropdown, Modal,
+                             Popup ancorado
   offscreen/                 Render/SavePNG: árvore → *image.RGBA sem janela
                              (golden tests, screenshots, depuração)
   uitest/                    harness de testes de UI: dirige a Session real
@@ -240,6 +242,12 @@ As ideias que sustentam essa DX:
   A regra da rampa: tudo aceita e devolve widgets comuns — quando o padrão
   pronto não servir, desça um nível naquele ponto (`Model()` dá o form;
   monte o Modal à mão) sem reescrever a tela.
+- **Timers, undo e seleção** — `juigo.After(d, fn)`/`juigo.Every(d, fn)`
+  agendam trabalho na main thread (determinísticos no relógio virtual do
+  uitest); `juigo.NewHistory(inicial)` dá undo/redo com `CanUndo`/`CanRedo`
+  prontos para `BindDisabled` (e `juigo.Not` inverte estados booleanos);
+  `List`/`Table.BindSelected(estado)` fazem da linha selecionada um State
+  como outro qualquer.
 - **Animações (`juigo/anim`)** — `anim.Tween(estado, alvo, duração, easing)`
   interpola qualquer `State[float64]` sobre os timers da aplicação, com
   retarget automático; compõe com os bindings (barra de progresso, rolagem

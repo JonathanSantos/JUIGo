@@ -269,7 +269,7 @@ func New() *App {
 			juigo.Centered(juigo.NewText("").BindText(juigo.Map(selecao, func(r string) string { return r + ":" }))),
 			juigo.Grow(barra, 1),
 		),
-		juigo.Grow(juigo.NewScroll(p), 1),
+		juigo.Grow(juigo.NewScroll(p).Horizontal(), 1),
 	).Pad(16)
 	return &App{M: m, Plan: p, Barra: barra, Raiz: raiz}
 }

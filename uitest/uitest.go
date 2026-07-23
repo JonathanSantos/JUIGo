@@ -65,6 +65,23 @@ func New(t testing.TB, root widget.Widget, width, height int) *Harness {
 	return newWith(t, root, th, width, height)
 }
 
+// NewLazy cria o harness e SÓ ENTÃO constrói a raiz com build — para UIs
+// que agendam timers ou animações na própria construção: quando build
+// roda, os hooks já apontam para o relógio virtual (com uitest.New, a
+// árvore é construída ANTES e os agendamentos se perdem — anim salta ao
+// alvo).
+func NewLazy(t testing.TB, build func() widget.Widget, width, height int) *Harness {
+	t.Helper()
+	th, err := theme.Default()
+	if err != nil {
+		t.Fatalf("uitest: theme.Default: %v", err)
+	}
+	h := newWith(t, widget.NewContainer(), th, width, height)
+	h.session.SetRoot(build())
+	h.Layout()
+	return h
+}
+
 // NewWithTheme é como New, com um tema específico (ex.: escala 2).
 func NewWithTheme(t testing.TB, root widget.Widget, th *theme.Theme, width, height int) *Harness {
 	t.Helper()
@@ -204,6 +221,21 @@ func (h *Harness) ClickAt(pos image.Point) {
 func (h *Harness) Click(sel Selector) {
 	h.t.Helper()
 	h.ClickAt(center(h.mustFind(sel).Bounds()))
+}
+
+// RightClickAt faz um clique completo com o botão DIREITO na posição dada
+// (menus de contexto, ajustes).
+func (h *Harness) RightClickAt(pos image.Point) {
+	h.MoveTo(pos)
+	h.session.PointerDown(pos, event.MouseButtonRight)
+	h.session.PointerUp(pos, event.MouseButtonRight)
+}
+
+// RightClick faz um clique com o botão direito no centro do widget
+// selecionado.
+func (h *Harness) RightClick(sel Selector) {
+	h.t.Helper()
+	h.RightClickAt(center(h.mustFind(sel).Bounds()))
 }
 
 // Drag pressiona em from, arrasta (com captura, como no App real) e solta em

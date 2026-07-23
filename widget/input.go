@@ -34,6 +34,8 @@ type Input struct {
 	onSubmit func()
 	// filter restringe os caracteres aceitos (ver Filter).
 	filter func(rune) bool
+	// invalid liga o realce de erro (ver SetInvalid/BindInvalid).
+	invalid bool
 
 	runes []rune
 	// cursor e anchor são índices em runes (0..len(runes)); a seleção é o
@@ -105,6 +107,24 @@ func (in *Input) OnSubmit(fn func()) *Input {
 // exemplo). Não afeta SetText nem bindings. Encadeável.
 func (in *Input) Filter(allowed func(rune) bool) *Input {
 	in.filter = allowed
+	return in
+}
+
+// SetInvalid liga/desliga o realce de erro do campo (borda na cor
+// Theme.Danger) e agenda um redesenho.
+func (in *Input) SetInvalid(v bool) {
+	if in.invalid == v {
+		return
+	}
+	in.invalid = v
+	in.Invalidate()
+}
+
+// BindInvalid vincula o realce de erro ao State (true = borda Danger) — o
+// par visual de form.ErrorOf. Encadeável.
+func (in *Input) BindInvalid(s *state.State[bool]) *Input {
+	in.SetInvalid(s.Get())
+	s.Watch(func(v bool) { in.SetInvalid(v) })
 	return in
 }
 
@@ -506,6 +526,9 @@ func (in *Input) Draw(dst *image.RGBA) {
 	border := th.InputBorder
 	if in.focused {
 		border = th.InputBorderFocused
+	}
+	if in.invalid {
+		border = th.Danger // erro vence o foco: o problema fica visível
 	}
 	render.StrokeRect(dst, bounds, th.BorderPx(), border)
 

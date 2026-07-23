@@ -108,6 +108,30 @@ func FillCircle(dst *image.RGBA, c image.Point, r int, col color.RGBA) {
 	}
 }
 
+// StrokeCircle desenha um anel (contorno de círculo) com a espessura dada,
+// por varredura de linhas — a versão vazada do FillCircle.
+func StrokeCircle(dst *image.RGBA, c image.Point, r, w int, col color.RGBA) {
+	if r <= 0 || w <= 0 {
+		return
+	}
+	if w >= r {
+		FillCircle(dst, c, r, col)
+		return
+	}
+	inner := r - w
+	for dy := -r; dy <= r; dy++ {
+		dx := int(math.Sqrt(float64(r*r - dy*dy)))
+		if dy < -inner || dy > inner {
+			// Fora do miolo: a linha inteira pertence ao anel.
+			FillRect(dst, image.Rect(c.X-dx, c.Y+dy, c.X+dx, c.Y+dy+1), col)
+			continue
+		}
+		di := int(math.Sqrt(float64(inner*inner - dy*dy)))
+		FillRect(dst, image.Rect(c.X-dx, c.Y+dy, c.X-di, c.Y+dy+1), col)
+		FillRect(dst, image.Rect(c.X+di, c.Y+dy, c.X+dx, c.Y+dy+1), col)
+	}
+}
+
 // Clip preenche out com uma VISÃO de dst recortada a r — mesmos pixels, sem
 // cópia e sem alocação (out é um scratch reutilizável, normalmente um campo
 // do widget) — e a devolve. Desenhar na visão não alcança nada fora de r,

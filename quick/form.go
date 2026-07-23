@@ -3,6 +3,7 @@ package quick
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	"juigo/form"
 	"juigo/state"
@@ -19,8 +20,10 @@ import (
 // O estado nasce interno por padrão; Bind (nos tipos concretos) o troca por
 // um State externo quando o valor precisa viver fora do formulário.
 type Field[T any] struct {
-	label string
-	st    *state.State[T]
+	label    string
+	st       *state.State[T]
+	disabled *state.State[bool]
+	control  widget.Widget
 }
 
 // Value devolve o valor atual do campo.
@@ -37,6 +40,32 @@ func (f *Field[T]) Set(v T) {
 // além do formulário (Map, Watch, bindings em outros widgets).
 func (f *Field[T]) State() *state.State[T] {
 	return f.st
+}
+
+// Control devolve o widget do campo (nil antes de Form) — a saída de
+// emergência para configurações que o quick não expõe.
+func (f *Field[T]) Control() widget.Widget {
+	return f.control
+}
+
+// finish aplica os acabamentos comuns do campo: guarda o controle, liga o
+// desabilitado e, com validação, o realce de erro (borda Danger acompanha
+// ErrorOf).
+func (f *Field[T]) finish(control widget.Widget, m *form.Form, key any, hasErr bool) {
+	f.control = control
+	if f.disabled != nil {
+		widget.BindDisabled(control, f.disabled)
+	}
+	if !hasErr {
+		return
+	}
+	invalid := state.Map(m.ErrorOf(key), func(e string) bool { return e != "" })
+	switch c := control.(type) {
+	case *widget.Input:
+		c.BindInvalid(invalid)
+	case *widget.TextArea:
+		c.BindInvalid(invalid)
+	}
 }
 
 // FormItem é o contrato dos itens aceitos por Form (campos e Section).
@@ -143,6 +172,13 @@ func (f *TextField) Placeholder(s string) *TextField {
 	return f
 }
 
+// Disabled vincula o desabilitado do controle ao State (true desabilita).
+// Encadeável.
+func (f *TextField) Disabled(s *state.State[bool]) *TextField {
+	f.disabled = s
+	return f
+}
+
 func (f *TextField) addTo(a *assembly) {
 	hasErr := len(f.validators) > 0
 	if hasErr {
@@ -159,6 +195,7 @@ func (f *TextField) addTo(a *assembly) {
 			v.inputs = append(v.inputs, in)
 			control = in
 		}
+		f.finish(control, m, f.st, hasErr)
 		a.addRow(f.label, control, m, f.st, hasErr)
 	})
 }
@@ -210,6 +247,13 @@ func (f *NumberField) Max(n int, msg string) *NumberField {
 	return f
 }
 
+// Disabled vincula o desabilitado do controle ao State (true desabilita).
+// Encadeável.
+func (f *NumberField) Disabled(s *state.State[bool]) *NumberField {
+	f.disabled = s
+	return f
+}
+
 func (f *NumberField) addTo(a *assembly) {
 	hasErr := len(f.checks) > 0
 	if hasErr {
@@ -258,6 +302,7 @@ func (f *NumberField) addTo(a *assembly) {
 			}
 		})
 		v.inputs = append(v.inputs, in)
+		f.finish(in, m, f.st, hasErr)
 		a.addRow(f.label, in, m, f.st, hasErr)
 	})
 }
@@ -300,6 +345,13 @@ func (f *OptionsField) Placeholder(s string) *OptionsField {
 	return f
 }
 
+// Disabled vincula o desabilitado do controle ao State (true desabilita).
+// Encadeável.
+func (f *OptionsField) Disabled(s *state.State[bool]) *OptionsField {
+	f.disabled = s
+	return f
+}
+
 func (f *OptionsField) addTo(a *assembly) {
 	hasErr := len(f.validators) > 0
 	if hasErr {
@@ -315,6 +367,7 @@ func (f *OptionsField) addTo(a *assembly) {
 				f.st.Set(dd.Value())
 			}
 		}
+		f.finish(dd, m, f.st, hasErr)
 		a.addRow(f.label, dd, m, f.st, hasErr)
 	})
 }
@@ -345,6 +398,13 @@ func (f *CheckField) Required(msg string) *CheckField {
 	return f
 }
 
+// Disabled vincula o desabilitado do controle ao State (true desabilita).
+// Encadeável.
+func (f *CheckField) Disabled(s *state.State[bool]) *CheckField {
+	f.disabled = s
+	return f
+}
+
 func (f *CheckField) addTo(a *assembly) {
 	hasErr := f.requiredMsg != ""
 	if hasErr {
@@ -353,7 +413,132 @@ func (f *CheckField) addTo(a *assembly) {
 	a.steps = append(a.steps, func(m *form.Form, v *FormView) {
 		cb := widget.NewCheckbox(f.label).BindChecked(f.st).
 			OnChange(func(bool) { m.Touch(f.st) })
+		f.finish(cb, m, f.st, hasErr)
 		a.addRow("", cb, m, f.st, hasErr)
+	})
+}
+
+// DateField é o campo de data (DD/MM/AAAA): um Input mascarado por filtro
+// (dígitos e barras) com o valor tipado em time.Time.
+type DateField struct {
+	Field[time.Time]
+	formatMsg   string
+	requiredMsg string
+	extras      []dateRule
+}
+
+// dateRule é uma regra multi-fonte exibida no campo (ver Rule).
+type dateRule struct {
+	compute func() string
+	sources []state.Observable
+}
+
+// dateLayout é o formato DD/MM/AAAA dos campos de data.
+const dateLayout = "02/01/2006"
+
+// Date declara um campo de data DD/MM/AAAA; invalidMsg é exibida quando o
+// texto não parseia (campo vazio passa — combine com Required). Value
+// devolve time.Time (zero enquanto vazio ou inválido).
+func Date(label, invalidMsg string) *DateField {
+	return &DateField{
+		Field:     Field[time.Time]{label: label, st: state.New(time.Time{})},
+		formatMsg: invalidMsg,
+	}
+}
+
+// Required exige uma data preenchida, com a mensagem dada. Encadeável.
+func (f *DateField) Required(msg string) *DateField {
+	f.requiredMsg = msg
+	return f
+}
+
+// Disabled vincula o desabilitado do controle ao State (true desabilita).
+// Encadeável.
+func (f *DateField) Disabled(s *state.State[bool]) *DateField {
+	f.disabled = s
+	return f
+}
+
+// Bind troca o State interno pelo externo dado (chame antes de Form).
+// Encadeável.
+func (f *DateField) Bind(s *state.State[time.Time]) *DateField {
+	f.st = s
+	return f
+}
+
+// Rule acrescenta uma regra multi-fonte exibida NESTE campo (ex.: "a volta
+// deve ser depois da ida"), reavaliada quando o próprio texto ou qualquer
+// fonte muda. Encadeável.
+func (f *DateField) Rule(compute func() string, sources ...state.Observable) *DateField {
+	f.extras = append(f.extras, dateRule{compute: compute, sources: sources})
+	return f
+}
+
+func (f *DateField) addTo(a *assembly) {
+	// O texto editável vive num State próprio; TODA a validação (requerido,
+	// formato e regras extras) vira UMA form.Rule chaveada nele — uma única
+	// linha de erro para o campo.
+	texto := ""
+	if !f.st.Get().IsZero() {
+		texto = f.st.Get().Format(dateLayout)
+	}
+	str := state.New(texto)
+	// A sincronização texto↔time.Time é registrada AQUI, antes do form.New:
+	// quando o texto muda, o Value() já está fresco na hora em que as
+	// regras multi-fonte (deste e de outros campos) são reavaliadas.
+	sincronizando := false
+	str.Watch(func(s string) {
+		t, err := time.Parse(dateLayout, strings.TrimSpace(s))
+		if err != nil {
+			t = time.Time{}
+		}
+		if !f.st.Get().Equal(t) {
+			sincronizando = true
+			f.st.Set(t)
+			sincronizando = false
+		}
+	})
+	f.st.Watch(func(t time.Time) {
+		if sincronizando {
+			return
+		}
+		s := ""
+		if !t.IsZero() {
+			s = t.Format(dateLayout)
+		}
+		if str.Get() != s {
+			str.Set(s)
+		}
+	})
+	hasErr := f.requiredMsg != "" || f.formatMsg != "" || len(f.extras) > 0
+	if hasErr {
+		fontes := []state.Observable{str}
+		for _, r := range f.extras {
+			fontes = append(fontes, r.sources...)
+		}
+		a.specs = append(a.specs, form.Rule(str, func() string {
+			s := strings.TrimSpace(str.Get())
+			if s == "" {
+				return f.requiredMsg
+			}
+			if _, err := time.Parse(dateLayout, s); err != nil {
+				return f.formatMsg
+			}
+			for _, r := range f.extras {
+				if msg := r.compute(); msg != "" {
+					return msg
+				}
+			}
+			return ""
+		}, fontes...))
+	}
+	a.steps = append(a.steps, func(m *form.Form, v *FormView) {
+		in := widget.NewInput("DD/MM/AAAA").BindValue(str).
+			Filter(func(r rune) bool { return (r >= '0' && r <= '9') || r == '/' }).
+			OnBlur(func() { m.Touch(str) })
+		v.inputs = append(v.inputs, in)
+		f.finish(in, m, str, hasErr)
+		a.addRow(f.label, in, m, str, hasErr)
 	})
 }
 

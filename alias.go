@@ -53,6 +53,11 @@ type (
 	TextArea = widget.TextArea
 	// Modal é o diálogo centralizado sobre pano de fundo translúcido.
 	Modal = widget.Modal
+	// Popup é o painel ancorado num ponto, sem escurecer o fundo (menus de
+	// contexto, diálogos leves).
+	Popup = widget.Popup
+	// Table é a tabela de células de texto com cabeçalho fixo e seleção.
+	Table = widget.Table
 	// Grid distribui filhos em grade de N colunas (formulários alinhados).
 	Grid = widget.Grid
 	// Align é o alinhamento horizontal do Text.
@@ -71,6 +76,9 @@ type (
 
 // List é a lista virtualizada de linhas uniformes com pool reciclado.
 type List[W Widget] = widget.List[W]
+
+// History é o valor com pilhas de desfazer/refazer (ver state.History).
+type History[T any] = state.History[T]
 
 // Reatividade (juigo/state).
 type (
@@ -207,6 +215,16 @@ func NewTextArea(placeholder string) *TextArea { return widget.NewTextArea(place
 // widget.NewModal).
 func NewModal(content Widget) *Modal { return widget.NewModal(content) }
 
+// NewPopup cria um popup ancorado com o conteúdo dado; exiba com ShowAt
+// (ver widget.NewPopup).
+func NewPopup(content Widget) *Popup { return widget.NewPopup(content) }
+
+// NewTable cria uma tabela de texto: títulos de coluna, total de linhas e o
+// callback de célula (ver widget.NewTable).
+func NewTable(titulos []string, count int, celula func(linha, coluna int) string) *Table {
+	return widget.NewTable(titulos, count, celula)
+}
+
 // NewGrid cria uma grade com o número de colunas e os filhos dados (ver
 // widget.NewGrid).
 func NewGrid(colunas int, children ...Widget) *Grid { return widget.NewGrid(colunas, children...) }
@@ -252,6 +270,14 @@ func Map[A, B any](s *State[A], f func(A) B) *State[B] { return state.Map(s, f) 
 func Combine[T any](compute func() T, fontes ...Observable) *State[T] {
 	return state.Combine(compute, fontes...)
 }
+
+// Not deriva o State booleano inverso — o par natural de BindDisabled (ver
+// state.Not).
+func Not(s *State[bool]) *State[bool] { return state.Not(s) }
+
+// NewHistory cria um histórico de desfazer/refazer com o valor inicial (ver
+// state.NewHistory).
+func NewHistory[T any](inicial T) *History[T] { return state.NewHistory(inicial) }
 
 // DarkTheme constrói o tema escuro na escala 1; troque em runtime com
 // App.SetTheme (ver theme.Dark).

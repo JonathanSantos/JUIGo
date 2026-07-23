@@ -1,6 +1,12 @@
 package widget
 
-import "image"
+import (
+	"image"
+
+	"juigo/event"
+	"juigo/render"
+	"juigo/state"
+)
 
 // List é uma lista VIRTUALIZADA de linhas uniformes: das count linhas
 // lógicas, só as visíveis existem como widgets — um pool pequeno de linhas é
@@ -39,6 +45,8 @@ type List[W Widget] struct {
 	// viewport é informada pelo Scroll (SetViewport) para o pool cobrir
 	// tudo que está visível — não apenas a região suja de um frame parcial.
 	viewport image.Rectangle
+	// selected habilita a seleção de linha (ver BindSelected).
+	selected *state.State[int]
 }
 
 // NewList cria uma lista virtualizada com count linhas. O tema é herdado no
@@ -52,6 +60,41 @@ func (l *List[W]) Count() int {
 	return l.count
 }
 
+// BindSelected habilita a seleção de linha e a vincula ao State (índice
+// LÓGICO; -1 = nenhuma): clicar numa linha faz Set, um Set externo move o
+// realce, e a linha selecionada ganha o fundo Theme.Selection. Linhas que
+// consomem o próprio clique (botões) não selecionam — o clique só chega à
+// List quando a linha o deixa passar (Text puro, por exemplo). Encadeável.
+func (l *List[W]) BindSelected(s *state.State[int]) *List[W] {
+	l.selected = s
+	s.Watch(func(int) { l.Invalidate() })
+	return l
+}
+
+// HandleEvent seleciona a linha sob o clique quando BindSelected está
+// ativo.
+func (l *List[W]) HandleEvent(ev event.Event) bool {
+	if l.selected == nil {
+		return false
+	}
+	e, ok := ev.(event.MouseEvent)
+	if !ok || e.Kind != event.MouseDown || e.Button != event.MouseButtonLeft {
+		return false
+	}
+	if !l.rowSized || l.rowH <= 0 {
+		return false
+	}
+	i := (e.Pos.Y - l.Bounds().Min.Y) / l.rowH
+	if i < 0 || i >= l.count {
+		return false
+	}
+	if l.selected.Get() != i {
+		l.selected.Set(i)
+	}
+	l.Invalidate()
+	return true
+}
+
 // SetCount muda o total de linhas e agenda revinculação e redesenho.
 func (l *List[W]) SetCount(n int) {
 	if n < 0 {
@@ -61,6 +104,10 @@ func (l *List[W]) SetCount(n int) {
 		return
 	}
 	l.count = n
+	// A seleção não sobrevive fora do novo intervalo.
+	if l.selected != nil && l.selected.Get() >= n {
+		l.selected.Set(-1)
+	}
 	l.Refresh()
 }
 
@@ -175,6 +222,14 @@ func (l *List[W]) Draw(dst *image.RGBA) {
 		region = dst.Bounds()
 	}
 	l.ensure(region)
+	// Realce da linha selecionada, por baixo do conteúdo dela.
+	if l.selected != nil && l.theme != nil {
+		if i := l.selected.Get(); i >= 0 && i < l.count && l.rowH > 0 {
+			if r := l.rowRect(i); r.Overlaps(dst.Bounds()) {
+				render.FillRect(dst, r, l.theme.Selection)
+			}
+		}
+	}
 	for _, row := range l.children {
 		if row.Bounds().Overlaps(dst.Bounds()) {
 			row.Draw(dst)

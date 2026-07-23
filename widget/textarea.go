@@ -36,6 +36,8 @@ type TextArea struct {
 	onChange func(string)
 	onFocus  func()
 	onBlur   func()
+	// invalid liga o realce de erro (ver SetInvalid/BindInvalid).
+	invalid bool
 
 	runes     []rune
 	cursor    int
@@ -98,6 +100,24 @@ func (t *TextArea) OnFocus(fn func()) *TextArea {
 // validação "touched" (ver juigo/form). Encadeável.
 func (t *TextArea) OnBlur(fn func()) *TextArea {
 	t.onBlur = fn
+	return t
+}
+
+// SetInvalid liga/desliga o realce de erro do campo (borda na cor
+// Theme.Danger) e agenda um redesenho.
+func (t *TextArea) SetInvalid(v bool) {
+	if t.invalid == v {
+		return
+	}
+	t.invalid = v
+	t.Invalidate()
+}
+
+// BindInvalid vincula o realce de erro ao State (true = borda Danger) — o
+// par visual de form.ErrorOf. Encadeável.
+func (t *TextArea) BindInvalid(s *state.State[bool]) *TextArea {
+	t.SetInvalid(s.Get())
+	s.Watch(func(v bool) { t.SetInvalid(v) })
 	return t
 }
 
@@ -714,6 +734,9 @@ func (t *TextArea) Draw(dst *image.RGBA) {
 	border := th.InputBorder
 	if t.focused {
 		border = th.InputBorderFocused
+	}
+	if t.invalid {
+		border = th.Danger // erro vence o foco: o problema fica visível
 	}
 	render.StrokeRect(dst, bounds, th.BorderPx(), border)
 

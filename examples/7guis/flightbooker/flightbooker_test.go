@@ -9,6 +9,8 @@ import (
 	"juigo/widget"
 )
 
+func centro(r image.Rectangle) image.Point { return r.Min.Add(r.Size().Div(2)) }
+
 func TestReservaDeVoo(t *testing.T) {
 	h := uitest.New(t, UI(), 460, 320)
 
@@ -30,12 +32,16 @@ func TestReservaDeVoo(t *testing.T) {
 		t.Fatal("com datas iniciais válidas, Reservar deveria estar habilitado")
 	}
 
-	// Data de ida inválida desabilita a reserva.
-	h.Click(uitest.OfType[*juigo.Input]())
+	// Data de ida inválida desabilita a reserva; o filtro barra letras.
+	h.ClickAt(centro(campoIda.Bounds()))
 	h.Key(juigo.KeyA, juigo.ModControl)
 	h.Type("32/13/2026")
 	if !widget.DisabledOf(reservar) {
 		t.Fatal("data inválida deveria desabilitar Reservar")
+	}
+	h.Type("abc") // letras não entram no campo de data
+	if campoIda.Text() != "32/13/2026" {
+		t.Fatalf("o filtro deveria barrar letras; got %q", campoIda.Text())
 	}
 	h.Key(juigo.KeyA, juigo.ModControl)
 	h.Type("10/12/2026")
@@ -53,6 +59,11 @@ func TestReservaDeVoo(t *testing.T) {
 	if !widget.DisabledOf(reservar) {
 		t.Fatal("volta antes da ida deveria desabilitar Reservar")
 	}
+	h.Key(juigo.KeyTab) // blur → touched: o erro passa a ser exibido
+	if h.Find(uitest.Text("A volta deve ser depois da ida")) == nil {
+		t.Fatal("a regra multi-fonte deveria exibir o erro no campo de volta")
+	}
+	h.ClickAt(centro(campoVolta.Bounds()))
 	h.Key(juigo.KeyA, juigo.ModControl)
 	h.Type("20/12/2026")
 	if widget.DisabledOf(reservar) {
@@ -64,9 +75,4 @@ func TestReservaDeVoo(t *testing.T) {
 	if h.Find(uitest.Text("Reservado: ida 10/12/2026, volta 20/12/2026")) == nil {
 		t.Fatal("o diálogo deveria confirmar a reserva")
 	}
-	if campoIda.Text() != "10/12/2026" {
-		t.Fatalf("sanidade: ida = %q", campoIda.Text())
-	}
 }
-
-func centro(r image.Rectangle) image.Point { return r.Min.Add(r.Size().Div(2)) }

@@ -4,17 +4,14 @@ import (
 	"testing"
 	"time"
 
-	"juigo"
 	"juigo/uitest"
 )
 
 func TestCronometro(t *testing.T) {
-	// A UI agenda o tween JÁ NA CONSTRUÇÃO — por isso ela precisa nascer
-	// depois de o harness ligar os hooks (senão o anim, sem scheduler,
-	// salta ao alvo). Ver GAPS.md: candidato a uitest.New com builder lazy.
-	h := uitest.New(t, juigo.NewVBox(), 460, 260)
-	h.Session().SetRoot(UI())
-	h.Layout() // a raiz trocada precisa de geometria antes dos cliques
+	// A UI agenda o tween JÁ NA CONSTRUÇÃO — NewLazy liga os hooks ao
+	// relógio virtual ANTES de construí-la (com New, o tween nasceria sem
+	// scheduler e saltaria ao alvo).
+	h := uitest.NewLazy(t, UI, 460, 260)
 
 	// O relógio virtual avança 5s: o decorrido acompanha (quadros de 16ms).
 	h.Advance(5 * time.Second)

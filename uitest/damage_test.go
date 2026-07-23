@@ -165,3 +165,71 @@ func TestIncrementalIgualCompleto(t *testing.T) {
 	h.Key(juigo.KeyI, juigo.ModControl)
 	verifica("inspector desligado")
 }
+
+// TestIncrementalNovosComponentes estende a rede de segurança das dirty
+// regions aos componentes da rodada de gaps: Table (seleção + cabeçalho
+// fixo sob rolagem), Popup ancorado (abrir, reposicionar, fechar), Scroll
+// horizontal e o realce de erro do Input (BindInvalid).
+func TestIncrementalNovosComponentes(t *testing.T) {
+	selecionada := juigo.NewState(-1)
+	tabela := juigo.NewTable([]string{"Nome", "Valor"}, 100, func(l, c int) string {
+		return fmt.Sprintf("célula %d·%d", l, c)
+	}).BindSelected(selecionada)
+	invalido := juigo.NewState(false)
+	campo := juigo.NewInput("campo").BindInvalid(invalido)
+	largo := juigo.NewText("conteúdo largo que certamente não cabe na janela deste teste de rolagem horizontal")
+
+	ui := juigo.NewVBox(
+		campo,
+		juigo.Grow(juigo.NewScroll(tabela), 1),
+		juigo.NewScroll(largo).Horizontal(),
+	).Pad(8)
+	h := uitest.New(t, ui, 380, 300)
+
+	verifica := func(passo string) {
+		t.Helper()
+		incremental := h.Screenshot()
+		h.Session().InvalidateAll()
+		completo := h.Screenshot()
+		if !bytes.Equal(incremental.Pix, completo.Pix) {
+			t.Fatalf("%s: render incremental divergiu do completo", passo)
+		}
+	}
+
+	// Seleção na tabela: clique, troca externa e limpeza.
+	h.ClickAt(tabela.RowRect(2).Min.Add(image.Pt(10, 5)))
+	verifica("linha clicada")
+	if selecionada.Get() != 2 {
+		t.Fatalf("clique deveria selecionar a linha 2; got %d", selecionada.Get())
+	}
+	selecionada.Set(5)
+	verifica("seleção externa")
+
+	// Rolagem funda: o cabeçalho fica FIXO no topo da viewport.
+	h.Scroll(uitest.OfType[*juigo.Scroll](), -12)
+	verifica("tabela rolada")
+	h.Scroll(uitest.OfType[*juigo.Scroll](), -40)
+	verifica("tabela no fundo")
+
+	// Realce de erro do campo liga e desliga.
+	invalido.Set(true)
+	verifica("campo inválido")
+	invalido.Set(false)
+	verifica("campo válido")
+
+	// Rolagem horizontal do conteúdo largo.
+	h.Session().Scroll(largo.Bounds().Min.Add(image.Pt(20, 5)), -4, 0)
+	verifica("rolagem horizontal")
+
+	// Popup ancorado: abre, reposiciona e fecha com Escape.
+	pop := juigo.NewPopup(juigo.NewVBox(juigo.NewText("menu"), juigo.NewSlider(0, 1)))
+	pop.ShowAt(image.Pt(60, 60))
+	verifica("popup aberto")
+	pop.ShowAt(image.Pt(180, 120))
+	verifica("popup reposicionado")
+	h.Key(juigo.KeyEscape)
+	verifica("popup fechado")
+	if h.Session().Overlay() != nil {
+		t.Fatal("Escape deveria fechar o popup")
+	}
+}
