@@ -85,7 +85,10 @@ execução só por `internal/hooks`, registrado na inicialização.
   hit-test.
 - **Tema**: nenhuma cor ou tamanho hardcoded nos widgets — tudo vem de
   `Theme`. `Theme.MeasureString` é a única fonte de verdade para largura de
-  texto (layout e posicionamento de cursor).
+  texto (layout e posicionamento de cursor). Há dois temas prontos —
+  `DefaultTheme` (claro) e `DarkTheme` (escuro, mesmas métricas) — e
+  `App.SetTheme` troca em RUNTIME: a nova paleta se propaga pela árvore no
+  próximo frame (widgets com `SetTheme` explícito mantêm o próprio).
 - **Texto**: o Input opera sobre `[]rune` (cursor e âncora de seleção em
   runes, nunca bytes); acentuação e UTF-8 em geral funcionam. Suporta
   **seleção** (arraste do mouse ou Shift+setas/Home/End), **clipboard** do
