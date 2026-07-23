@@ -81,6 +81,12 @@ type Theme struct {
 	SliderTrackThickness int
 	// SliderHandleSize é o lado da alça do Slider, em unidades lógicas.
 	SliderHandleSize int
+	// ScrollStep é quantas unidades lógicas o conteúdo rola por passo da
+	// roda do mouse.
+	ScrollStep int
+	// ScrollbarWidth é a largura do indicador de rolagem, em unidades
+	// lógicas.
+	ScrollbarWidth int
 
 	fnt        *opentype.Font
 	scale      float64
@@ -125,6 +131,8 @@ func Default() (*Theme, error) {
 		SliderMinWidth:       160,
 		SliderTrackThickness: 4,
 		SliderHandleSize:     16,
+		ScrollStep:           40,
+		ScrollbarWidth:       4,
 
 		fnt: parsed,
 	}

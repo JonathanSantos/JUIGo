@@ -219,6 +219,18 @@ func (a *App) installCallbacks() {
 			a.dirty = true
 		}
 	})
+	a.window.SetScrollCallback(func(_ *glfw.Window, dx, dy float64) {
+		if a.root == nil {
+			return
+		}
+		x, y := a.window.GetCursorPos()
+		pos := a.toBufferCoords(x, y)
+		// Rolagem roteia por GEOMETRIA, como o mouse: vai ao widget mais
+		// profundo sob o cursor e propaga para cima se não consumida.
+		if widget.DispatchScroll(a.root, event.ScrollEvent{Pos: pos, DX: dx, DY: dy}) != nil {
+			a.dirty = true
+		}
+	})
 	a.window.SetCursorPosCallback(func(_ *glfw.Window, x, y float64) {
 		pos := a.toBufferCoords(x, y)
 		ev := event.MouseEvent{Kind: event.MouseMove, Pos: pos, Button: event.MouseButtonLeft}

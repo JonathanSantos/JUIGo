@@ -37,6 +37,8 @@ type (
 	Slider = widget.Slider
 	// Spacer é o widget invisível que expande para empurrar os irmãos.
 	Spacer = widget.Spacer
+	// Scroll é o container de rolagem vertical com recorte.
+	Scroll = widget.Scroll
 	// Align é o alinhamento horizontal do Text.
 	Align = widget.Align
 	// ButtonState é o estado visual do Button.
@@ -75,6 +77,8 @@ type (
 	CharEvent = event.CharEvent
 	// FocusEvent notifica ganho/perda de foco.
 	FocusEvent = event.FocusEvent
+	// ScrollEvent é a rolagem da roda do mouse/trackpad (por geometria).
+	ScrollEvent = event.ScrollEvent
 	// EventBus é o barramento publish/subscribe síncrono.
 	EventBus = event.Bus
 )
@@ -146,6 +150,11 @@ func NewHBox(children ...Widget) *HBox { return widget.NewHBox(children...) }
 
 // NewSpacer cria um Spacer com peso 1 (ver widget.NewSpacer).
 func NewSpacer() *Spacer { return widget.NewSpacer() }
+
+// NewScroll cria um container de rolagem vertical para o filho dado —
+// normalmente combinado com Grow para definir a altura da viewport (ver
+// widget.NewScroll).
+func NewScroll(child Widget) *Scroll { return widget.NewScroll(child) }
 
 // Grow marca w para expandir no eixo principal do VBox/HBox com o peso dado,
 // devolvendo o próprio w (ver widget.Grow).

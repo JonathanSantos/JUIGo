@@ -141,17 +141,16 @@ func Mount(w Widget, t *theme.Theme) {
 	}
 }
 
-// DispatchMouse roteia um evento de mouse por GEOMETRIA: desce a árvore até
-// o widget mais profundo que contém o ponto (entre irmãos sobrepostos, vence
-// o desenhado por último) e, se ninguém no ramo consumir, propaga para cima
-// entregando ao próprio w. Devolve o widget que consumiu o evento (usado
-// pelo App para a captura de mouse), ou nil.
-func DispatchMouse(w Widget, ev event.MouseEvent) Widget {
+// DispatchAt roteia um evento posicional por GEOMETRIA: desce a árvore até
+// o widget mais profundo que contém pos (entre irmãos sobrepostos, vence o
+// desenhado por último) e, se ninguém no ramo consumir, propaga para cima
+// entregando ao próprio w. Devolve o widget que consumiu o evento, ou nil.
+func DispatchAt(w Widget, pos image.Point, ev event.Event) Widget {
 	if p, ok := w.(ParentWidget); ok {
 		children := p.Children()
 		for i := len(children) - 1; i >= 0; i-- {
-			if ev.Pos.In(children[i].Bounds()) {
-				if consumer := DispatchMouse(children[i], ev); consumer != nil {
+			if pos.In(children[i].Bounds()) {
+				if consumer := DispatchAt(children[i], pos, ev); consumer != nil {
 					return consumer
 				}
 				break // só o ramo do topo; depois propaga para o pai
@@ -162,6 +161,17 @@ func DispatchMouse(w Widget, ev event.MouseEvent) Widget {
 		return w
 	}
 	return nil
+}
+
+// DispatchMouse roteia um evento de mouse por geometria (ver DispatchAt).
+// O consumidor devolvido é usado pelo App para a captura de mouse.
+func DispatchMouse(w Widget, ev event.MouseEvent) Widget {
+	return DispatchAt(w, ev.Pos, ev)
+}
+
+// DispatchScroll roteia um evento de rolagem por geometria (ver DispatchAt).
+func DispatchScroll(w Widget, ev event.ScrollEvent) Widget {
+	return DispatchAt(w, ev.Pos, ev)
 }
 
 // FocusableAt devolve o widget FOCÁVEL mais profundo cujo Bounds contém p,

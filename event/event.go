@@ -140,6 +140,19 @@ type FocusEvent struct {
 
 func (FocusEvent) isEvent() {}
 
+// ScrollEvent é a rolagem da roda do mouse ou do trackpad, roteada por
+// GEOMETRIA para o widget sob o cursor (propaga para cima se não consumida —
+// um container de rolagem no limite devolve false e deixa um ancestral
+// rolar). DX e DY são os deltas como entregues pelo GLFW: a roda do mouse dá
+// passos inteiros; trackpads dão valores fracionários contínuos.
+type ScrollEvent struct {
+	Pos image.Point
+	DX  float64
+	DY  float64
+}
+
+func (ScrollEvent) isEvent() {}
+
 // Bus é um barramento publish/subscribe simples para comunicação entre
 // partes da aplicação. O Publish é SÍNCRONO: os handlers executam na mesma
 // goroutine, antes do retorno. Não é seguro para uso concorrente — como todo
