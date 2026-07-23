@@ -43,6 +43,8 @@ type (
 	Align = widget.Align
 	// ButtonState é o estado visual do Button.
 	ButtonState = widget.ButtonState
+	// CursorShape é o formato do cursor do mouse desejado por um widget.
+	CursorShape = widget.CursorShape
 )
 
 // Tema (juigo/theme).
@@ -92,6 +94,10 @@ const (
 	ButtonStateNormal  = widget.ButtonStateNormal
 	ButtonStateHover   = widget.ButtonStateHover
 	ButtonStatePressed = widget.ButtonStatePressed
+
+	CursorDefault = widget.CursorDefault
+	CursorText    = widget.CursorText
+	CursorHand    = widget.CursorHand
 
 	MouseDown  = event.MouseDown
 	MouseUp    = event.MouseUp

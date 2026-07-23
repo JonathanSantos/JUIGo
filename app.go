@@ -50,6 +50,10 @@ type App struct {
 	// fatalErr registra uma falha ocorrida dentro de um callback (que não
 	// pode devolver erro); Run a detecta e encerra.
 	fatalErr error
+	// cursorShape é o formato de cursor aplicado; stdCursors cacheia os
+	// cursores padrão do GLFW já criados.
+	cursorShape widget.CursorShape
+	stdCursors  map[widget.CursorShape]*glfw.Cursor
 }
 
 // New cria a janela com o título e tamanho dados e inicializa o contexto
@@ -290,6 +294,41 @@ func (a *App) updateHover(pos image.Point) {
 	if target != nil && target.HandleEvent(event.MouseEvent{Kind: event.MouseEnter, Pos: pos}) {
 		a.dirty = true
 	}
+
+	// Aplica o formato de cursor desejado pelo widget sob o ponteiro
+	// (I-beam em campos de texto, mãozinha em clicáveis).
+	shape := widget.CursorDefault
+	if target != nil {
+		shape = widget.CursorShapeOf(target)
+	}
+	a.applyCursor(shape)
+}
+
+// applyCursor troca o cursor da janela para o formato dado, criando (e
+// cacheando) os cursores padrão do GLFW sob demanda.
+func (a *App) applyCursor(shape widget.CursorShape) {
+	if shape == a.cursorShape {
+		return
+	}
+	a.cursorShape = shape
+	if shape == widget.CursorDefault {
+		a.window.SetCursor(nil)
+		return
+	}
+	if a.stdCursors == nil {
+		a.stdCursors = make(map[widget.CursorShape]*glfw.Cursor)
+	}
+	cur, ok := a.stdCursors[shape]
+	if !ok {
+		switch shape {
+		case widget.CursorText:
+			cur = glfw.CreateStandardCursor(glfw.IBeamCursor)
+		case widget.CursorHand:
+			cur = glfw.CreateStandardCursor(glfw.HandCursor)
+		}
+		a.stdCursors[shape] = cur
+	}
+	a.window.SetCursor(cur)
 }
 
 // setFocus move o foco de teclado para w (ou o limpa, se w for nil),
