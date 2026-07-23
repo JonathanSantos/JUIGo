@@ -119,8 +119,11 @@ func New(title string, width, height int) (*App, error) {
 		dirty:      true,
 	}
 	a.installCallbacks()
-	// Setters de widgets e State.Set redesenham através deste hook.
+	// Setters de widgets e State.Set redesenham através deste hook; o Input
+	// copia/cola através da área de transferência do sistema.
 	repaintHook = a.Invalidate
+	clipboardRead = window.GetClipboardString
+	clipboardWrite = window.SetClipboardString
 	return a, nil
 }
 
@@ -474,6 +477,8 @@ func (a *App) Run() error {
 // destroy libera os recursos GL e a janela.
 func (a *App) destroy() {
 	repaintHook = nil
+	clipboardRead = nil
+	clipboardWrite = nil
 	a.blitter.Destroy()
 	a.window.Destroy()
 	glfw.Terminate()

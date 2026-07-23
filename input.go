@@ -11,6 +11,12 @@ import (
 // funcionem corretamente. É focável; quando focado, desenha o cursor como
 // uma linha vertical e recebe caracteres (CharEvent) e teclas de edição:
 // Backspace, Delete, setas, Home e End.
+//
+// Suporta seleção de texto — arrastando com o mouse (via captura do App) ou
+// com Shift+setas/Home/End — e os atalhos de edição com o modificador de
+// comando (Ctrl ou Cmd): A seleciona tudo, C copia, X recorta e V cola
+// usando a área de transferência do sistema. Digitar ou colar substitui a
+// seleção; Backspace/Delete a apagam.
 type Input struct {
 	BaseWidget
 	// Placeholder é exibido quando o campo está vazio e sem foco.
@@ -18,16 +24,22 @@ type Input struct {
 	// OnChange é chamado após qualquer alteração no texto. Pode ser nil.
 	OnChange func(string)
 
-	runes   []rune
-	cursor  int // índice do cursor em runes (0..len(runes))
-	focused bool
-	bound   *State[string] // binding de duas vias (ver BindValue)
+	runes []rune
+	// cursor e anchor são índices em runes (0..len(runes)); a seleção é o
+	// intervalo entre eles e não existe quando são iguais. O cursor é a
+	// ponta ativa (a que se move com Shift).
+	cursor    int
+	anchor    int
+	selecting bool // arraste de seleção com o mouse em andamento
+	focused   bool
+	bound     *State[string] // binding de duas vias (ver BindValue)
 
 	// Caches atualizados a cada edição, para que Draw não aloque.
 	// syncScale registra a escala do tema usada no último sync: se a escala
-	// mudar (ex.: janela movida para outro monitor), cursorX é recalculado.
+	// mudar (ex.: janela movida para outro monitor), são recalculados.
 	text      string
 	cursorX   int
+	anchorX   int
 	syncScale float64
 }
 
@@ -42,11 +54,12 @@ func (in *Input) Text() string {
 	return in.text
 }
 
-// SetText substitui o conteúdo do campo, move o cursor para o fim e agenda
-// um redesenho. Não dispara OnChange.
+// SetText substitui o conteúdo do campo, move o cursor para o fim (limpando
+// a seleção) e agenda um redesenho. Não dispara OnChange.
 func (in *Input) SetText(s string) {
 	in.runes = []rune(s)
 	in.cursor = len(in.runes)
+	in.anchor = in.cursor
 	in.sync()
 	requestRepaint()
 }
@@ -89,89 +102,217 @@ func (in *Input) PreferredSize() image.Point {
 	}
 }
 
-// HandleEvent trata caracteres digitados, teclas de edição, foco e clique.
+// HandleEvent trata caracteres digitados, teclas de edição e atalhos, foco,
+// clique e arraste de seleção.
 func (in *Input) HandleEvent(ev Event) bool {
 	switch e := ev.(type) {
 	case CharEvent:
 		in.insert(e.Rune)
 		return true
 	case KeyEvent:
-		return in.handleKey(e.Key)
+		return in.handleKey(e)
 	case FocusEvent:
 		in.focused = e.Gained
 		return true
 	case MouseEvent:
-		if e.Kind == MouseDown && e.Button == MouseButtonLeft {
-			// Posiciona o cursor no ponto clicado, medindo prefixos com
-			// MeasureString (a única fonte de verdade de largura).
-			in.cursor = in.runeIndexAt(e.Pos.X)
-			in.sync()
+		switch e.Kind {
+		case MouseDown:
+			if e.Button != MouseButtonLeft {
+				return false
+			}
+			// Posiciona o cursor no ponto clicado (via MeasureString, a
+			// única fonte de verdade de largura) e inicia a seleção por
+			// arraste — os MouseMove seguintes chegam pela captura do App.
+			in.selecting = true
+			in.moveCursor(in.runeIndexAt(e.Pos.X), false)
 			return true
+		case MouseMove:
+			if !in.selecting {
+				return false
+			}
+			return in.moveCursor(in.runeIndexAt(e.Pos.X), true)
+		case MouseUp:
+			in.selecting = false
+			return false
 		}
 	}
 	return false
 }
 
-// insert insere r na posição do cursor e avança o cursor.
+// insert insere r na posição do cursor (substituindo a seleção, se houver) e
+// avança o cursor.
 func (in *Input) insert(r rune) {
+	in.deleteSelection()
 	in.runes = append(in.runes, 0)
 	copy(in.runes[in.cursor+1:], in.runes[in.cursor:])
 	in.runes[in.cursor] = r
 	in.cursor++
+	in.anchor = in.cursor
 	in.sync()
 	in.emitChange()
 }
 
-// handleKey aplica uma tecla de edição. Devolve true se algo mudou.
-func (in *Input) handleKey(k Key) bool {
-	switch k {
+// handleKey aplica uma tecla de edição ou atalho. Devolve true se algo
+// mudou (texto, cursor ou seleção).
+func (in *Input) handleKey(e KeyEvent) bool {
+	switch e.Key {
 	case KeyBackspace:
+		if in.deleteSelection() {
+			in.sync()
+			in.emitChange()
+			return true
+		}
 		if in.cursor == 0 {
 			return false
 		}
 		in.runes = append(in.runes[:in.cursor-1], in.runes[in.cursor:]...)
 		in.cursor--
+		in.anchor = in.cursor
 		in.sync()
 		in.emitChange()
 		return true
 	case KeyDelete:
+		if in.deleteSelection() {
+			in.sync()
+			in.emitChange()
+			return true
+		}
 		if in.cursor >= len(in.runes) {
 			return false
 		}
 		in.runes = append(in.runes[:in.cursor], in.runes[in.cursor+1:]...)
+		in.anchor = in.cursor
 		in.sync()
 		in.emitChange()
 		return true
 	case KeyLeft:
-		if in.cursor == 0 {
-			return false
+		// Sem Shift, uma seleção existente recolhe para a própria borda.
+		if !e.Mods.Shift() && in.hasSelection() {
+			start, _ := in.selection()
+			return in.moveCursor(start, false)
 		}
-		in.cursor--
-		in.sync()
-		return true
+		return in.moveCursor(in.cursor-1, e.Mods.Shift())
 	case KeyRight:
-		if in.cursor >= len(in.runes) {
-			return false
+		if !e.Mods.Shift() && in.hasSelection() {
+			_, end := in.selection()
+			return in.moveCursor(end, false)
 		}
-		in.cursor++
-		in.sync()
-		return true
+		return in.moveCursor(in.cursor+1, e.Mods.Shift())
 	case KeyHome:
-		if in.cursor == 0 {
-			return false
-		}
-		in.cursor = 0
-		in.sync()
-		return true
+		return in.moveCursor(0, e.Mods.Shift())
 	case KeyEnd:
-		if in.cursor == len(in.runes) {
+		return in.moveCursor(len(in.runes), e.Mods.Shift())
+	case KeyA:
+		if !e.Mods.Command() {
 			return false
 		}
-		in.cursor = len(in.runes)
+		in.anchor, in.cursor = 0, len(in.runes)
 		in.sync()
 		return true
+	case KeyC:
+		if !e.Mods.Command() {
+			return false
+		}
+		return in.copySelection()
+	case KeyX:
+		if !e.Mods.Command() || !in.copySelection() {
+			return false
+		}
+		in.deleteSelection()
+		in.sync()
+		in.emitChange()
+		return true
+	case KeyV:
+		if !e.Mods.Command() {
+			return false
+		}
+		return in.paste()
 	}
 	return false
+}
+
+// moveCursor move o cursor para pos (limitado ao texto). Com extend, a
+// âncora fica onde está (estendendo a seleção); sem, recolhe para o cursor.
+// Devolve true se cursor ou âncora mudaram.
+func (in *Input) moveCursor(pos int, extend bool) bool {
+	if pos < 0 {
+		pos = 0
+	}
+	if pos > len(in.runes) {
+		pos = len(in.runes)
+	}
+	changed := pos != in.cursor || (!extend && in.anchor != pos)
+	in.cursor = pos
+	if !extend {
+		in.anchor = pos
+	}
+	if changed {
+		in.sync()
+	}
+	return changed
+}
+
+// selection devolve os limites ordenados da seleção, em runes.
+func (in *Input) selection() (start, end int) {
+	if in.anchor <= in.cursor {
+		return in.anchor, in.cursor
+	}
+	return in.cursor, in.anchor
+}
+
+// hasSelection informa se há um trecho selecionado.
+func (in *Input) hasSelection() bool {
+	return in.anchor != in.cursor
+}
+
+// deleteSelection remove o trecho selecionado, deixando cursor e âncora no
+// início dele. Devolve true se havia seleção. Não faz sync nem emite
+// OnChange — responsabilidade do chamador.
+func (in *Input) deleteSelection() bool {
+	if !in.hasSelection() {
+		return false
+	}
+	start, end := in.selection()
+	in.runes = append(in.runes[:start], in.runes[end:]...)
+	in.cursor, in.anchor = start, start
+	return true
+}
+
+// copySelection copia o trecho selecionado para a área de transferência.
+// Devolve true se havia seleção.
+func (in *Input) copySelection() bool {
+	if !in.hasSelection() {
+		return false
+	}
+	start, end := in.selection()
+	clipboardWriteText(string(in.runes[start:end]))
+	return true
+}
+
+// paste cola o texto da área de transferência na posição do cursor,
+// substituindo a seleção. Caracteres de controle (quebras de linha, tabs)
+// são descartados: o campo é de linha única. Devolve true se algo mudou.
+func (in *Input) paste() bool {
+	var clean []rune
+	for _, r := range clipboardReadText() {
+		if r >= 0x20 && r != 0x7F {
+			clean = append(clean, r)
+		}
+	}
+	if len(clean) == 0 {
+		return false
+	}
+	in.deleteSelection()
+	out := make([]rune, 0, len(in.runes)+len(clean))
+	out = append(out, in.runes[:in.cursor]...)
+	out = append(out, clean...)
+	out = append(out, in.runes[in.cursor:]...)
+	in.runes = out
+	in.cursor += len(clean)
+	in.anchor = in.cursor
+	in.sync()
+	in.emitChange()
+	return true
 }
 
 // sync atualiza os caches derivados (string do texto e X do cursor) após
@@ -182,10 +323,11 @@ func (in *Input) sync() {
 	if in.theme == nil {
 		// Antes do mount não há como medir; Draw refaz o sync ao detectar a
 		// mudança de escala (0 → escala do tema).
-		in.cursorX, in.syncScale = 0, 0
+		in.cursorX, in.anchorX, in.syncScale = 0, 0, 0
 		return
 	}
 	in.cursorX = in.theme.MeasureString(string(in.runes[:in.cursor]))
+	in.anchorX = in.theme.MeasureString(string(in.runes[:in.anchor]))
 	in.syncScale = in.theme.Scale()
 }
 
@@ -250,6 +392,15 @@ func (in *Input) Draw(dst *image.RGBA) {
 
 	textX := bounds.Min.X + th.PaddingPx()
 	baseline := bounds.Min.Y + (bounds.Dy()-th.LineHeight())/2 + th.Ascent()
+
+	if in.focused && in.hasSelection() {
+		sx, ex := in.anchorX, in.cursorX
+		if sx > ex {
+			sx, ex = ex, sx
+		}
+		top := baseline - th.Ascent()
+		render.FillRect(dst, image.Rect(textX+sx, top, textX+ex, top+th.LineHeight()), th.Selection)
+	}
 
 	switch {
 	case len(in.runes) > 0:

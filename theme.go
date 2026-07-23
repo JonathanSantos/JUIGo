@@ -45,6 +45,8 @@ type Theme struct {
 	InputBorderFocused color.RGBA
 	// Cursor é a cor da linha vertical do cursor de texto.
 	Cursor color.RGBA
+	// Selection é o fundo da seleção de texto no Input.
+	Selection color.RGBA
 	// FocusOutline é o contorno de indicação de foco em widgets focáveis
 	// não-textuais (ex.: Button).
 	FocusOutline color.RGBA
@@ -110,6 +112,7 @@ func DefaultTheme() (*Theme, error) {
 		InputBorder:        color.RGBA{R: 0xB4, G: 0xBA, B: 0xC2, A: 0xFF},
 		InputBorderFocused: color.RGBA{R: 0x3B, G: 0x82, B: 0xF6, A: 0xFF},
 		Cursor:             color.RGBA{R: 0x1F, G: 0x23, B: 0x28, A: 0xFF},
+		Selection:          color.RGBA{R: 0xBF, G: 0xDB, B: 0xFE, A: 0xFF},
 		FocusOutline:       color.RGBA{R: 0x1D, G: 0x4E, B: 0xD8, A: 0xFF},
 		Accent:             color.RGBA{R: 0x3B, G: 0x82, B: 0xF6, A: 0xFF},
 

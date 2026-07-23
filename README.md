@@ -11,19 +11,23 @@ fase é a arquitetura dos widgets básicos, não features.
 
 ```
 juigo/
-  juigo.go         App: janela, buffer RGBA, árvore de widgets, foco, loop
-  widget.go        interface Widget, BaseWidget embutível, roteamento
-  container.go     Container (absoluto), VBox, HBox
+  juigo.go         App: janela, buffer RGBA, árvore, foco, captura de mouse, loop
+  widget.go        interface Widget, BaseWidget embutível, roteamento e mount
+  container.go     Container (absoluto), VBox, HBox (Gap/Pad)
   button.go        Button (normal|hover|pressed, OnClick)
-  input.go         Input (edição por runes, cursor, placeholder, OnChange)
-  text.go          Text (alinhamento left/center/right)
-  theme.go         Theme: cores, fonte embutida, métricas, espaçamentos
-  event.go         eventos internos (mouse/tecla/char/foco) + EventBus síncrono
+  input.go         Input (runes, seleção, clipboard, OnChange, BindValue)
+  checkbox.go      Checkbox (BindChecked)
+  slider.go        Slider (arraste com captura, BindValue)
+  text.go          Text (alinhamento, BindText)
+  state.go         State[T]: reatividade (Get/Set/Watch) + Map
+  theme.go         Theme: cores, fonte embutida, métricas, espaçamentos, escala
+  event.go         eventos internos (mouse/tecla+mods/char/foco) + EventBus
   render/
     gl.go          Blitter: init GL, shader do quad, upload de textura
     draw.go        primitivas: FillRect, StrokeRect, DrawText, MeasureText
+    glyph.go       GlyphCache: texto sem alocação por frame
   examples/
-    basic/main.go  demo: título + input + botão que ecoa o texto
+    basic/main.go  demo reativa: input, contador, checkbox, slider, botão
 ```
 
 ### Contratos centrais
@@ -33,11 +37,16 @@ juigo/
   defaults para embutir nos widgets concretos.
 - **Roteamento de eventos**:
   - *Mouse* roteia por **geometria**: hit-test da raiz até o widget mais
-    profundo que contém o ponto; propaga para cima se não consumido.
-  - *Teclado/char* roteia por **foco**: direto ao widget focado, sem hit-test.
-  - Clique em widget focável muda o foco; **Tab** avança o foco na ordem da
-    árvore. O App também entrega `MouseEnter`/`MouseLeave` (hover) e
-    `FocusEvent` diretamente aos widgets afetados.
+    profundo que contém o ponto; propaga para cima se não consumido. Quem
+    consome um `MouseDown` **captura o mouse**: recebe `MouseMove`/`MouseUp`
+    diretamente até o botão ser solto, mesmo fora dos próprios bounds — é o
+    que permite arrastar o Slider e selecionar texto com fluidez.
+  - *Teclado/char* roteia por **foco**: direto ao widget focado, sem
+    hit-test. `KeyEvent` carrega os modificadores (Shift, Ctrl, Alt, Super).
+  - Clique em widget focável muda o foco; **Tab**/**Shift+Tab** avançam e
+    recuam o foco na ordem da árvore. O App também entrega
+    `MouseEnter`/`MouseLeave` (hover) e `FocusEvent` diretamente aos widgets
+    afetados.
 - **Threading**: tudo single-threaded na main thread
   (`runtime.LockOSThread`). Callbacks do GLFW mutam estado diretamente — sem
   mutex, sem goroutines. O `Publish` do EventBus é síncrono.
@@ -47,11 +56,14 @@ juigo/
 - **Tema**: nenhuma cor ou tamanho hardcoded nos widgets — tudo vem de
   `Theme`. `Theme.MeasureString` é a única fonte de verdade para largura de
   texto (layout e posicionamento de cursor).
-- **Texto**: o Input opera sobre `[]rune` (cursor em runes, nunca bytes);
-  acentuação e UTF-8 em geral funcionam. O desenho de texto passa por
-  `Theme.DrawText`, que usa um **cache de glyphs** (`render.GlyphCache`):
-  cada glyph é rasterizado uma única vez e o caminho quente não aloca —
-  pixel a pixel idêntico ao `font.Drawer`, garantido por teste.
+- **Texto**: o Input opera sobre `[]rune` (cursor e âncora de seleção em
+  runes, nunca bytes); acentuação e UTF-8 em geral funcionam. Suporta
+  **seleção** (arraste do mouse ou Shift+setas/Home/End) e **clipboard** do
+  sistema com Ctrl/Cmd+A/C/X/V (colar filtra quebras de linha: campo de
+  linha única). O desenho de texto passa por `Theme.DrawText`, que usa um
+  **cache de glyphs** (`render.GlyphCache`): cada glyph é rasterizado uma
+  única vez e o caminho quente não aloca — pixel a pixel idêntico ao
+  `font.Drawer`, garantido por teste.
 - **HiDPI**: o buffer RGBA tem o tamanho do *framebuffer* (pixels físicos,
   blit 1:1 com filtro NEAREST). O tema carrega uma escala
   (`Theme.SetScale`, aplicada pelo App a partir da escala de conteúdo do
@@ -139,10 +151,9 @@ go test ./...
 ## Fora de escopo (por enquanto)
 
 Animações, scroll, clipping hierárquico, dirty regions, temas alternáveis,
-acessibilidade, IME, seleção de texto com mouse, clipboard, outros widgets
-(checkbox/radio/slider/dropdown/modal). A arquitetura foi pensada para
-recebê-los depois: eventos são tipos abertos, o tema é injetado, containers
-são aninháveis e o desenho é isolado em `render/`.
+acessibilidade, IME, outros widgets (radio/dropdown/modal). A arquitetura
+foi pensada para recebê-los depois: eventos são tipos abertos, o tema é
+injetado, containers são aninháveis e o desenho é isolado em `render/`.
 
 Limitação conhecida desta fase: o cache de glyphs cresce sob demanda e não é
 descartado por LRU (irrelevante para textos de UI; cada glyph ocupa poucos
