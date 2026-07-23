@@ -522,7 +522,8 @@ func (in *Input) Draw(dst *image.RGBA) {
 		in.sync()
 	}
 
-	render.FillRect(dst, bounds, th.InputBackground)
+	radius := th.RadiusPx()
+	render.FillRoundRect(dst, bounds, radius, th.InputBackground)
 	border := th.InputBorder
 	if in.focused {
 		border = th.InputBorderFocused
@@ -530,7 +531,7 @@ func (in *Input) Draw(dst *image.RGBA) {
 	if in.invalid {
 		border = th.Danger // erro vence o foco: o problema fica visível
 	}
-	render.StrokeRect(dst, bounds, th.BorderPx(), border)
+	render.StrokeRoundRect(dst, bounds, radius, th.BorderPx(), border)
 
 	innerX0 := bounds.Min.X + th.PaddingPx()
 	innerX1 := bounds.Max.X - th.PaddingPx()

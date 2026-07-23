@@ -69,7 +69,7 @@ func (t *TooltipView) Draw(dst *image.RGBA) {
 	th := t.theme
 	bounds := t.Bounds()
 	view := render.Clip(dst, bounds, &t.clip)
-	render.FillRect(view, bounds, th.TooltipBackground)
+	render.FillRoundRect(view, bounds, th.RadiusPx(), th.TooltipBackground)
 	x := bounds.Min.X + th.PaddingPx()
 	y := bounds.Min.Y + (bounds.Dy()-th.LineHeight())/2 + th.Ascent()
 	th.DrawText(view, t.text, image.Pt(x, y), th.TooltipText)

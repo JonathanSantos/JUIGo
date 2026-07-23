@@ -236,8 +236,12 @@ func (s *Slider) Draw(dst *image.RGBA) {
 	}
 	hx := x0 + int(s.ratio()*float64(x1-x0))
 
-	render.FillRect(dst, image.Rect(x0, cy-half, hx, cy+half), th.Accent)
-	render.FillRect(dst, image.Rect(hx, cy-half, x1, cy+half), th.InputBorder)
+	// Trilho completo e trecho ativo por cima: com raio o trilho vira uma
+	// pílula (o raio é limitado à metade da espessura); com raio zero o
+	// resultado é pixel a pixel o mesmo dos dois segmentos retos de antes.
+	radius := th.RadiusPx()
+	render.FillRoundRect(dst, image.Rect(x0, cy-half, x1, cy+half), radius, th.InputBorder)
+	render.FillRoundRect(dst, image.Rect(x0, cy-half, hx, cy+half), radius, th.Accent)
 
 	handle := th.Px(th.SliderHandleSize)
 	hr := image.Rect(hx-handle/2, cy-handle/2, hx+handle/2, cy+handle/2)
@@ -248,9 +252,9 @@ func (s *Slider) Draw(dst *image.RGBA) {
 	case s.hover:
 		fill = th.ButtonHover
 	}
-	render.FillRect(dst, hr, fill)
+	render.FillRoundRect(dst, hr, radius, fill)
 	if s.focused {
-		render.StrokeRect(dst, hr, 2*th.BorderPx(), th.FocusOutline)
+		render.StrokeRoundRect(dst, hr, radius, 2*th.BorderPx(), th.FocusOutline)
 	}
 	s.drawDisabledOverlay(dst)
 }

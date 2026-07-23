@@ -730,7 +730,8 @@ func (t *TextArea) Draw(dst *image.RGBA) {
 		t.sync()
 	}
 
-	render.FillRect(dst, bounds, th.InputBackground)
+	radius := th.RadiusPx()
+	render.FillRoundRect(dst, bounds, radius, th.InputBackground)
 	border := th.InputBorder
 	if t.focused {
 		border = th.InputBorderFocused
@@ -738,7 +739,7 @@ func (t *TextArea) Draw(dst *image.RGBA) {
 	if t.invalid {
 		border = th.Danger // erro vence o foco: o problema fica visível
 	}
-	render.StrokeRect(dst, bounds, th.BorderPx(), border)
+	render.StrokeRoundRect(dst, bounds, radius, th.BorderPx(), border)
 
 	pad := th.PaddingPx()
 	lineH := th.LineHeight()

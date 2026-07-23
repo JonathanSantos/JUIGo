@@ -77,11 +77,12 @@ func (p *ProgressBar) Draw(dst *image.RGBA) {
 	}
 	th := p.theme
 	b := p.Bounds()
-	render.FillRect(dst, b, th.InputBorder)
+	radius := th.RadiusPx()
+	render.FillRoundRect(dst, b, radius, th.InputBorder)
 	span := p.Max - p.Min
 	if span <= 0 {
 		return
 	}
 	fill := int(float64(b.Dx()) * (p.value - p.Min) / span)
-	render.FillRect(dst, image.Rect(b.Min.X, b.Min.Y, b.Min.X+fill, b.Max.Y), th.Accent)
+	render.FillRoundRect(dst, image.Rect(b.Min.X, b.Min.Y, b.Min.X+fill, b.Max.Y), radius, th.Accent)
 }

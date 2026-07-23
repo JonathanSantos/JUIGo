@@ -255,10 +255,14 @@ func (b *Button) Draw(dst *image.RGBA) {
 	case ButtonStatePressed:
 		bg = b.theme.ButtonPressed
 	}
-	render.FillRect(dst, bounds, bg)
+	radius := b.theme.RadiusPx()
+	render.FillRoundRect(dst, bounds, radius, bg)
+	if b.theme.ButtonBorder.A > 0 {
+		render.StrokeRoundRect(dst, bounds, radius, b.theme.BorderPx(), b.theme.ButtonBorder)
+	}
 
 	if b.focused {
-		render.StrokeRect(dst, bounds, 2*b.theme.BorderPx(), b.theme.FocusOutline)
+		render.StrokeRoundRect(dst, bounds, radius, 2*b.theme.BorderPx(), b.theme.FocusOutline)
 	}
 
 	view := render.Clip(dst, bounds, &b.clip)

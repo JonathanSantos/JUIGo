@@ -163,8 +163,9 @@ func (m *Modal) Draw(dst *image.RGBA) {
 	}
 	th := m.theme
 	render.FillRectOver(dst, m.Bounds(), th.Backdrop)
-	render.FillRect(dst, m.panel, th.InputBackground)
-	render.StrokeRect(dst, m.panel, th.BorderPx(), th.InputBorder)
+	radius := th.RadiusPx()
+	render.FillRoundRect(dst, m.panel, radius, th.InputBackground)
+	render.StrokeRoundRect(dst, m.panel, radius, th.BorderPx(), th.InputBorder)
 	if m.content != nil {
 		view := render.Clip(dst, m.panel, &m.clip)
 		m.content.Draw(view)

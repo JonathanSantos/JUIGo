@@ -246,12 +246,13 @@ func (d *Dropdown) Draw(dst *image.RGBA) {
 	th := d.theme
 	bounds := d.Bounds()
 
-	render.FillRect(dst, bounds, th.InputBackground)
+	radius := th.RadiusPx()
+	render.FillRoundRect(dst, bounds, radius, th.InputBackground)
 	border := th.InputBorder
 	if d.focused || d.hover || d.open {
 		border = th.InputBorderFocused
 	}
-	render.StrokeRect(dst, bounds, th.BorderPx(), border)
+	render.StrokeRoundRect(dst, bounds, radius, th.BorderPx(), border)
 
 	view := render.Clip(dst, bounds, &d.clip)
 	baseline := bounds.Min.Y + (bounds.Dy()-th.LineHeight())/2 + th.Ascent()
@@ -375,8 +376,9 @@ func (l *dropdownList) Draw(dst *image.RGBA) {
 		return
 	}
 	bounds := l.Bounds()
-	render.FillRect(dst, bounds, th.InputBackground)
-	render.StrokeRect(dst, bounds, th.BorderPx(), th.InputBorder)
+	radius := th.RadiusPx()
+	render.FillRoundRect(dst, bounds, radius, th.InputBackground)
+	render.StrokeRoundRect(dst, bounds, radius, th.BorderPx(), th.InputBorder)
 
 	view := render.Clip(dst, bounds, &l.clip)
 	itemH := l.itemHeight()
@@ -384,7 +386,9 @@ func (l *dropdownList) Draw(dst *image.RGBA) {
 	for i, opt := range d.Options {
 		row := image.Rect(bounds.Min.X+th.BorderPx(), y, bounds.Max.X-th.BorderPx(), y+itemH)
 		if i == l.highlight {
-			render.FillRect(view, row, th.HoverBackground)
+			// Realce arredondado como o painel: com raio zero volta a ser
+			// o retângulo reto de antes.
+			render.FillRoundRect(view, row, radius, th.HoverBackground)
 		}
 		c := th.Text
 		if i == d.selected {

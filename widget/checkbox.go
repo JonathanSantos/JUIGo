@@ -156,19 +156,22 @@ func (c *Checkbox) Draw(dst *image.RGBA) {
 	boxTop := bounds.Min.Y + (bounds.Dy()-side)/2
 	box := image.Rect(bounds.Min.X, boxTop, bounds.Min.X+side, boxTop+side)
 
-	render.FillRect(dst, box, th.InputBackground)
+	radius := th.RadiusPx()
+	render.FillRoundRect(dst, box, radius, th.InputBackground)
 	border := th.InputBorder
 	if c.hover || c.pressed {
 		border = th.InputBorderFocused
 	}
-	render.StrokeRect(dst, box, th.BorderPx(), border)
+	render.StrokeRoundRect(dst, box, radius, th.BorderPx(), border)
 	if c.focused {
-		render.StrokeRect(dst, box, 2*th.BorderPx(), th.FocusOutline)
+		render.StrokeRoundRect(dst, box, radius, 2*th.BorderPx(), th.FocusOutline)
 	}
 
 	if c.checked {
+		// A marca interna usa metade do raio: acompanha a caixa sem virar
+		// círculo em caixas pequenas.
 		inset := side / 4
-		render.FillRect(dst, box.Inset(inset), th.Accent)
+		render.FillRoundRect(dst, box.Inset(inset), radius/2, th.Accent)
 	}
 
 	labelX := box.Max.X + th.PaddingPx()

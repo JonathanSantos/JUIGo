@@ -286,6 +286,10 @@ func DarkTheme() (*Theme, error) { return theme.Dark() }
 // DefaultTheme constrói o tema padrão na escala 1 (ver theme.Default).
 func DefaultTheme() (*Theme, error) { return theme.Default() }
 
+// ClassicTheme constrói o tema claro com o visual clássico — cantos retos e
+// botão sem borda (ver theme.Classic).
+func ClassicTheme() (*Theme, error) { return theme.Classic() }
+
 // NewEventBus cria um barramento síncrono (ver event.NewBus).
 func NewEventBus() *EventBus { return event.NewBus() }
 

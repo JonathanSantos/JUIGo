@@ -210,7 +210,9 @@ func (s *Scroll) Draw(dst *image.RGBA) {
 		}
 		maxOff := contentH - viewportH
 		thumbY := bounds.Min.Y + (viewportH-thumbH)*s.offset/maxOff
-		render.FillRect(view, image.Rect(bounds.Max.X-w-margin, thumbY, bounds.Max.X-margin, thumbY+thumbH), th.Placeholder)
+		// Com raio, o indicador vira uma pílula (raio limitado à metade da
+		// largura); com raio zero segue o retângulo reto de antes.
+		render.FillRoundRect(view, image.Rect(bounds.Max.X-w-margin, thumbY, bounds.Max.X-margin, thumbY+thumbH), th.RadiusPx(), th.Placeholder)
 	}
 	contentW := s.child.Bounds().Dx()
 	viewportW := bounds.Dx()
@@ -221,6 +223,6 @@ func (s *Scroll) Draw(dst *image.RGBA) {
 		}
 		maxOff := contentW - viewportW
 		thumbX := bounds.Min.X + (viewportW-thumbW)*s.offsetX/maxOff
-		render.FillRect(view, image.Rect(thumbX, bounds.Max.Y-w-margin, thumbX+thumbW, bounds.Max.Y-margin), th.Placeholder)
+		render.FillRoundRect(view, image.Rect(thumbX, bounds.Max.Y-w-margin, thumbX+thumbW, bounds.Max.Y-margin), th.RadiusPx(), th.Placeholder)
 	}
 }

@@ -68,6 +68,9 @@ func BindDisabled[W Widget](w W, s *state.State[bool]) W {
 // widget; chamado ao fim do Draw dos widgets interativos e containers.
 func (b *BaseWidget) drawDisabledOverlay(dst *image.RGBA) {
 	if b.disabled && b.theme != nil {
-		render.FillRectOver(dst, b.bounds, b.theme.DisabledWash)
+		// A lavagem acompanha o raio do tema: em widgets arredondados ela
+		// não pinta os cantos de fora; em widgets retos a diferença é
+		// invisível (a cor da lavagem deriva do fundo).
+		render.FillRoundRectOver(dst, b.bounds, b.theme.RadiusPx(), b.theme.DisabledWash)
 	}
 }

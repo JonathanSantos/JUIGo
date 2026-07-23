@@ -38,6 +38,9 @@ type Theme struct {
 	ButtonPressed color.RGBA
 	// ButtonText é a cor do rótulo do Button.
 	ButtonText color.RGBA
+	// ButtonBorder é a cor da borda do Button; alfa zero desliga a borda
+	// (o visual clássico não tem borda de botão).
+	ButtonBorder color.RGBA
 
 	// InputBackground é o fundo do campo de texto.
 	InputBackground color.RGBA
@@ -79,6 +82,10 @@ type Theme struct {
 	// BorderWidth é a espessura padrão de bordas, em unidades lógicas (use
 	// BorderPx).
 	BorderWidth int
+	// Radius é o raio dos cantos arredondados dos controles, em unidades
+	// lógicas (use RadiusPx). Zero desliga o arredondamento e reproduz o
+	// visual clássico (retângulos retos) pixel a pixel — ver Classic.
+	Radius int
 	// InputMinWidth é a largura preferida mínima do Input, em unidades
 	// lógicas (use InputMinWidthPx).
 	InputMinWidth int
@@ -138,6 +145,7 @@ func Default() (*Theme, error) {
 		ButtonHover:   color.RGBA{R: 0x60, G: 0xA5, B: 0xFA, A: 0xFF},
 		ButtonPressed: color.RGBA{R: 0x1D, G: 0x4E, B: 0xD8, A: 0xFF},
 		ButtonText:    color.RGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF},
+		ButtonBorder:  color.RGBA{R: 0x25, G: 0x63, B: 0xEB, A: 0xFF},
 
 		InputBackground:    color.RGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF},
 		InputBorder:        color.RGBA{R: 0xB4, G: 0xBA, B: 0xC2, A: 0xFF},
@@ -156,6 +164,7 @@ func Default() (*Theme, error) {
 		Padding:              8,
 		Spacing:              8,
 		BorderWidth:          1,
+		Radius:               4,
 		InputMinWidth:        220,
 		SliderMinWidth:       160,
 		SliderTrackThickness: 4,
@@ -232,6 +241,12 @@ func (t *Theme) BorderPx() int {
 		return px
 	}
 	return 1
+}
+
+// RadiusPx devolve Radius convertido para pixels na escala atual. Zero
+// permanece zero (cantos retos) em qualquer escala.
+func (t *Theme) RadiusPx() int {
+	return t.Px(t.Radius)
 }
 
 // InputMinWidthPx devolve InputMinWidth convertido para pixels.

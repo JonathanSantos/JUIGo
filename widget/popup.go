@@ -159,8 +159,9 @@ func (p *Popup) Draw(dst *image.RGBA) {
 		return
 	}
 	th := p.theme
-	render.FillRect(dst, p.panel, th.InputBackground)
-	render.StrokeRect(dst, p.panel, th.BorderPx(), th.InputBorder)
+	radius := th.RadiusPx()
+	render.FillRoundRect(dst, p.panel, radius, th.InputBackground)
+	render.StrokeRoundRect(dst, p.panel, radius, th.BorderPx(), th.InputBorder)
 	if p.content != nil {
 		view := render.Clip(dst, p.panel, &p.clip)
 		p.content.Draw(view)

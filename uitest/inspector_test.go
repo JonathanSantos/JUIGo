@@ -50,8 +50,12 @@ func TestInspectorDeDepuracao(t *testing.T) {
 	}
 	img = h.Screenshot()
 	th := h.Session().Theme()
-	if got := img.RGBAAt(btn.Bounds().Min.X, btn.Bounds().Min.Y); got != th.ButtonNormal {
-		t.Fatalf("sem inspector, a borda do botão deveria voltar ao normal; got %v", got)
+	// Amostra o meio da beirada superior (não o canto, que é arredondado):
+	// é sobre a linha dos bounds que o contorno do inspector deixaria
+	// fantasma, e ali o visual normal é a borda do botão.
+	meioTopo := image.Pt(btn.Bounds().Min.X+btn.Bounds().Dx()/2, btn.Bounds().Min.Y)
+	if got := img.RGBAAt(meioTopo.X, meioTopo.Y); got != th.ButtonBorder {
+		t.Fatalf("sem inspector, a beirada do botão deveria voltar ao normal; got %v", got)
 	}
 
 	// I sem modificador não liga (é tecla comum).
