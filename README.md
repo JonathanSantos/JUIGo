@@ -37,8 +37,10 @@ juigo/
   form/                      validação declarativa sobre estados: Field/
                              Check/Rule, validadores, Valid/Invalid,
                              ErrorOf com semântica touched e Submit
-  quick/                     camada de conveniência: Form validado em uma
-                             expressão, diálogos Confirm/Alert/Prompt,
+  quick/                     camada de conveniência: Form validado com
+                             handles tipados (Text/Notes/Options/Check/
+                             Number com estado interno, Value/State/Bind),
+                             Section, diálogos Confirm/Alert/Prompt,
                              Labeled e Buttons — compõe widget+form, aceita
                              e devolve widgets comuns (sem segundo dialeto)
   anim/                      Tween de State[float64] com easing sobre os
@@ -211,23 +213,33 @@ As ideias que sustentam essa DX:
   acompanham a digitação ao vivo. `Rule` cobre regras multi-fonte (senhas
   coincidem) e `Check`, booleanas (aceite os termos).
 - **Camada rápida (`juigo/quick`)** — os rituais mais comuns em uma
-  expressão, compondo widget+form por convenção:
+  expressão, compondo widget+form por convenção. Cada campo é um **handle
+  tipado** dono do próprio State — a variável é a "chave" do formulário,
+  verificada pelo compilador (nada de `Get("nome")` por string):
 
   ```go
-  quick.Form(
-      quick.Text("Nome:", nome).Required("Informe o nome").Min(3, "Mínimo de 3"),
-      quick.Text("E-mail:", mail).Email("E-mail inválido"),
-      quick.Check("Aceito os termos", termos).Required("Aceite os termos"),
-  ).Submit("Salvar", salvar)
+  nome  := quick.Text("Nome:").Required("Informe o nome").Min(3, "Mínimo de 3")
+  email := quick.Text("E-mail:").Email("E-mail inválido")
+  idade := quick.Number("Idade:", 18).Max(120, "Confere a idade?")
+
+  quick.Form(nome, email, idade).Submit("Salvar", func() {
+      salvar(nome.Value(), email.Value(), idade.Value()) // string, string, int
+  })
   ```
 
-  monta a grade alinhada com erros por campo e Enter enviando;
-  `quick.Confirm/Alert/Prompt` abrem diálogos de uma chamada — o campo do
-  `Prompt` (e o botão do `Alert`) já nascem focados, porque overlays focam o
-  primeiro focável do conteúdo; `quick.Labeled` e `quick.Buttons` cobrem
-  rótulo+campo e a barra de ações. A regra da rampa: tudo aceita e devolve
-  widgets comuns — quando o padrão pronto não servir, desça um nível naquele
-  ponto (`Model()` dá o form; monte o Modal à mão) sem reescrever a tela.
+  monta a grade alinhada com erros por campo e Enter enviando. `Number` só
+  aceita dígitos (filtro de digitação; vazio vale o valor inicial) e entrega
+  `int`; `Notes`/`Options`/`Check` cobrem TextArea, Dropdown e Checkbox;
+  `quick.Section("Endereço")` divide formulários longos; `Gap`/`Pad`
+  ajustam o respiro. Quando o valor precisa viver fora do formulário,
+  `campo.State()` expõe o State (Map, Watch, bindings) e `.Bind(estado)`
+  liga o campo a um State externo. `quick.Confirm/Alert/Prompt` abrem
+  diálogos de uma chamada — o campo do `Prompt` (e o botão do `Alert`) já
+  nascem focados, porque overlays focam o primeiro focável do conteúdo;
+  `quick.Labeled` e `quick.Buttons` cobrem rótulo+campo e a barra de ações.
+  A regra da rampa: tudo aceita e devolve widgets comuns — quando o padrão
+  pronto não servir, desça um nível naquele ponto (`Model()` dá o form;
+  monte o Modal à mão) sem reescrever a tela.
 - **Animações (`juigo/anim`)** — `anim.Tween(estado, alvo, duração, easing)`
   interpola qualquer `State[float64]` sobre os timers da aplicação, com
   retarget automático; compõe com os bindings (barra de progresso, rolagem

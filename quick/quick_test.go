@@ -8,20 +8,22 @@ import (
 	"juigo/uitest"
 )
 
-// TestFormFluxoDeValidacao cobre o ciclo completo do quick.Form: erros só
-// aparecem depois do envio (ou do blur), preencher corrige ao vivo, o envio
-// válido chama o callback e Enter em um campo também envia.
+// TestFormFluxoDeValidacao cobre o ciclo completo do quick.Form com handles
+// tipados: erros só aparecem depois do envio (ou do blur), preencher corrige
+// ao vivo, o envio válido chama o callback lendo os valores pelos handles e
+// Enter em um campo também envia.
 func TestFormFluxoDeValidacao(t *testing.T) {
-	nome := juigo.NewState("")
-	mail := juigo.NewState("")
-	termos := juigo.NewState(false)
+	nome := quick.Text("Nome:").Placeholder("nome").
+		Required("Informe o nome").Min(3, "Mínimo de 3 caracteres")
+	mail := quick.Text("E-mail:").Placeholder("mail").Email("E-mail inválido")
+	termos := quick.Check("Aceito os termos").Required("Aceite os termos")
+
 	salvos := 0
-	f := quick.Form(
-		quick.Text("Nome:", nome).Placeholder("nome").
-			Required("Informe o nome").Min(3, "Mínimo de 3 caracteres"),
-		quick.Text("E-mail:", mail).Placeholder("mail").Email("E-mail inválido"),
-		quick.Check("Aceito os termos", termos).Required("Aceite os termos"),
-	).Submit("Salvar", func() { salvos++ })
+	salvo := ""
+	f := quick.Form(nome, mail, termos).Submit("Salvar", func() {
+		salvos++
+		salvo = nome.Value()
+	})
 	h := uitest.New(t, f, 480, 360)
 
 	// Nada tocado: nenhum erro na tela.
@@ -54,11 +56,17 @@ func TestFormFluxoDeValidacao(t *testing.T) {
 	h.Click(uitest.Placeholder("mail"))
 	h.Type("jo@exemplo.com")
 	h.Click(uitest.Text("Aceito os termos"))
+	if !termos.Value() {
+		t.Fatal("o clique deveria refletir no handle do checkbox")
+	}
 
-	// Envio válido chama o callback.
+	// Envio válido chama o callback com os valores dos handles.
 	h.Click(uitest.Text("Salvar"))
 	if salvos != 1 {
 		t.Fatalf("envio válido deveria chamar o callback; salvos = %d", salvos)
+	}
+	if salvo != "Jonatan" || mail.Value() != "jo@exemplo.com" {
+		t.Fatalf("handles deveriam entregar os valores digitados; nome=%q mail=%q", salvo, mail.Value())
 	}
 
 	// Enter em um campo de linha única também envia.
@@ -69,14 +77,117 @@ func TestFormFluxoDeValidacao(t *testing.T) {
 	}
 }
 
-// TestFormOptionsAdotaPrimeira: com o State vazio e sem placeholder, o
-// Dropdown e o State concordam na primeira opção desde o início.
+// TestNumberFiltraEValida: o campo numérico ignora letras, entrega int pelo
+// handle, cai no valor inicial quando vazio e valida a faixa.
+func TestNumberFiltraEValida(t *testing.T) {
+	idade := quick.Number("Idade:", 18).Min(0, "Idade negativa").Max(120, "Confere a idade?")
+	f := quick.Form(idade).Submit("OK", nil)
+	h := uitest.New(t, f, 420, 240)
+
+	campo := h.Find(uitest.OfType[*juigo.Input]())
+	if campo == nil {
+		t.Fatal("Number deveria renderizar um Input")
+	}
+	in := campo.(*juigo.Input)
+	if in.Text() != "18" {
+		t.Fatalf("o campo deveria nascer com o valor inicial; got %q", in.Text())
+	}
+
+	// Letras são filtradas; dígitos entram e o handle devolve int.
+	h.Click(uitest.OfType[*juigo.Input]())
+	h.Type("abc9")
+	if in.Text() != "189" {
+		t.Fatalf("filtro deveria descartar letras; got %q", in.Text())
+	}
+	if idade.Value() != 189 {
+		t.Fatalf("Value deveria acompanhar o texto; got %d", idade.Value())
+	}
+
+	// Fora da faixa: envio revela o erro.
+	h.Click(uitest.Text("OK"))
+	if h.Find(uitest.Text("Confere a idade?")) == nil {
+		t.Fatal("envio deveria revelar o erro de faixa")
+	}
+
+	// Vazio vale o valor inicial (e o erro some).
+	h.Click(uitest.OfType[*juigo.Input]())
+	h.Key(juigo.KeyA, juigo.ModControl)
+	h.Key(juigo.KeyBackspace)
+	if in.Text() != "" {
+		t.Fatalf("o campo deveria estar vazio; got %q", in.Text())
+	}
+	if idade.Value() != 18 {
+		t.Fatalf("vazio deveria valer o inicial; got %d", idade.Value())
+	}
+	if h.Find(uitest.Text("Confere a idade?")) != nil {
+		t.Fatal("com o valor de volta à faixa, o erro deveria sumir")
+	}
+
+	// Set externo pelo handle reflete no texto do campo.
+	idade.Set(65)
+	if in.Text() != "65" {
+		t.Fatalf("Set no handle deveria atualizar o campo; got %q", in.Text())
+	}
+}
+
+// TestBindTrocaOEstado: Bind liga o campo a um State externo — digitação
+// atualiza o State e um Set externo atualiza o campo.
+func TestBindTrocaOEstado(t *testing.T) {
+	externo := juigo.NewState("inicial")
+	nome := quick.Text("Nome:").Placeholder("nome").Bind(externo)
+	f := quick.Form(nome)
+	h := uitest.New(t, f, 420, 200)
+
+	if nome.Value() != "inicial" {
+		t.Fatalf("o handle deveria ler o State externo; got %q", nome.Value())
+	}
+	h.Click(uitest.Placeholder("nome"))
+	h.Key(juigo.KeyA, juigo.ModControl)
+	h.Type("editado")
+	if externo.Get() != "editado" {
+		t.Fatalf("digitação deveria atualizar o State externo; got %q", externo.Get())
+	}
+	externo.Set("de fora")
+	if h.Find(uitest.Text("de fora")) == nil && nome.Value() != "de fora" {
+		t.Fatal("Set externo deveria refletir no campo")
+	}
+}
+
+// TestSectionDivideEmGrades: Section fecha a grade corrente, mostra o
+// título e abre outra — os campos dos dois lados continuam funcionais.
+func TestSectionDivideEmGrades(t *testing.T) {
+	nome := quick.Text("Nome:").Placeholder("nome")
+	rua := quick.Text("Rua:").Placeholder("rua")
+	f := quick.Form(nome, quick.Section("Endereço"), rua).Gap(8).Pad(4)
+	h := uitest.New(t, f, 420, 260)
+
+	if h.Find(uitest.Text("Endereço")) == nil {
+		t.Fatal("o título da seção deveria estar na tela")
+	}
+	grades := 0
+	for _, ch := range f.Children() {
+		if _, ok := ch.(*juigo.Grid); ok {
+			grades++
+		}
+	}
+	if grades != 2 {
+		t.Fatalf("a seção deveria dividir em 2 grades; got %d", grades)
+	}
+	h.Click(uitest.Placeholder("rua"))
+	h.Type("Av. Central")
+	if rua.Value() != "Av. Central" {
+		t.Fatalf("campo pós-seção deveria funcionar; got %q", rua.Value())
+	}
+}
+
+// TestFormOptionsAdotaPrimeira: com o valor vazio e sem placeholder, o
+// Dropdown e o handle concordam na primeira opção desde o início.
 func TestFormOptionsAdotaPrimeira(t *testing.T) {
-	plano := juigo.NewState("")
-	f := quick.Form(quick.Options("Plano:", plano, "free", "pro"))
+	plano := quick.Options("Plano:", "free", "pro")
+	f := quick.Form(plano)
 	uitest.New(t, f, 400, 200)
-	if plano.Get() != "free" {
-		t.Fatalf("State deveria adotar a primeira opção; got %q", plano.Get())
+	if plano.Value() != "free" {
+		t.Fatalf("handle deveria adotar a primeira opção; got %q", plano.Value())
 	}
 }
 
@@ -148,13 +259,10 @@ func TestPromptDigitaEEnvia(t *testing.T) {
 // Labeled cresce além do rótulo e as ações do Buttons vão para a direita.
 func TestLabeledEButtons(t *testing.T) {
 	campo := juigo.NewInput("v")
-	rotulo := juigo.NewText("Nome:")
-	linha := quick.Labeled("ignorado", campo)
-	_ = rotulo
+	linha := quick.Labeled("Nome:", campo)
 	ok := juigo.NewButton("OK", nil)
 	barra := quick.Buttons(ok)
-	h := uitest.New(t, juigo.NewVBox(linha, barra), 400, 200)
-	_ = h
+	uitest.New(t, juigo.NewVBox(linha, barra), 400, 200)
 
 	if campo.Bounds().Dx() <= campo.PreferredSize().X {
 		t.Fatal("o campo do Labeled deveria crescer além da largura preferida")

@@ -32,6 +32,8 @@ type Input struct {
 	onFocus  func()
 	onBlur   func()
 	onSubmit func()
+	// filter restringe os caracteres aceitos (ver Filter).
+	filter func(rune) bool
 
 	runes []rune
 	// cursor e anchor são índices em runes (0..len(runes)); a seleção é o
@@ -95,6 +97,14 @@ func (in *Input) OnBlur(fn func()) *Input {
 // focado (envio de formulários). Encadeável.
 func (in *Input) OnSubmit(fn func()) *Input {
 	in.onSubmit = fn
+	return in
+}
+
+// Filter restringe os caracteres aceitos pelo campo: runes reprovadas por
+// allowed são ignoradas na digitação e na colagem (campos numéricos, por
+// exemplo). Não afeta SetText nem bindings. Encadeável.
+func (in *Input) Filter(allowed func(rune) bool) *Input {
+	in.filter = allowed
 	return in
 }
 
@@ -202,6 +212,9 @@ func (in *Input) HandleEvent(ev event.Event) bool {
 // insert insere r na posição do cursor (substituindo a seleção, se houver) e
 // avança o cursor.
 func (in *Input) insert(r rune) {
+	if in.filter != nil && !in.filter(r) {
+		return
+	}
 	in.deleteSelection()
 	in.runes = append(in.runes, 0)
 	copy(in.runes[in.cursor+1:], in.runes[in.cursor:])
@@ -361,9 +374,13 @@ func (in *Input) copySelection() bool {
 func (in *Input) paste() bool {
 	var clean []rune
 	for _, r := range hooks.ReadClipboard() {
-		if r >= 0x20 && r != 0x7F {
-			clean = append(clean, r)
+		if r < 0x20 || r == 0x7F {
+			continue
 		}
+		if in.filter != nil && !in.filter(r) {
+			continue
+		}
+		clean = append(clean, r)
 	}
 	if len(clean) == 0 {
 		return false

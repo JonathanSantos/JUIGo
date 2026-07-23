@@ -47,22 +47,22 @@ func main() {
 		return fmt.Sprintf("Volume: %.0f%%", v*100)
 	})
 
-	// Modal de cadastro montado pelo juigo/quick: grade alinhada, erros por
-	// campo (no blur ou no envio), Enter enviando — o formulário inteiro em
-	// uma expressão. O campo Nome abre focado (autofoco da overlay).
-	nome := juigo.NewState("")
-	mail := juigo.NewState("")
+	// Modal de cadastro montado pelo juigo/quick: cada campo é um HANDLE
+	// tipado dono do próprio State — sem NewState nenhum — e os valores são
+	// lidos por campo.Value(). Grade alinhada, erros por campo (no blur ou
+	// no envio), Enter enviando; o campo Nome abre focado (autofoco da
+	// overlay). Idade só aceita dígitos e devolve int.
+	nome := quick.Text("Nome:").Placeholder("Nome").
+		Required("Informe o nome").Min(3, "Mínimo de 3 caracteres")
+	mail := quick.Text("E-mail:").Placeholder("E-mail").
+		Required("Informe o e-mail").Email("E-mail inválido")
+	idade := quick.Number("Idade:", 18).Min(0, "Idade inválida").Max(120, "Confere a idade?")
 	var sobre *juigo.Modal
 	sobre = juigo.NewModal(juigo.NewVBox(
 		juigo.NewText("Cadastro").Center(),
-		quick.Form(
-			quick.Text("Nome:", nome).Placeholder("Nome").
-				Required("Informe o nome").Min(3, "Mínimo de 3 caracteres"),
-			quick.Text("E-mail:", mail).Placeholder("E-mail").
-				Required("Informe o e-mail").Email("E-mail inválido"),
-		).Submit("Salvar", func() {
+		quick.Form(nome, mail, idade).Submit("Salvar", func() {
 			sobre.Close()
-			eco.Set("Cadastrado: " + nome.Get())
+			eco.Set(fmt.Sprintf("Cadastrado: %s, %d anos", nome.Value(), idade.Value()))
 		}),
 	))
 
