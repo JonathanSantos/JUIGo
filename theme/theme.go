@@ -60,6 +60,8 @@ type Theme struct {
 	// TooltipBackground e TooltipText são as cores da caixa de dica.
 	TooltipBackground color.RGBA
 	TooltipText       color.RGBA
+	// Danger é a cor de erros e ações destrutivas (mensagens de validação).
+	Danger color.RGBA
 
 	// Face é a fonte já rasterizada na escala atual (ver SetScale). É
 	// reconstruída a cada mudança de escala; não guarde referências a ela.
@@ -147,6 +149,7 @@ func Default() (*Theme, error) {
 		HoverBackground:    color.RGBA{R: 0xE4, G: 0xEC, B: 0xF9, A: 0xFF},
 		TooltipBackground:  color.RGBA{R: 0x2E, G: 0x33, B: 0x3B, A: 0xFF},
 		TooltipText:        color.RGBA{R: 0xF5, G: 0xF7, B: 0xFA, A: 0xFF},
+		Danger:             color.RGBA{R: 0xDC, G: 0x26, B: 0x26, A: 0xFF},
 
 		FontSize: 16,
 

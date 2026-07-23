@@ -71,6 +71,8 @@ type (
 type (
 	// State é um valor observável tipado; Set redesenha a interface.
 	State[T any] = state.State[T]
+	// Observable é o aspecto sem tipo de um State (base de Combine).
+	Observable = state.Observable
 )
 
 // Eventos (juigo/event).
@@ -228,6 +230,11 @@ func NewState[T any](v T) *State[T] { return state.New(v) }
 
 // Map deriva um State de outro (ver state.Map).
 func Map[A, B any](s *State[A], f func(A) B) *State[B] { return state.Map(s, f) }
+
+// Combine deriva um State de várias fontes (ver state.Combine).
+func Combine[T any](compute func() T, fontes ...Observable) *State[T] {
+	return state.Combine(compute, fontes...)
+}
 
 // DefaultTheme constrói o tema padrão na escala 1 (ver theme.Default).
 func DefaultTheme() (*Theme, error) { return theme.Default() }

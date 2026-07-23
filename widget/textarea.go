@@ -29,6 +29,10 @@ type TextArea struct {
 	Placeholder string
 	// OnChange é chamado após qualquer alteração no texto. Pode ser nil.
 	OnChange func(string)
+	// OnFocus e OnBlur são chamados ao ganhar/perder o foco de teclado —
+	// úteis para validação "touched" (ver juigo/form). Podem ser nil.
+	OnFocus func()
+	OnBlur  func()
 
 	runes     []rune
 	cursor    int
@@ -229,8 +233,14 @@ func (t *TextArea) HandleEvent(ev event.Event) bool {
 		t.focused = e.Gained
 		if e.Gained {
 			t.restartBlink()
+			if t.OnFocus != nil {
+				t.OnFocus()
+			}
 		} else {
 			t.stopBlink()
+			if t.OnBlur != nil {
+				t.OnBlur()
+			}
 		}
 		return true
 	case event.ScrollEvent:

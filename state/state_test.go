@@ -47,3 +47,20 @@ func TestRepaintHook(t *testing.T) {
 	hooks.Repaint = nil
 	s.Set(2) // não deve entrar em pânico sem app
 }
+
+func TestCombine(t *testing.T) {
+	a := New(2)
+	b := New(3)
+	soma := Combine(func() int { return a.Get() + b.Get() }, a, b)
+	if soma.Get() != 5 {
+		t.Fatalf("Combine inicial = %d, esperado 5", soma.Get())
+	}
+	a.Set(10)
+	if soma.Get() != 13 {
+		t.Fatalf("após a.Set: %d, esperado 13", soma.Get())
+	}
+	b.Set(-3)
+	if soma.Get() != 7 {
+		t.Fatalf("após b.Set: %d, esperado 7", soma.Get())
+	}
+}

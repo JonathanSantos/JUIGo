@@ -26,6 +26,10 @@ type Input struct {
 	Placeholder string
 	// OnChange é chamado após qualquer alteração no texto. Pode ser nil.
 	OnChange func(string)
+	// OnFocus e OnBlur são chamados ao ganhar/perder o foco de teclado —
+	// úteis para validação "touched" (ver juigo/form). Podem ser nil.
+	OnFocus func()
+	OnBlur  func()
 
 	runes []rune
 	// cursor e anchor são índices em runes (0..len(runes)); a seleção é o
@@ -131,8 +135,14 @@ func (in *Input) HandleEvent(ev event.Event) bool {
 		in.focused = e.Gained
 		if e.Gained {
 			in.restartBlink()
+			if in.OnFocus != nil {
+				in.OnFocus()
+			}
 		} else {
 			in.stopBlink()
+			if in.OnBlur != nil {
+				in.OnBlur()
+			}
 		}
 		return true
 	case event.MouseEvent:
