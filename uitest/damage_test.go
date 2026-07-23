@@ -156,4 +156,12 @@ func TestIncrementalIgualCompleto(t *testing.T) {
 	// SetText que muda o layout (título cresce e o diff de bounds cobre).
 	valor.Set("um texto bem mais comprido para deslocar o eco")
 	verifica("relayout por SetText")
+
+	// Inspector: ligar desenha os contornos sobre tudo; desligar precisa
+	// apagá-los DE UMA VEZ (regressão: fantasmas que sumiam aos poucos
+	// conforme outras regiões repintavam).
+	h.Key(juigo.KeyI, juigo.ModControl)
+	verifica("inspector ligado")
+	h.Key(juigo.KeyI, juigo.ModControl)
+	verifica("inspector desligado")
 }

@@ -34,7 +34,9 @@ func (s *Session) SetInspector(on bool) {
 		return
 	}
 	s.inspect = on
-	s.markDirty()
+	// Ligar OU desligar exige frame completo: a camada cobre a tela toda e,
+	// ao desligar, os contornos antigos precisam ser apagados de uma vez.
+	s.InvalidateAll()
 }
 
 // ToggleInspector alterna o inspector (atalho Ctrl/Cmd+I).

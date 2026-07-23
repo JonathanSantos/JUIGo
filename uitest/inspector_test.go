@@ -38,6 +38,10 @@ func TestInspectorDeDepuracao(t *testing.T) {
 	if campo.Text() != "çã" {
 		t.Fatalf("digitação com inspector ligado: %q", campo.Text())
 	}
+	// Consome o dano pendente antes do desligamento, como o app real (um
+	// frame por evento) — senão o InvalidateAll do hover com inspector
+	// ligado vaza para o frame seguinte e mascara fantasmas do toggle.
+	h.Screenshot()
 
 	// Desliga: a imagem volta a ser a interface pura.
 	h.Key(juigo.KeyI, juigo.ModSuper) // Cmd também funciona
