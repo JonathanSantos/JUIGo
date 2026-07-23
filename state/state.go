@@ -1,6 +1,6 @@
 package state
 
-import "juigo/internal/hooks"
+import "github.com/JonathanSantos/JUIGo/internal/hooks"
 
 // State é um valor observável tipado — a base da reatividade do JUIGo.
 // Widgets podem ser vinculados a um State (Text.BindText, Input.BindValue);

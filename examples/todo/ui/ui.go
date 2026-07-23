@@ -17,9 +17,9 @@ import (
 	"image"
 	"log"
 
-	"juigo"
-	"juigo/examples/todo/tarefas"
-	"juigo/render"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/examples/todo/tarefas"
+	"github.com/JonathanSantos/JUIGo/render"
 	"time"
 )
 

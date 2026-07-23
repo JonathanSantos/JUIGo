@@ -15,9 +15,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"juigo"
-	"juigo/examples/todo/tarefas"
-	"juigo/examples/todo/ui"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/examples/todo/tarefas"
+	"github.com/JonathanSantos/JUIGo/examples/todo/ui"
 )
 
 func main() {

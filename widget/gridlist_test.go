@@ -5,7 +5,7 @@ import (
 	"image"
 	"testing"
 
-	"juigo/event"
+	"github.com/JonathanSantos/JUIGo/event"
 )
 
 func TestGridColunasELinhas(t *testing.T) {

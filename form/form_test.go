@@ -3,8 +3,8 @@ package form_test
 import (
 	"testing"
 
-	"juigo/form"
-	"juigo/state"
+	"github.com/JonathanSantos/JUIGo/form"
+	"github.com/JonathanSantos/JUIGo/state"
 )
 
 func TestValidadores(t *testing.T) {

@@ -3,7 +3,7 @@ package state
 import (
 	"testing"
 
-	"juigo/internal/hooks"
+	"github.com/JonathanSantos/JUIGo/internal/hooks"
 )
 
 func TestStateSetWatchMap(t *testing.T) {

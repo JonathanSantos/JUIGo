@@ -5,10 +5,10 @@ import (
 
 	"golang.org/x/image/font"
 
-	"juigo/event"
-	"juigo/internal/hooks"
-	"juigo/render"
-	"juigo/state"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/internal/hooks"
+	"github.com/JonathanSantos/JUIGo/render"
+	"github.com/JonathanSantos/JUIGo/state"
 )
 
 // Input é um campo de texto de linha única. Toda manipulação opera sobre

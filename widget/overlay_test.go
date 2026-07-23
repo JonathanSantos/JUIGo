@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"juigo/event"
-	"juigo/internal/hooks"
-	"juigo/state"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/internal/hooks"
+	"github.com/JonathanSantos/JUIGo/state"
 )
 
 func TestContains(t *testing.T) {

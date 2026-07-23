@@ -4,9 +4,9 @@ import (
 	"image"
 	"testing"
 
-	"juigo"
-	"juigo/uitest"
-	"juigo/widget"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/uitest"
+	"github.com/JonathanSantos/JUIGo/widget"
 )
 
 func centro(r image.Rectangle) image.Point { return r.Min.Add(r.Size().Div(2)) }

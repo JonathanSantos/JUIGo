@@ -49,7 +49,7 @@ type Blitter struct {
 // Requer um contexto OpenGL 3.3 core corrente na thread chamadora.
 func NewBlitter(width, height int) (*Blitter, error) {
 	if err := gl.Init(); err != nil {
-		return nil, fmt.Errorf("juigo/render: falha ao carregar funções OpenGL: %w", err)
+		return nil, fmt.Errorf("github.com/JonathanSantos/JUIGo/render: falha ao carregar funções OpenGL: %w", err)
 	}
 
 	program, err := buildProgram()
@@ -184,7 +184,7 @@ func buildProgram() (uint32, error) {
 	if status == gl.FALSE {
 		log := programInfoLog(program)
 		gl.DeleteProgram(program)
-		return 0, fmt.Errorf("juigo/render: falha ao linkar programa GL: %s", log)
+		return 0, fmt.Errorf("github.com/JonathanSantos/JUIGo/render: falha ao linkar programa GL: %s", log)
 	}
 	return program, nil
 }
@@ -205,7 +205,7 @@ func compileShader(kind uint32, src string) (uint32, error) {
 		log := make([]byte, logLen+1)
 		gl.GetShaderInfoLog(shader, logLen, nil, &log[0])
 		gl.DeleteShader(shader)
-		return 0, fmt.Errorf("juigo/render: falha ao compilar shader: %s", string(log))
+		return 0, fmt.Errorf("github.com/JonathanSantos/JUIGo/render: falha ao compilar shader: %s", string(log))
 	}
 	return shader, nil
 }

@@ -7,7 +7,7 @@ package tempconv
 import (
 	"strconv"
 
-	"juigo"
+	"github.com/JonathanSantos/JUIGo"
 )
 
 // formata imprime a temperatura sem zeros supérfluos.

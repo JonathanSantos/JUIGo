@@ -4,8 +4,8 @@ import (
 	"image"
 	"testing"
 
-	"juigo"
-	"juigo/uitest"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/uitest"
 )
 
 // TestInspectorDeDepuracao cobre o ciclo do inspector: atalho Ctrl/Cmd+I,

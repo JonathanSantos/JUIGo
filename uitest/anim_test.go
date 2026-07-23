@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"juigo"
-	"juigo/anim"
-	"juigo/uitest"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/anim"
+	"github.com/JonathanSantos/JUIGo/uitest"
 )
 
 // TestAnimacaoComRelogioVirtual prova a promessa central do anim: a mesma

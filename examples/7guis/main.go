@@ -7,14 +7,14 @@ package main
 import (
 	"log"
 
-	"juigo"
-	"juigo/examples/7guis/cells"
-	"juigo/examples/7guis/circles"
-	"juigo/examples/7guis/counter"
-	"juigo/examples/7guis/crud"
-	"juigo/examples/7guis/flightbooker"
-	"juigo/examples/7guis/tempconv"
-	"juigo/examples/7guis/timer"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/examples/7guis/cells"
+	"github.com/JonathanSantos/JUIGo/examples/7guis/circles"
+	"github.com/JonathanSantos/JUIGo/examples/7guis/counter"
+	"github.com/JonathanSantos/JUIGo/examples/7guis/crud"
+	"github.com/JonathanSantos/JUIGo/examples/7guis/flightbooker"
+	"github.com/JonathanSantos/JUIGo/examples/7guis/tempconv"
+	"github.com/JonathanSantos/JUIGo/examples/7guis/timer"
 )
 
 func main() {

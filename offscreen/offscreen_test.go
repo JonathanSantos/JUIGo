@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"juigo"
-	"juigo/offscreen"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/offscreen"
 )
 
 func demoUI() juigo.Widget {

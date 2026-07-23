@@ -4,10 +4,10 @@ import (
 	"image"
 	"image/color"
 
-	"juigo/event"
-	"juigo/internal/hooks"
-	"juigo/render"
-	"juigo/state"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/internal/hooks"
+	"github.com/JonathanSantos/JUIGo/render"
+	"github.com/JonathanSantos/JUIGo/state"
 )
 
 // ButtonState identifica o estado visual do Button.

@@ -3,8 +3,8 @@ package tempconv
 import (
 	"testing"
 
-	"juigo"
-	"juigo/uitest"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/uitest"
 )
 
 func TestConversaoDuasVias(t *testing.T) {

@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"juigo"
-	"juigo/uitest"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/uitest"
 )
 
 // TestAfterEEvery cobre os timers públicos das aplicações no relógio

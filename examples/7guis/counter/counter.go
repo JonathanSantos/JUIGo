@@ -6,7 +6,7 @@ package counter
 import (
 	"strconv"
 
-	"juigo"
+	"github.com/JonathanSantos/JUIGo"
 )
 
 // UI monta a tela do contador.

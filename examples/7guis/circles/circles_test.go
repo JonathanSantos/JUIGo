@@ -4,9 +4,9 @@ import (
 	"image"
 	"testing"
 
-	"juigo"
-	"juigo/uitest"
-	"juigo/widget"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/uitest"
+	"github.com/JonathanSantos/JUIGo/widget"
 )
 
 func TestDesenhoComUndoRedo(t *testing.T) {

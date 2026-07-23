@@ -4,8 +4,8 @@ import (
 	"image"
 	"testing"
 
-	"juigo/event"
-	"juigo/theme"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/theme"
 )
 
 // newTestTheme falha o teste se o tema padrão (fonte embutida) não carregar.

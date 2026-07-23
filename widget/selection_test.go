@@ -4,8 +4,8 @@ import (
 	"image"
 	"testing"
 
-	"juigo/event"
-	"juigo/internal/hooks"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/internal/hooks"
 )
 
 func TestInputSelecaoTeclado(t *testing.T) {

@@ -3,9 +3,9 @@ package widget
 import (
 	"image"
 
-	"juigo/event"
-	"juigo/render"
-	"juigo/state"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/render"
+	"github.com/JonathanSantos/JUIGo/state"
 )
 
 // Checkbox é uma caixa de marcação com rótulo. A semântica de acionamento é
@@ -24,10 +24,10 @@ type Checkbox struct {
 	// usuário (ver OnChange).
 	onChange func(bool)
 	checked  bool
-	pressed bool
-	hover   bool
-	focused bool
-	bound   *state.State[bool]
+	pressed  bool
+	hover    bool
+	focused  bool
+	bound    *state.State[bool]
 }
 
 // NewCheckbox cria um checkbox desmarcado com o rótulo dado. O tema é

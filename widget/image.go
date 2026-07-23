@@ -6,7 +6,7 @@ import (
 
 	xdraw "golang.org/x/image/draw"
 
-	"juigo/render"
+	"github.com/JonathanSantos/JUIGo/render"
 )
 
 // Image exibe uma image.Image, redimensionada para caber nos bounds

@@ -13,8 +13,8 @@ import (
 	"fmt"
 	"time"
 
-	"juigo"
-	"juigo/anim"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/anim"
 )
 
 // UI monta o cronômetro.

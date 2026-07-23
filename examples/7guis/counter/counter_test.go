@@ -3,7 +3,7 @@ package counter
 import (
 	"testing"
 
-	"juigo/uitest"
+	"github.com/JonathanSantos/JUIGo/uitest"
 )
 
 func TestContador(t *testing.T) {

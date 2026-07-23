@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"juigo/internal/hooks"
-	"juigo/state"
+	"github.com/JonathanSantos/JUIGo/internal/hooks"
+	"github.com/JonathanSantos/JUIGo/state"
 )
 
 // pump instala um scheduler falso (fila com cancelamento por id, como o

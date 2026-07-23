@@ -4,16 +4,16 @@
 // Button, Input, Checkbox, Slider).
 //
 // O pacote raiz juigo reexporta tudo isto — aplicações comuns importam só
-// "juigo"; importe widget diretamente para construir shells ou widgets
+// "github.com/JonathanSantos/JUIGo"; importe widget diretamente para construir shells ou widgets
 // próprios.
 package widget
 
 import (
 	"image"
 
-	"juigo/event"
-	"juigo/internal/hooks"
-	"juigo/theme"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/internal/hooks"
+	"github.com/JonathanSantos/JUIGo/theme"
 )
 
 // Widget é o contrato central de todo elemento de interface do JUIGo.

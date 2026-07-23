@@ -10,8 +10,8 @@ package flightbooker
 import (
 	"time"
 
-	"juigo"
-	"juigo/quick"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/quick"
 )
 
 // UI monta a tela de reserva.

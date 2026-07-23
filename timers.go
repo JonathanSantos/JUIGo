@@ -3,7 +3,7 @@ package juigo
 import (
 	"time"
 
-	"juigo/internal/hooks"
+	"github.com/JonathanSantos/JUIGo/internal/hooks"
 )
 
 // After agenda fn para rodar UMA vez na main thread, após d — o timer

@@ -4,8 +4,8 @@ import (
 	"image"
 	"testing"
 
-	"juigo/event"
-	"juigo/state"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/state"
 )
 
 func TestCheckboxToggleEBinding(t *testing.T) {

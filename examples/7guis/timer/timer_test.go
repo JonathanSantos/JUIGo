@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"juigo/uitest"
+	"github.com/JonathanSantos/JUIGo/uitest"
 )
 
 func TestCronometro(t *testing.T) {

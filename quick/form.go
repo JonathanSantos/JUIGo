@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"juigo/form"
-	"juigo/state"
-	"juigo/widget"
+	"github.com/JonathanSantos/JUIGo/form"
+	"github.com/JonathanSantos/JUIGo/state"
+	"github.com/JonathanSantos/JUIGo/widget"
 )
 
 // Field é o núcleo comum dos campos do quick.Form: um HANDLE TIPADO que é

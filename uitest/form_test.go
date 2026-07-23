@@ -3,9 +3,9 @@ package uitest_test
 import (
 	"testing"
 
-	"juigo"
-	"juigo/form"
-	"juigo/uitest"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/form"
+	"github.com/JonathanSantos/JUIGo/uitest"
 )
 
 // TestFormularioNaInterface é a integração completa: form + bindings + blur

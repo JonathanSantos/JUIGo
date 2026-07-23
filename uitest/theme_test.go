@@ -3,8 +3,8 @@ package uitest_test
 import (
 	"testing"
 
-	"juigo"
-	"juigo/uitest"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/uitest"
 )
 
 // TestTrocaDeTemaEmRuntime cobre o claro ↔ escuro ao vivo: o fundo e os

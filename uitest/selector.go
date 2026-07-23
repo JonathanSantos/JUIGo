@@ -3,7 +3,7 @@ package uitest
 import (
 	"fmt"
 
-	"juigo/widget"
+	"github.com/JonathanSantos/JUIGo/widget"
 )
 
 // Selector localiza widgets na árvore. Desc aparece nas mensagens de erro do

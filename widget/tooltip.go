@@ -3,7 +3,7 @@ package widget
 import (
 	"image"
 
-	"juigo/render"
+	"github.com/JonathanSantos/JUIGo/render"
 )
 
 // Tooltip associa a w um texto de dica, exibido pelo App quando o ponteiro

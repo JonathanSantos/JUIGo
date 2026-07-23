@@ -3,9 +3,9 @@ package widget
 import (
 	"image"
 
-	"juigo/event"
-	"juigo/render"
-	"juigo/state"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/render"
+	"github.com/JonathanSantos/JUIGo/state"
 )
 
 // Radio é uma opção de escolha exclusiva. NÃO existe um "RadioGroup": o
@@ -31,10 +31,10 @@ type Radio struct {
 	// usuário (ver OnChange).
 	onChange func(string)
 	checked  bool
-	pressed bool
-	hover   bool
-	focused bool
-	bound   *state.State[string]
+	pressed  bool
+	hover    bool
+	focused  bool
+	bound    *state.State[string]
 }
 
 // NewRadio cria um rádio desmarcado com o rótulo e o valor dados. O tema é

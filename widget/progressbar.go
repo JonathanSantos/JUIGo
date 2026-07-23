@@ -3,8 +3,8 @@ package widget
 import (
 	"image"
 
-	"juigo/render"
-	"juigo/state"
+	"github.com/JonathanSantos/JUIGo/render"
+	"github.com/JonathanSantos/JUIGo/state"
 )
 
 // ProgressBar é o indicador só-leitura de progresso no intervalo [Min, Max]

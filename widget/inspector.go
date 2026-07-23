@@ -6,7 +6,7 @@ import (
 	"image/color"
 	"strings"
 
-	"juigo/render"
+	"github.com/JonathanSantos/JUIGo/render"
 )
 
 // O INSPECTOR de depuração é uma camada desenhada acima de tudo (Ctrl/Cmd+I

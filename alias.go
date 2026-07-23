@@ -3,15 +3,15 @@ package juigo
 import (
 	"image"
 
-	"juigo/event"
-	"juigo/state"
-	"juigo/theme"
-	"juigo/widget"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/state"
+	"github.com/JonathanSantos/JUIGo/theme"
+	"github.com/JonathanSantos/JUIGo/widget"
 )
 
 // Este arquivo é a fachada do JUIGo: reexporta, por alias, os tipos e os
 // construtores dos subpacotes, para que aplicações comuns importem apenas
-// "juigo". A documentação de cada tipo vive no subpacote correspondente.
+// "github.com/JonathanSantos/JUIGo". A documentação de cada tipo vive no subpacote correspondente.
 
 // Tipos centrais (juigo/widget).
 type (

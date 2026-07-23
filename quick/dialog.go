@@ -1,8 +1,8 @@
 package quick
 
 import (
-	"juigo/state"
-	"juigo/widget"
+	"github.com/JonathanSantos/JUIGo/state"
+	"github.com/JonathanSantos/JUIGo/widget"
 )
 
 // Os diálogos abrem imediatamente (Show) e devolvem o Modal — feche-o com

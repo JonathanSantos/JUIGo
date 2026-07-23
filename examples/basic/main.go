@@ -16,9 +16,9 @@ import (
 	"log"
 	"time"
 
-	"juigo"
-	"juigo/anim"
-	"juigo/quick"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/anim"
+	"github.com/JonathanSantos/JUIGo/quick"
 )
 
 func main() {

@@ -9,7 +9,7 @@ package crud
 import (
 	"strings"
 
-	"juigo"
+	"github.com/JonathanSantos/JUIGo"
 )
 
 // Pessoa é o registro do domínio.

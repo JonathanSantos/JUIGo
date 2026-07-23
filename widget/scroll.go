@@ -3,9 +3,9 @@ package widget
 import (
 	"image"
 
-	"juigo/event"
-	"juigo/render"
-	"juigo/theme"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/render"
+	"github.com/JonathanSantos/JUIGo/theme"
 )
 
 // Scroll é um container de rolagem VERTICAL com um único filho: o filho é

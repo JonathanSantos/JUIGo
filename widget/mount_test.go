@@ -4,7 +4,7 @@ import (
 	"image"
 	"testing"
 
-	"juigo/event"
+	"github.com/JonathanSantos/JUIGo/event"
 )
 
 // TestTemaAmbienteMount cobre a injeção de tema no mount: herança pela

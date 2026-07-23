@@ -21,8 +21,8 @@ package anim
 import (
 	"time"
 
-	"juigo/internal/hooks"
-	"juigo/state"
+	"github.com/JonathanSantos/JUIGo/internal/hooks"
+	"github.com/JonathanSantos/JUIGo/state"
 )
 
 // frame é o passo da animação (~60 quadros por segundo).

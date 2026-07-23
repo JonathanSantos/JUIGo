@@ -3,9 +3,9 @@ package quick_test
 import (
 	"testing"
 
-	"juigo"
-	"juigo/quick"
-	"juigo/uitest"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/quick"
+	"github.com/JonathanSantos/JUIGo/uitest"
 )
 
 // TestFormFluxoDeValidacao cobre o ciclo completo do quick.Form com handles

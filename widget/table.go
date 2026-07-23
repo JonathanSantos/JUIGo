@@ -3,9 +3,9 @@ package widget
 import (
 	"image"
 
-	"juigo/event"
-	"juigo/render"
-	"juigo/state"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/render"
+	"github.com/JonathanSantos/JUIGo/state"
 )
 
 // Table é a tabela de células de TEXTO: colunas com título, linhas

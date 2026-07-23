@@ -21,10 +21,10 @@ import (
 	"testing"
 	"time"
 
-	"juigo/event"
-	"juigo/internal/hooks"
-	"juigo/theme"
-	"juigo/widget"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/internal/hooks"
+	"github.com/JonathanSantos/JUIGo/theme"
+	"github.com/JonathanSantos/JUIGo/widget"
 )
 
 // Harness dirige uma Session headless para testes.

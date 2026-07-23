@@ -1,4 +1,4 @@
-module juigo
+module github.com/JonathanSantos/JUIGo
 
 go 1.26.4
 

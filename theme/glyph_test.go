@@ -5,7 +5,7 @@ import (
 	"image"
 	"testing"
 
-	"juigo/render"
+	"github.com/JonathanSantos/JUIGo/render"
 )
 
 // TestGlyphCacheParidadeComDrawer garante que o texto desenhado pelo cache de

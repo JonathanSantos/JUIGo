@@ -3,8 +3,8 @@ package juigo_test
 import (
 	"testing"
 
-	"juigo"
-	"juigo/offscreen"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/offscreen"
 )
 
 // TestFachada garante que a API reexportada pela raiz monta, mede e desenha

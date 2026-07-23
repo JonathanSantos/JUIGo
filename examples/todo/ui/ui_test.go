@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"juigo"
-	"juigo/examples/todo/tarefas"
-	"juigo/uitest"
-	"juigo/widget"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/examples/todo/tarefas"
+	"github.com/JonathanSantos/JUIGo/uitest"
+	"github.com/JonathanSantos/JUIGo/widget"
 )
 
 // monta cria uma Vista limpa com repositório JSON num diretório temporário.

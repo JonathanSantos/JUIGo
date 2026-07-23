@@ -4,8 +4,8 @@ import (
 	"image"
 	"testing"
 
-	"juigo/event"
-	"juigo/render"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/render"
 )
 
 // scrollFixture monta um Scroll de 100px de viewport com conteúdo de 10

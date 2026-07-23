@@ -4,8 +4,8 @@ import (
 	"image"
 	"testing"
 
-	"juigo"
-	"juigo/uitest"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/uitest"
 )
 
 // TestCliqueFocaEDigita cobre o fluxo básico: clique foca o campo, digitação

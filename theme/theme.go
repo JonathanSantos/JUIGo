@@ -11,7 +11,7 @@ import (
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
 
-	"juigo/render"
+	"github.com/JonathanSantos/JUIGo/render"
 )
 
 // Fonte Go Regular (https://go.dev/blog/go-fonts), licença BSD — a mesma do

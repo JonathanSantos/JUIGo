@@ -8,7 +8,7 @@
 //
 // Este pacote é a FACHADA da biblioteca: contém o App (janela + loop) e
 // reexporta os tipos e construtores dos subpacotes, para que uma aplicação
-// comum importe apenas "juigo":
+// comum importe apenas "github.com/JonathanSantos/JUIGo":
 //
 //	juigo/widget — Widget, BaseWidget, roteamento, Mount, containers e controles
 //	juigo/theme  — Theme: cores, fonte embutida, métricas, escala HiDPI

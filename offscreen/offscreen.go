@@ -21,9 +21,9 @@ import (
 	"image/png"
 	"os"
 
-	"juigo/render"
-	"juigo/theme"
-	"juigo/widget"
+	"github.com/JonathanSantos/JUIGo/render"
+	"github.com/JonathanSantos/JUIGo/theme"
+	"github.com/JonathanSantos/JUIGo/widget"
 )
 
 // Render monta a árvore com o tema (widget.Mount), faz o layout no retângulo

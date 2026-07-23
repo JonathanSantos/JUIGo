@@ -12,8 +12,8 @@ import (
 	"fmt"
 	"image"
 
-	"juigo"
-	"juigo/render"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/render"
 )
 
 // circulo é um círculo do desenho, em pixels da tela.

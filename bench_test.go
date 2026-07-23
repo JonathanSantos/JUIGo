@@ -4,9 +4,9 @@ import (
 	"image"
 	"testing"
 
-	"juigo"
-	"juigo/render"
-	"juigo/widget"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/render"
+	"github.com/JonathanSantos/JUIGo/widget"
 )
 
 // benchUI monta a árvore da demo (título, input com texto, contador, botão,

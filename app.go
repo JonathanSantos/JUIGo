@@ -10,11 +10,11 @@ import (
 
 	"github.com/go-gl/glfw/v3.3/glfw"
 
-	"juigo/event"
-	"juigo/internal/hooks"
-	"juigo/render"
-	"juigo/theme"
-	"juigo/widget"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/internal/hooks"
+	"github.com/JonathanSantos/JUIGo/render"
+	"github.com/JonathanSantos/JUIGo/theme"
+	"github.com/JonathanSantos/JUIGo/widget"
 )
 
 func init() {

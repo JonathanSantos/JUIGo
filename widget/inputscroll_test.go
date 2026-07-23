@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"juigo/event"
-	"juigo/render"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/render"
 )
 
 // TestInputRolagemHorizontal cobre o comportamento de campo clássico: o

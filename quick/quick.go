@@ -14,7 +14,7 @@
 //	).Submit("Salvar", salvar)
 package quick
 
-import "juigo/widget"
+import "github.com/JonathanSantos/JUIGo/widget"
 
 // Labeled monta a linha rótulo+campo: o rótulo à esquerda, na largura
 // preferida e centralizado na vertical, e o campo crescendo até a borda.

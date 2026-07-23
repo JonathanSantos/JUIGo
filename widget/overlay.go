@@ -1,6 +1,6 @@
 package widget
 
-import "juigo/internal/hooks"
+import "github.com/JonathanSantos/JUIGo/internal/hooks"
 
 // OpenOverlay exibe w como a camada de SOBREPOSIÇÃO da aplicação: desenhada
 // por cima da árvore normal e com prioridade nos eventos de mouse/rolagem.

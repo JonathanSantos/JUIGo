@@ -22,7 +22,7 @@
 package form
 
 import (
-	"juigo/state"
+	"github.com/JonathanSantos/JUIGo/state"
 )
 
 // Validator valida um valor e devolve a mensagem de erro ("" = válido).

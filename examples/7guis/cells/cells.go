@@ -16,8 +16,8 @@ import (
 	"strconv"
 	"strings"
 
-	"juigo"
-	"juigo/render"
+	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/render"
 )
 
 const (

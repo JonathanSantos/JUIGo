@@ -3,8 +3,8 @@ package widget
 import (
 	"image"
 
-	"juigo/render"
-	"juigo/state"
+	"github.com/JonathanSantos/JUIGo/render"
+	"github.com/JonathanSantos/JUIGo/state"
 )
 
 // O estado DESABILITADO é aplicado centralmente, no roteamento: um widget

@@ -4,9 +4,9 @@ import (
 	"image"
 	"testing"
 
-	"juigo/event"
-	"juigo/internal/hooks"
-	"juigo/state"
+	"github.com/JonathanSantos/JUIGo/event"
+	"github.com/JonathanSantos/JUIGo/internal/hooks"
+	"github.com/JonathanSantos/JUIGo/state"
 )
 
 func TestBindText(t *testing.T) {

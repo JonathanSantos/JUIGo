@@ -3,7 +3,7 @@ package widget
 import (
 	"image"
 
-	"juigo/theme"
+	"github.com/JonathanSantos/JUIGo/theme"
 )
 
 // Container agrupa widgets filhos com posicionamento ABSOLUTO: cada filho

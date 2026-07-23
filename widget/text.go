@@ -4,8 +4,8 @@ import (
 	"image"
 	"image/color"
 
-	"juigo/render"
-	"juigo/state"
+	"github.com/JonathanSantos/JUIGo/render"
+	"github.com/JonathanSantos/JUIGo/state"
 )
 
 // Align define o alinhamento horizontal do texto dentro dos bounds.
