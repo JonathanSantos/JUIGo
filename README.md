@@ -37,7 +37,7 @@ própria lib — [`go run ./docs/gerar`](docs/gerar/main.go).*
   App real, headless, com relógio virtual (nada de sleeps) e screenshots
   determinísticos para golden tests.
 - **Rápida por construção** — dirty regions (só a região suja é repintada e
-  enviada à GPU), zero alocações no caminho quente, ~13µs por frame
+  enviada à GPU), zero alocações no caminho quente, ~14µs por frame
   incremental; um golden test prova que o frame incremental é byte a byte
   igual ao completo.
 - **HiDPI, temas em runtime, undo/redo (`History`), timers (`After`/
@@ -106,9 +106,11 @@ de verdade e a interface é uma projeção dele.
   `NewModal(conteúdo).CloseOnBackdrop(false).OnClose(f)`. Qualquer
   interface cabe em uma única expressão.
 - **Tema ambiente** — construtores não pedem tema: o App o injeta na árvore
-  no *mount*. `DefaultTheme` (claro) e `DarkTheme` (escuro) prontos;
-  `App.SetTheme` troca em runtime. Métricas são unidades lógicas escaladas
-  pelo tema — HiDPI transparente.
+  no *mount*. `DefaultTheme` (claro) e `DarkTheme` (escuro) prontos, ambos
+  com cantos arredondados com antialiasing (`Theme.Radius`, padrão 4);
+  `ClassicTheme` (ou `Radius = 0`) devolve o visual reto de antes, pixel a
+  pixel. `App.SetTheme` troca em runtime. Métricas são unidades lógicas
+  escaladas pelo tema — HiDPI transparente.
 - **Reatividade com `State[T]`** — `NewState`/`Get`/`Set`/`Watch` + `Map` e
   `Combine` para derivados; `Set` redesenha a interface sozinho. Eventos
   continuam callbacks (`OnClick`) — estado é para dados.

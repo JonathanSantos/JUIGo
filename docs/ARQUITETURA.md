@@ -106,6 +106,14 @@ execução só por `internal/hooks`, registrado na inicialização.
   `DefaultTheme` (claro) e `DarkTheme` (escuro, mesmas métricas) — e
   `App.SetTheme` troca em RUNTIME: a nova paleta se propaga pela árvore no
   próximo frame (widgets com `SetTheme` explícito mantêm o próprio).
+  Cantos arredondados vêm de `Theme.Radius` (unidades lógicas, padrão 4):
+  fundo, borda, anel de foco e a lavagem de desabilitado seguem o raio via
+  `render.FillRoundRect`/`StrokeRoundRect`/`FillRoundRectOver` — cobertura
+  por pixel só nos blocos de canto (antialiasing de rampa de 1px), faixas
+  cheias no miolo, zero alocação, custo de 0–6% no frame completo. Com
+  `Radius` zero as primitivas degradam byte a byte para as retas — o visual
+  clássico (`ClassicTheme`) é o mesmo de antes, verificado por render
+  idêntico; `ButtonBorder` com alfa zero desliga a borda do botão.
 - **Texto**: o Input opera sobre `[]rune` (cursor e âncora de seleção em
   runes, nunca bytes); acentuação e UTF-8 em geral funcionam. Suporta
   **seleção** (arraste do mouse ou Shift+setas/Home/End), **clipboard** do
@@ -126,8 +134,9 @@ execução só por `internal/hooks`, registrado na inicialização.
 
 ## Números de referência (M2, escala 1)
 
-- Frame completo 480×320: ~43µs; incremental (dirty regions): ~12,6µs — zero
-  alocações no caminho quente de desenho.
+- Frame completo 480×320: ~92µs; incremental (dirty regions): ~14µs — zero
+  alocações no caminho quente de desenho (jul/2026, cena do bench_test.go
+  com os cantos arredondados do tema padrão; o antialiasing custa 0–6%).
 - Binário da demo: 3,3MB com strip (≈1,1MB acima de uma janela GLFW crua).
 - RSS ~101MB no macOS (≈88MB são a stack de GL do sistema).
 
