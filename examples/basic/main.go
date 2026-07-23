@@ -32,6 +32,11 @@ func main() {
 		return fmt.Sprintf("Volume: %.0f%%", v*100)
 	})
 
+	lista := juigo.NewVBox().Gap(4).Pad(0)
+	for i := 1; i <= 25; i++ {
+		lista.Add(juigo.NewText(fmt.Sprintf("Item %02d da lista rolável — use a roda do mouse", i)))
+	}
+
 	ui := juigo.NewVBox(
 		juigo.NewText("").BindText(eco).Center(),
 		juigo.NewHBox(
@@ -44,9 +49,10 @@ func main() {
 		juigo.NewCheckbox("Notificações").BindChecked(notif),
 		juigo.NewSlider(0, 1).BindValue(volume),
 		juigo.NewText("").BindText(volTxt).Right(),
+		juigo.Grow(juigo.NewScroll(lista), 1),
 	).Pad(16)
 
-	if err := juigo.Run("JUIGo — demo básico", 480, 280, ui); err != nil {
+	if err := juigo.Run("JUIGo — demo básico", 480, 420, ui); err != nil {
 		log.Fatal(err)
 	}
 }

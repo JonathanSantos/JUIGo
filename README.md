@@ -20,10 +20,12 @@ juigo/
   doc.go, app.go, alias.go   fachada: App (janela, buffer, foco, captura,
                              loop dirty) + reexports dos subpacotes
   widget/                    contrato Widget, BaseWidget, roteamento
-                             (DispatchMouse/DeepestAt/FocusableAt/Focusables),
-                             Mount (injeção de tema), Container/VBox/HBox,
+                             (DispatchAt/DispatchMouse/DispatchScroll,
+                             DeepestAt/FocusableAt/Focusables), Mount,
                              flex (Grow/Spacer/Centered/AtStart/AtEnd),
-                             Text, Button, Input, Checkbox, Slider
+                             Container/VBox/HBox, Scroll (clipping),
+                             CursorShape, Text, Button, Input, Checkbox,
+                             Slider
   offscreen/                 Render/SavePNG: árvore → *image.RGBA sem janela
                              (golden tests, screenshots, depuração)
   theme/                     Theme: cores, métricas, escala HiDPI, cache de
@@ -46,11 +48,14 @@ execução só por `internal/hooks`, registrado na inicialização.
   `Bounds()`, `Focusable()`, `PreferredSize()`. `BaseWidget` fornece os
   defaults para embutir nos widgets concretos.
 - **Roteamento de eventos**:
-  - *Mouse* roteia por **geometria**: hit-test da raiz até o widget mais
-    profundo que contém o ponto; propaga para cima se não consumido. Quem
-    consome um `MouseDown` **captura o mouse**: recebe `MouseMove`/`MouseUp`
-    diretamente até o botão ser solto, mesmo fora dos próprios bounds — é o
-    que permite arrastar o Slider e selecionar texto com fluidez.
+  - *Mouse* e *rolagem* (`ScrollEvent`) roteiam por **geometria**: hit-test
+    da raiz até o widget mais profundo que contém o ponto; propagam para
+    cima se não consumidos (um `Scroll` no limite deixa o ancestral rolar).
+    Quem consome um `MouseDown` **captura o mouse**: recebe
+    `MouseMove`/`MouseUp` diretamente até o botão ser solto, mesmo fora dos
+    próprios bounds — é o que permite arrastar o Slider e selecionar texto
+    com fluidez. O cursor do sistema segue o widget sob o ponteiro (I-beam
+    em campos, mãozinha em clicáveis), via `CursorShape`.
   - *Teclado/char* roteia por **foco**: direto ao widget focado, sem
     hit-test. `KeyEvent` carrega os modificadores (Shift, Ctrl, Alt, Super).
   - Clique em widget focável muda o foco; **Tab**/**Shift+Tab** avançam e
@@ -68,9 +73,10 @@ execução só por `internal/hooks`, registrado na inicialização.
   texto (layout e posicionamento de cursor).
 - **Texto**: o Input opera sobre `[]rune` (cursor e âncora de seleção em
   runes, nunca bytes); acentuação e UTF-8 em geral funcionam. Suporta
-  **seleção** (arraste do mouse ou Shift+setas/Home/End) e **clipboard** do
+  **seleção** (arraste do mouse ou Shift+setas/Home/End), **clipboard** do
   sistema com Ctrl/Cmd+A/C/X/V (colar filtra quebras de linha: campo de
-  linha única). O desenho de texto passa por `Theme.DrawText`, que usa um
+  linha única) e **rolagem horizontal**: texto maior que o campo rola para
+  manter o cursor sempre visível, recortado aos bounds (nada vaza). O desenho de texto passa por `Theme.DrawText`, que usa um
   **cache de glyphs** (`render.GlyphCache`): cada glyph é rasterizado uma
   única vez e o caminho quente não aloca — pixel a pixel idêntico ao
   `font.Drawer`, garantido por teste.
@@ -171,8 +177,9 @@ go test ./...
 
 ## Fora de escopo (por enquanto)
 
-Animações, scroll, clipping hierárquico, dirty regions, temas alternáveis,
-acessibilidade, IME, outros widgets (radio/dropdown/modal). A arquitetura
+Animações, dirty regions, temas alternáveis, acessibilidade, IME, outros
+widgets (radio/dropdown/modal), overlay (pré-requisito de dropdown/modal/
+tooltip). A arquitetura
 foi pensada para recebê-los depois: eventos são tipos abertos, o tema é
 injetado, containers são aninháveis e o desenho é isolado em `render/`.
 
