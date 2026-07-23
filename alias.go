@@ -56,6 +56,8 @@ type (
 	// Popup é o painel ancorado num ponto, sem escurecer o fundo (menus de
 	// contexto, diálogos leves).
 	Popup = widget.Popup
+	// Tabs organiza páginas de conteúdo em abas.
+	Tabs = widget.Tabs
 	// Table é a tabela de células de texto com cabeçalho fixo e seleção.
 	Table = widget.Table
 	// Grid distribui filhos em grade de N colunas (formulários alinhados).
@@ -218,6 +220,10 @@ func NewModal(content Widget) *Modal { return widget.NewModal(content) }
 // NewPopup cria um popup ancorado com o conteúdo dado; exiba com ShowAt
 // (ver widget.NewPopup).
 func NewPopup(content Widget) *Popup { return widget.NewPopup(content) }
+
+// NewTabs cria um conjunto de abas vazio; adicione páginas com Add (ver
+// widget.Tabs).
+func NewTabs() *Tabs { return widget.NewTabs() }
 
 // NewTable cria uma tabela de texto: títulos de coluna, total de linhas e o
 // callback de célula (ver widget.NewTable).
