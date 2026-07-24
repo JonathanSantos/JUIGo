@@ -63,6 +63,8 @@ type (
 	Navigator = widget.Navigator
 	// SplitPane divide a área entre dois painéis com um divisor arrastável.
 	SplitPane = widget.SplitPane
+	// Sized fixa o tamanho preferido de um filho em unidades lógicas.
+	Sized = widget.Sized
 	// Transition é o efeito visual da troca de telas do Navigator.
 	Transition = widget.Transition
 	// DropTarget é implementado por widgets que aceitam soltar um arrasto
@@ -286,6 +288,10 @@ func NewNavigator() *Navigator { return widget.NewNavigator() }
 // NewSplitPane cria um divisor lado a lado entre a (esquerda) e b (direita),
 // meio a meio (ver widget.SplitPane).
 func NewSplitPane(a, b Widget) *SplitPane { return widget.NewSplitPane(a, b) }
+
+// NewSized envolve child com o tamanho preferido dado, em unidades lógicas;
+// zero em um eixo herda a medida do filho (ver widget.Sized).
+func NewSized(child Widget, w, h int) *Sized { return widget.NewSized(child, w, h) }
 
 // NewTree cria uma árvore virtualizada sobre o modelo dado por callbacks
 // (ver widget.Tree).
