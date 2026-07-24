@@ -43,10 +43,11 @@ própria lib — [`go run ./docs/gerar`](docs/gerar/main.go).*
   enviada à GPU), zero alocações no caminho quente, ~14µs por frame
   incremental; um golden test prova que o frame incremental é byte a byte
   igual ao completo.
-- **HiDPI, temas em runtime, drag-and-drop (`StartDrag`/`DropTarget`, com
-  fantasma e realce do alvo), undo/redo (`History`), timers (`After`/
-  `Every`), animações (`anim.Tween`) e um inspector de depuração
-  (Ctrl/Cmd+I)** de fábrica.
+- **HiDPI, temas em runtime, múltiplas janelas (`App.NewWindow`, cada uma
+  com tema e foco próprios, States compartilhados entre elas), drag-and-drop
+  (`StartDrag`/`DropTarget`, com fantasma e realce do alvo), undo/redo
+  (`History`), timers (`After`/`Every`), animações (`anim.Tween`) e um
+  inspector de depuração (Ctrl/Cmd+I)** de fábrica.
 
 ## Status
 
@@ -203,6 +204,9 @@ flags de cada widget.
 - **`go run ./examples/kanban`** — drag-and-drop: cartões arrastados entre
   colunas com fantasma e realce do alvo, cancelamento no Escape e a UI
   reconstruída da projeção do modelo.
+- **`go run ./examples/janelas`** — multi-janela: `App.NewWindow`, tema por
+  janela (uma escura ao lado de claras) e o MESMO `State` reagindo em todas
+  ao mesmo tempo.
 
 ![Kanban em pleno arrasto](docs/kanban.png)
 
@@ -225,10 +229,10 @@ por foco, overlay, tema) e os números de performance estão em
 ## Fora de escopo (por enquanto)
 
 Acessibilidade, IME (composição de texto asiático — avaliação e plano em
-[docs/IME.md](docs/IME.md)), multi-janela, edição rica (negrito/itálico) e
-árvores. A arquitetura foi pensada para recebê-los depois: eventos são
-tipos abertos, o tema é injetado, containers são aninháveis e o desenho é
-isolado em `render/`.
+[docs/IME.md](docs/IME.md)), edição rica (negrito/itálico) e árvores. A
+arquitetura foi pensada para recebê-los depois: eventos são tipos abertos,
+o tema é injetado, containers são aninháveis e o desenho é isolado em
+`render/`.
 
 ## Licença
 

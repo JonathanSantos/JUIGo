@@ -1,12 +1,13 @@
 // Package juigo é uma biblioteca minimalista de interface gráfica para Go.
 //
 // A renderização é feita por software (CPU) sobre um buffer *image.RGBA;
-// GLFW fornece a janela e os eventos do sistema operacional, e o OpenGL é
+// GLFW fornece as janelas e os eventos do sistema operacional, e o OpenGL é
 // usado apenas para apresentar o buffer na tela (blit de textura em um quad
-// fullscreen). Toda a biblioteca é single-threaded: janela, eventos e
+// fullscreen). Toda a biblioteca é single-threaded: janelas, eventos e
 // desenho vivem na main thread do processo.
 //
-// Este pacote é a FACHADA da biblioteca: contém o App (janela + loop) e
+// Este pacote é a FACHADA da biblioteca: contém o App (loop + janelas; abra
+// mais janelas com App.NewWindow, cada uma com tema e Session próprios) e
 // reexporta os tipos e construtores dos subpacotes, para que uma aplicação
 // comum importe apenas "github.com/JonathanSantos/JUIGo":
 //

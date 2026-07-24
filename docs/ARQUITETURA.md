@@ -7,16 +7,18 @@ contratos e as decisões de arquitetura. Para o uso da API, veja o
 ## Pacotes
 
 O código é organizado em pacotes coesos; o pacote raiz `juigo` é uma
-**fachada**: contém o `App` (janela + loop) e reexporta os tipos e
+**fachada**: contém o `App` (loop + janelas) e reexporta os tipos e
 construtores dos subpacotes por alias. Aplicações comuns importam **apenas
 `"juigo"`**; os subpacotes existem para casos avançados (widgets próprios,
 shells alternativos, renderização offscreen).
 
 ```
 juigo/
-  doc.go, app.go, alias.go   fachada: App (janela GLFW, buffer, timers, loop
-                             dirty — casca fina sobre a widget.Session) +
-                             reexports dos subpacotes
+  doc.go, app.go, alias.go   fachada: App (loop, timers, Post, hooks) dono
+  window.go                  de N Windows — cada janela GLFW com buffer,
+                             tema e Session PRÓPRIOS (App.NewWindow abre
+                             mais; o loop renderiza as sujas e termina
+                             quando todas fecham) + reexports
   widget/                    contrato Widget, BaseWidget, roteamento
                              (DispatchAt/DispatchMouse/DispatchScroll,
                              DeepestAt/FocusableAt/Focusables), Mount,
@@ -100,6 +102,15 @@ execução só por `internal/hooks`, registrado na inicialização.
   são engolidos, Tab/foco fora fecham, e o foco anterior é restaurado. O
   tooltip (`Tooltip(w, texto)`) é uma camada passiva acima de tudo, fora do
   hit-test.
+- **Multi-janela**: cada `Window` tem tema (`Theme.Clone`; a escala segue o
+  monitor da janela) e `Session` próprios — foco, overlay, tooltip e toast
+  independentes. O DANO tem identidade de janela: o mount da própria
+  Session anexa a sessão dona a cada widget, e `Invalidate`/diff de layout
+  vão direto a ela; widgets ainda sem sessão caem no fallback global, que o
+  App reparte entre as janelas (repintar a mais é seguro). Os ganchos de
+  overlay/foco/toast/arrasto roteiam para a janela EM INTERAÇÃO (callback
+  em execução), senão para a focada. `State`s podem ser compartilhados
+  entre janelas: cada watcher danifica só a janela do próprio widget.
 - **Drag-and-drop**: `widget.StartDrag(payload, rótulo)` é chamado por um
   widget FONTE durante uma captura de mouse (tipicamente ao passar de um
   limiar de movimento); a partir daí a Session mantém um fantasma seguindo
