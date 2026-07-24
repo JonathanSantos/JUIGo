@@ -217,6 +217,19 @@ func (t *Theme) SetScale(scale float64) error {
 	return nil
 }
 
+// Clone devolve uma cópia independente do tema, na mesma escala: os campos
+// de cores e métricas são copiados, a fonte interpretada é compartilhada
+// (imutável) e a face e o cache de glyphs são reconstruídos. Cada JANELA
+// precisa do próprio *Theme — a escala segue o monitor da janela, e
+// SetScale num tema compartilhado desregularia as outras.
+func (t *Theme) Clone() (*Theme, error) {
+	c := *t
+	if err := c.SetScale(t.scale); err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
 // Scale devolve a escala atual do tema (pixels por unidade lógica).
 func (t *Theme) Scale() float64 {
 	return t.scale

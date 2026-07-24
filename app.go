@@ -3,7 +3,6 @@ package juigo
 import (
 	"fmt"
 	"image"
-	"math"
 	"runtime"
 	"sync"
 	"time"
@@ -12,7 +11,6 @@ import (
 
 	"github.com/JonathanSantos/JUIGo/event"
 	"github.com/JonathanSantos/JUIGo/internal/hooks"
-	"github.com/JonathanSantos/JUIGo/render"
 	"github.com/JonathanSantos/JUIGo/theme"
 	"github.com/JonathanSantos/JUIGo/widget"
 )
@@ -22,36 +20,28 @@ func init() {
 	runtime.LockOSThread()
 }
 
-// App é a aplicação JUIGo: dona da janela, do buffer RGBA, da textura GL
-// (via render.Blitter), dos timers e do loop de eventos. Toda a lógica de
-// INTERAÇÃO (roteamento, foco, captura, hover, overlay, tooltip) vive na
-// widget.Session — o App apenas traduz os eventos do GLFW para ela, o que
-// permite testar o comportamento real headless com juigo/uitest.
+// App é a aplicação JUIGo: dona das JANELAS (uma ou várias — ver NewWindow),
+// dos timers e do loop de eventos. Cada janela tem o próprio buffer, tema e
+// widget.Session; toda a lógica de INTERAÇÃO (roteamento, foco, captura,
+// hover, overlay, tooltip) vive na Session — a janela apenas traduz os
+// eventos do GLFW para ela, o que permite testar o comportamento real
+// headless com juigo/uitest.
 //
-// O buffer é alocado no tamanho do FRAMEBUFFER da janela (pixels físicos):
-// em telas HiDPI ele é maior que o tamanho lógico, o tema é escalado pela
-// escala de conteúdo do monitor e as coordenadas de mouse são convertidas de
-// lógicas para pixels antes do roteamento — widgets só veem pixels.
+// Os métodos de conveniência do App (SetRoot, SetTheme, Theme, Session)
+// operam na JANELA PRINCIPAL — aplicações de uma janela não precisam saber
+// que Window existe. O loop termina quando todas as janelas fecham.
 type App struct {
-	window  *glfw.Window
-	blitter *render.Blitter
-	buf     *image.RGBA
-	theme   *theme.Theme
-	bus     *event.Bus
-	session *widget.Session
-	width   int // dimensões do buffer, em pixels físicos
-	height  int
-	// pixelRatio converte coordenadas lógicas da janela (mouse) em pixels
-	// do framebuffer. 2 em telas retina; 1 em telas comuns.
-	pixelRatio float64
-	dirty      bool
+	windows []*Window
+	// main é a janela principal, criada por New; os métodos de conveniência
+	// do App delegam a ela.
+	main *Window
+	bus  *event.Bus
+	// corrente é a janela cujo callback está em execução: é para a sessão
+	// dela que os hooks globais (overlay, foco, toast, arrasto) roteiam.
+	corrente *Window
 	// fatalErr registra uma falha ocorrida dentro de um callback (que não
 	// pode devolver erro); Run a detecta e encerra.
 	fatalErr error
-	// appliedCursor é o formato de cursor aplicado na janela; stdCursors
-	// cacheia os cursores padrão do GLFW já criados.
-	appliedCursor widget.CursorShape
-	stdCursors    map[widget.CursorShape]*glfw.Cursor
 	// timers são os agendamentos pendentes (hooks.Schedule): o loop usa
 	// WaitEventsTimeout para acordar no vencimento mais próximo.
 	timers   []appTimer
@@ -69,114 +59,33 @@ type appTimer struct {
 	fn func()
 }
 
-// New cria a janela com o título e tamanho dados e inicializa o contexto
-// OpenGL. Deve ser chamada na main thread (o pacote já trava a goroutine
-// corrente na thread do SO via runtime.LockOSThread).
+// New cria a aplicação com a janela principal (título e tamanho dados) e
+// inicializa o contexto OpenGL. Deve ser chamada na main thread (o pacote
+// já trava a goroutine corrente na thread do SO via runtime.LockOSThread).
 func New(title string, width, height int) (*App, error) {
 	if err := glfw.Init(); err != nil {
 		return nil, fmt.Errorf("juigo: falha ao inicializar GLFW: %w", err)
 	}
-
-	glfw.WindowHint(glfw.ContextVersionMajor, 3)
-	glfw.WindowHint(glfw.ContextVersionMinor, 3)
-	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
-	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True) // exigido no macOS
-	glfw.WindowHint(glfw.Resizable, glfw.True)
-
-	window, err := glfw.CreateWindow(width, height, title, nil, nil)
-	if err != nil {
-		glfw.Terminate()
-		return nil, fmt.Errorf("juigo: falha ao criar janela: %w", err)
-	}
-	window.MakeContextCurrent()
-	glfw.SwapInterval(1)
-
-	// O buffer vive em pixels físicos do framebuffer (HiDPI incluso).
-	fbw, fbh := window.GetFramebufferSize()
-	if fbw <= 0 || fbh <= 0 {
-		fbw, fbh = width, height
-	}
-
-	blitter, err := render.NewBlitter(fbw, fbh)
-	if err != nil {
-		window.Destroy()
-		glfw.Terminate()
-		return nil, err
-	}
-
 	th, err := theme.Default()
 	if err != nil {
-		blitter.Destroy()
-		window.Destroy()
 		glfw.Terminate()
 		return nil, err
 	}
-
-	// Escala o tema (fonte, métricas) para o monitor onde a janela abriu.
-	scaleX, _ := window.GetContentScale()
-	if scaleX > 0 && scaleX != 1 {
-		if err := th.SetScale(float64(scaleX)); err != nil {
-			blitter.Destroy()
-			window.Destroy()
-			glfw.Terminate()
-			return nil, err
-		}
+	a := &App{bus: event.NewBus()}
+	w, err := a.createWindow(title, width, height, th)
+	if err != nil {
+		glfw.Terminate()
+		return nil, err
 	}
-
-	a := &App{
-		window:     window,
-		blitter:    blitter,
-		theme:      th,
-		bus:        event.NewBus(),
-		session:    widget.NewSession(th),
-		buf:        image.NewRGBA(image.Rect(0, 0, fbw, fbh)),
-		width:      fbw,
-		height:     fbh,
-		pixelRatio: pixelRatio(window, fbw),
-		dirty:      true,
-	}
-	a.session.OnDirty = func() { a.dirty = true }
-	a.session.Resize(image.Pt(fbw, fbh))
-	a.installCallbacks()
-	// Setters de widgets e State.Set redesenham através deste hook; o Input
-	// copia/cola através da área de transferência do sistema; popups abrem
-	// pela Session; timers acordam o loop.
-	hooks.Repaint = a.Invalidate
-	hooks.Damage = func(r image.Rectangle) {
-		a.session.AddDamage(r)
-	}
-	hooks.Frame = func() {
-		a.dirty = true
-	}
-	hooks.ClipboardRead = window.GetClipboardString
-	hooks.ClipboardWrite = window.SetClipboardString
-	hooks.Schedule = a.schedule
-	hooks.OpenOverlay = func(v any) {
-		if w, ok := v.(widget.Widget); ok {
-			a.session.OpenOverlay(w)
-		}
-	}
-	hooks.CloseOverlay = func(v any) {
-		if w, ok := v.(widget.Widget); ok {
-			a.session.CloseOverlayIf(w)
-		}
-	}
-	hooks.Focus = func(v any) {
-		w, _ := v.(widget.Widget)
-		a.session.Focus(w)
-	}
-	hooks.Toast = func(text string, d time.Duration) {
-		a.session.ShowToast(text, d)
-	}
-	hooks.StartDrag = func(payload any, label string) {
-		a.session.StartDrag(payload, label)
-	}
+	a.main = w
+	a.installHooks()
 	return a, nil
 }
 
-// Run cria a aplicação com New, define root como raiz da árvore e executa o
-// loop de eventos até a janela ser fechada. É o caminho curto para a maioria
-// das aplicações; use New quando precisar do *App (tema, Invalidate, Bus).
+// Run cria a aplicação com New, define root como raiz da janela principal e
+// executa o loop de eventos até todas as janelas fecharem. É o caminho
+// curto para a maioria das aplicações; use New quando precisar do *App
+// (tema, NewWindow, Invalidate, Bus).
 func Run(title string, width, height int, root widget.Widget) error {
 	app, err := New(title, width, height)
 	if err != nil {
@@ -184,6 +93,133 @@ func Run(title string, width, height int, root widget.Widget) error {
 	}
 	app.SetRoot(root)
 	return app.Run()
+}
+
+// NewWindow abre uma janela ADICIONAL com o título e tamanho dados: tema
+// próprio (um clone do tema da janela principal, levado à escala do monitor
+// onde ela abrir) e Session própria — foco, overlay e toast independentes.
+// Defina o conteúdo com SetRoot; feche com Close (ou o botão do sistema).
+// Deve ser chamada na main thread — de um handler de evento ou de um
+// App.Post. A aplicação termina quando TODAS as janelas fecham.
+func (a *App) NewWindow(title string, width, height int) (*Window, error) {
+	base := a.main
+	if base == nil || base.closed {
+		if len(a.windows) == 0 {
+			return nil, fmt.Errorf("juigo: aplicação sem janelas")
+		}
+		base = a.windows[0]
+	}
+	th, err := base.theme.Clone()
+	if err != nil {
+		return nil, err
+	}
+	w, err := a.createWindow(title, width, height, th)
+	if err != nil {
+		return nil, err
+	}
+	w.render() // primeiro frame imediato: a janela abre pintada
+	return w, nil
+}
+
+// dispatch executa fn com w marcada como a janela em interação — os hooks
+// globais roteiam para a sessão dela durante a entrega do evento.
+func (a *App) dispatch(w *Window, fn func()) {
+	prev := a.corrente
+	a.corrente = w
+	fn()
+	a.corrente = prev
+}
+
+// activeSession devolve a sessão da janela em interação; fora de um
+// callback, a da janela focada; senão, a da primeira janela aberta.
+func (a *App) activeSession() *widget.Session {
+	if a.corrente != nil {
+		return a.corrente.session
+	}
+	for _, w := range a.windows {
+		if w.window.GetAttrib(glfw.Focused) == glfw.True {
+			return w.session
+		}
+	}
+	if len(a.windows) > 0 {
+		return a.windows[0].session
+	}
+	return nil
+}
+
+// installHooks liga os ganchos globais do processo à aplicação. Setters de
+// widgets e State.Set redesenham por aqui (o dano de widgets já montados
+// vai DIRETO à sessão dona; este é o fallback repartido); o Input
+// copia/cola através da área de transferência do sistema; overlay, foco
+// programático, toast e arrasto vão à janela em interação; timers acordam
+// o loop.
+func (a *App) installHooks() {
+	hooks.Repaint = func() {
+		for _, w := range a.windows {
+			w.session.InvalidateAll()
+			w.dirty = true
+		}
+		glfw.PostEmptyEvent()
+	}
+	hooks.Damage = func(r image.Rectangle) {
+		// Fallback de widgets ainda sem sessão anexada (antes do primeiro
+		// mount): reparte entre as janelas — repintura a mais é segura.
+		for _, w := range a.windows {
+			w.session.AddDamage(r)
+		}
+	}
+	hooks.Frame = func() {
+		// Frame sem dano: janelas sem dano acumulado pulam o render.
+		for _, w := range a.windows {
+			w.dirty = true
+		}
+	}
+	hooks.ClipboardRead = func() string {
+		if len(a.windows) == 0 {
+			return ""
+		}
+		return a.windows[0].window.GetClipboardString()
+	}
+	hooks.ClipboardWrite = func(s string) {
+		if len(a.windows) == 0 {
+			return
+		}
+		a.windows[0].window.SetClipboardString(s)
+	}
+	hooks.Schedule = a.schedule
+	hooks.OpenOverlay = func(v any) {
+		if w, ok := v.(widget.Widget); ok {
+			if s := a.activeSession(); s != nil {
+				s.OpenOverlay(w)
+			}
+		}
+	}
+	hooks.CloseOverlay = func(v any) {
+		w, ok := v.(widget.Widget)
+		if !ok {
+			return
+		}
+		// O fechamento vale para a janela que estiver exibindo a camada.
+		for _, j := range a.windows {
+			j.session.CloseOverlayIf(w)
+		}
+	}
+	hooks.Focus = func(v any) {
+		w, _ := v.(widget.Widget)
+		if s := a.activeSession(); s != nil {
+			s.Focus(w)
+		}
+	}
+	hooks.Toast = func(text string, d time.Duration) {
+		if s := a.activeSession(); s != nil {
+			s.ShowToast(text, d)
+		}
+	}
+	hooks.StartDrag = func(payload any, label string) {
+		if s := a.activeSession(); s != nil {
+			s.StartDrag(payload, label)
+		}
+	}
 }
 
 // schedule agenda fn para executar na main thread após d e devolve o
@@ -246,91 +282,178 @@ func pixelRatio(window *glfw.Window, fbWidth int) float64 {
 	return float64(fbWidth) / float64(winW)
 }
 
-// installCallbacks registra os callbacks de janela do GLFW, traduzindo cada
-// evento para a Session. Tudo executa na main thread dentro de WaitEvents.
-func (a *App) installCallbacks() {
-	a.window.SetFramebufferSizeCallback(func(_ *glfw.Window, w, h int) {
-		a.resize(w, h)
-	})
-	a.window.SetContentScaleCallback(func(_ *glfw.Window, scaleX, _ float32) {
-		// Janela mudou de monitor: refaz fonte, métricas e cache de glyphs.
-		if scaleX <= 0 {
-			return
-		}
-		if err := a.theme.SetScale(float64(scaleX)); err != nil {
-			a.fatalErr = err
-			return
-		}
-		a.dirty = true
-	})
-	a.window.SetMouseButtonCallback(func(_ *glfw.Window, button glfw.MouseButton, action glfw.Action, _ glfw.ModifierKey) {
-		x, y := a.window.GetCursorPos()
-		pos := a.toBufferCoords(x, y)
-		if action == glfw.Release {
-			a.session.PointerUp(pos, mapMouseButton(button))
-			return
-		}
-		a.session.PointerDown(pos, mapMouseButton(button))
-	})
-	a.window.SetKeyCallback(func(_ *glfw.Window, key glfw.Key, _ int, action glfw.Action, rawMods glfw.ModifierKey) {
-		if action == glfw.Release {
-			return
-		}
-		a.session.KeyPress(mapKey(key), mapMods(rawMods))
-	})
-	a.window.SetCharCallback(func(_ *glfw.Window, r rune) {
-		a.session.Char(r)
-	})
-	a.window.SetScrollCallback(func(_ *glfw.Window, dx, dy float64) {
-		x, y := a.window.GetCursorPos()
-		a.session.Scroll(a.toBufferCoords(x, y), dx, dy)
-	})
-	a.window.SetCursorPosCallback(func(_ *glfw.Window, x, y float64) {
-		a.session.PointerMove(a.toBufferCoords(x, y))
-		a.applyCursor(a.session.CursorShape())
-	})
-	// Refresh dispara quando o SO precisa que a janela seja repintada
-	// (ex.: durante o redimensionamento, que roda um loop modal no macOS).
-	a.window.SetRefreshCallback(func(_ *glfw.Window) {
-		a.dirty = true
-		a.render()
-	})
+// Bus devolve o barramento de eventos da aplicação (Publish síncrono), para
+// comunicação entre partes do código do usuário.
+func (a *App) Bus() *event.Bus {
+	return a.bus
 }
 
-// toBufferCoords converte coordenadas lógicas de janela (como o GLFW entrega
-// a posição do cursor) em pixels do buffer/framebuffer.
-func (a *App) toBufferCoords(x, y float64) image.Point {
-	return image.Pt(
-		int(math.Round(x*a.pixelRatio)),
-		int(math.Round(y*a.pixelRatio)),
-	)
+// primary devolve a janela principal (ou a primeira aberta, se a principal
+// fechou); nil sem janelas.
+func (a *App) primary() *Window {
+	if a.main != nil && !a.main.closed {
+		return a.main
+	}
+	if len(a.windows) > 0 {
+		return a.windows[0]
+	}
+	return nil
 }
 
-// applyCursor troca o cursor da janela para o formato dado, criando (e
-// cacheando) os cursores padrão do GLFW sob demanda.
-func (a *App) applyCursor(shape widget.CursorShape) {
-	if shape == a.appliedCursor {
+// Window devolve a janela principal da aplicação.
+func (a *App) Window() *Window {
+	return a.primary()
+}
+
+// Theme devolve o tema da janela principal, usado na construção dos widgets.
+func (a *App) Theme() *theme.Theme {
+	if w := a.primary(); w != nil {
+		return w.theme
+	}
+	return nil
+}
+
+// Session devolve o núcleo de interação da janela principal.
+func (a *App) Session() *widget.Session {
+	if w := a.primary(); w != nil {
+		return w.session
+	}
+	return nil
+}
+
+// SetTheme troca o tema da janela principal em runtime (ex.: claro ↔
+// escuro) — ver Window.SetTheme; para as demais janelas, use o método delas.
+func (a *App) SetTheme(th *theme.Theme) error {
+	if w := a.primary(); w != nil {
+		return w.SetTheme(th)
+	}
+	return nil
+}
+
+// SetRoot define o widget raiz da janela principal e agenda um redesenho.
+func (a *App) SetRoot(w widget.Widget) {
+	if j := a.primary(); j != nil {
+		j.SetRoot(w)
+	}
+}
+
+// Invalidate marca TODAS as janelas como sujas e acorda o loop, forçando
+// renderizações completas. É a válvula de escape para mudanças feitas por
+// fora dos setters/States (mutação direta de campos públicos); para uma
+// janela só, use Window.Invalidate.
+func (a *App) Invalidate() {
+	for _, w := range a.windows {
+		w.session.InvalidateAll()
+		w.dirty = true
+	}
+	glfw.PostEmptyEvent()
+}
+
+// Post agenda fn para executar na MAIN THREAD, na próxima volta do loop de
+// eventos. É o ÚNICO método do JUIGo seguro para chamar de outras goroutines
+// — a ponte para trabalho assíncrono (rede, disco): faça o trabalho pesado
+// em uma goroutine e entregue o resultado à interface via Post; DENTRO de fn,
+// State.Set e os setters de widgets são seguros como sempre.
+//
+//	btn.SetLoading(true)
+//	go func() {
+//	    resultado := buscar()
+//	    app.Post(func() {
+//	        btn.SetLoading(false)
+//	        estado.Set(resultado)
+//	    })
+//	}()
+func (a *App) Post(fn func()) {
+	if fn == nil {
 		return
 	}
-	a.appliedCursor = shape
-	if shape == widget.CursorDefault {
-		a.window.SetCursor(nil)
-		return
+	a.postMu.Lock()
+	a.posted = append(a.posted, fn)
+	a.postMu.Unlock()
+	glfw.PostEmptyEvent() // thread-safe: acorda o loop
+}
+
+// runPosted executa, na main thread, os callbacks entregues via Post.
+func (a *App) runPosted() {
+	a.postMu.Lock()
+	batch := a.posted
+	a.posted = nil
+	a.postMu.Unlock()
+	for _, fn := range batch {
+		fn()
 	}
-	if a.stdCursors == nil {
-		a.stdCursors = make(map[widget.CursorShape]*glfw.Cursor)
-	}
-	cur, ok := a.stdCursors[shape]
-	if !ok {
-		switch shape {
-		case widget.CursorText:
-			cur = glfw.CreateStandardCursor(glfw.IBeamCursor)
-		case widget.CursorHand:
-			cur = glfw.CreateStandardCursor(glfw.HandCursor)
+}
+
+// closePending destrói as janelas marcadas para fechar (botão do sistema ou
+// Close), chamando o OnClose de cada uma.
+func (a *App) closePending() {
+	kept := a.windows[:0]
+	for _, w := range a.windows {
+		if w.window.ShouldClose() {
+			w.destroy()
+			continue
 		}
-		a.stdCursors[shape] = cur
+		kept = append(kept, w)
 	}
-	a.window.SetCursor(cur)
+	a.windows = kept
+}
+
+// renderAll renderiza as janelas sujas (cada uma só repinta e envia à GPU a
+// própria região danificada).
+func (a *App) renderAll() {
+	for _, w := range a.windows {
+		w.render()
+	}
+}
+
+// Run executa o loop de eventos até TODAS as janelas fecharem e então
+// libera os recursos da aplicação. Usa glfw.WaitEvents (bloqueante): só há
+// trabalho de CPU quando chegam eventos, e só há renderização nas janelas
+// sujas. Falhas ocorridas dentro de callbacks (ex.: reescalar o tema ao
+// trocar de monitor) encerram o loop e são devolvidas aqui.
+func (a *App) Run() error {
+	a.renderAll()
+	for len(a.windows) > 0 {
+		// Com timers pendentes (piscada do cursor, tooltip), o loop acorda
+		// no vencimento mais próximo; sem timers, bloqueia como sempre.
+		if wait, ok := a.nextTimerWait(); ok {
+			if wait > 0 {
+				glfw.WaitEventsTimeout(wait.Seconds())
+			}
+		} else {
+			glfw.WaitEvents()
+		}
+		a.runDueTimers()
+		a.runPosted()
+		if a.fatalErr != nil {
+			a.destroy()
+			return a.fatalErr
+		}
+		a.closePending()
+		a.renderAll()
+	}
+	a.destroy()
+	return nil
+}
+
+// destroy libera os ganchos globais, as janelas restantes e o GLFW.
+func (a *App) destroy() {
+	hooks.Repaint = nil
+	hooks.Damage = nil
+	hooks.Frame = nil
+	hooks.ClipboardRead = nil
+	hooks.ClipboardWrite = nil
+	hooks.Schedule = nil
+	hooks.OpenOverlay = nil
+	hooks.CloseOverlay = nil
+	hooks.Focus = nil
+	hooks.Toast = nil
+	hooks.StartDrag = nil
+	for _, w := range a.windows {
+		w.destroy()
+	}
+	a.windows = nil
+	glfw.Terminate()
 }
 
 // mapMods converte os modificadores do GLFW para o tipo do JUIGo.
@@ -403,171 +526,4 @@ func mapMouseButton(b glfw.MouseButton) event.MouseButton {
 	default:
 		return event.MouseButtonLeft
 	}
-}
-
-// resize realoca o buffer RGBA para o novo tamanho do framebuffer, em pixels
-// físicos. Esta é a única situação em que o buffer é realocado.
-func (a *App) resize(w, h int) {
-	if w <= 0 || h <= 0 {
-		return
-	}
-	a.width, a.height = w, h
-	a.buf = image.NewRGBA(image.Rect(0, 0, w, h))
-	a.pixelRatio = pixelRatio(a.window, w)
-	a.session.Resize(image.Pt(w, h))
-	a.dirty = true
-}
-
-// Bus devolve o barramento de eventos da aplicação (Publish síncrono), para
-// comunicação entre partes do código do usuário.
-func (a *App) Bus() *event.Bus {
-	return a.bus
-}
-
-// Theme devolve o tema da aplicação, usado na construção dos widgets.
-func (a *App) Theme() *theme.Theme {
-	return a.theme
-}
-
-// Session devolve o núcleo de interação da aplicação (foco, hover, overlay).
-func (a *App) Session() *widget.Session {
-	return a.session
-}
-
-// SetTheme troca o tema da aplicação em runtime (ex.: claro ↔ escuro): o
-// novo tema é levado à escala atual da janela e re-propagado pela árvore no
-// próximo frame — widgets com SetTheme explícito mantêm o próprio tema.
-func (a *App) SetTheme(th *theme.Theme) error {
-	if th == nil || th == a.theme {
-		return nil
-	}
-	if err := th.SetScale(a.theme.Scale()); err != nil {
-		return err
-	}
-	a.theme = th
-	a.session.SetTheme(th)
-	a.dirty = true
-	return nil
-}
-
-// SetRoot define o widget raiz da árvore de interface, injeta o tema da
-// aplicação na árvore (mount) e agenda um redesenho.
-func (a *App) SetRoot(w widget.Widget) {
-	a.session.SetRoot(w)
-	a.dirty = true
-}
-
-// Invalidate marca a interface INTEIRA como suja e acorda o loop de eventos,
-// forçando uma renderização completa. É a válvula de escape para mudanças
-// feitas por fora dos setters/States (mutação direta de campos públicos).
-func (a *App) Invalidate() {
-	a.session.InvalidateAll()
-	a.dirty = true
-	glfw.PostEmptyEvent()
-}
-
-// Post agenda fn para executar na MAIN THREAD, na próxima volta do loop de
-// eventos. É o ÚNICO método do JUIGo seguro para chamar de outras goroutines
-// — a ponte para trabalho assíncrono (rede, disco): faça o trabalho pesado
-// em uma goroutine e entregue o resultado à interface via Post; DENTRO de fn,
-// State.Set e os setters de widgets são seguros como sempre.
-//
-//	btn.SetLoading(true)
-//	go func() {
-//	    resultado := buscar()
-//	    app.Post(func() {
-//	        btn.SetLoading(false)
-//	        estado.Set(resultado)
-//	    })
-//	}()
-func (a *App) Post(fn func()) {
-	if fn == nil {
-		return
-	}
-	a.postMu.Lock()
-	a.posted = append(a.posted, fn)
-	a.postMu.Unlock()
-	glfw.PostEmptyEvent() // thread-safe: acorda o loop
-}
-
-// runPosted executa, na main thread, os callbacks entregues via Post.
-func (a *App) runPosted() {
-	a.postMu.Lock()
-	batch := a.posted
-	a.posted = nil
-	a.postMu.Unlock()
-	for _, fn := range batch {
-		fn()
-	}
-}
-
-// render compõe o frame pela Session, envia para a textura e apresenta.
-// Não aloca: o buffer é reutilizado entre frames.
-func (a *App) render() {
-	if !a.dirty || a.width <= 0 || a.height <= 0 {
-		return
-	}
-	region, full := a.session.Render(a.buf)
-	a.dirty = false
-	if region.Empty() {
-		return // frame agendado sem dano visível: nada a apresentar
-	}
-	// Dirty regions: só a região repintada sobe para a GPU.
-	if full {
-		a.blitter.Upload(a.buf)
-	} else {
-		a.blitter.UploadRegion(a.buf, region)
-	}
-	fbw, fbh := a.window.GetFramebufferSize()
-	a.blitter.Draw(fbw, fbh)
-	a.window.SwapBuffers()
-}
-
-// Run executa o loop de eventos até a janela ser fechada e então libera os
-// recursos da aplicação. Usa glfw.WaitEvents (bloqueante): só há trabalho de
-// CPU quando chegam eventos, e só há renderização quando o estado está sujo.
-// Falhas ocorridas dentro de callbacks (ex.: reescalar o tema ao trocar de
-// monitor) encerram o loop e são devolvidas aqui.
-func (a *App) Run() error {
-	a.render()
-	for !a.window.ShouldClose() {
-		// Com timers pendentes (piscada do cursor, tooltip), o loop acorda
-		// no vencimento mais próximo; sem timers, bloqueia como sempre.
-		if wait, ok := a.nextTimerWait(); ok {
-			if wait > 0 {
-				glfw.WaitEventsTimeout(wait.Seconds())
-			}
-		} else {
-			glfw.WaitEvents()
-		}
-		a.runDueTimers()
-		a.runPosted()
-		if a.fatalErr != nil {
-			a.destroy()
-			return a.fatalErr
-		}
-		if a.dirty {
-			a.render()
-		}
-	}
-	a.destroy()
-	return nil
-}
-
-// destroy libera os recursos GL e a janela.
-func (a *App) destroy() {
-	hooks.Repaint = nil
-	hooks.Damage = nil
-	hooks.Frame = nil
-	hooks.ClipboardRead = nil
-	hooks.ClipboardWrite = nil
-	hooks.Schedule = nil
-	hooks.OpenOverlay = nil
-	hooks.CloseOverlay = nil
-	hooks.Focus = nil
-	hooks.Toast = nil
-	hooks.StartDrag = nil
-	a.blitter.Destroy()
-	a.window.Destroy()
-	glfw.Terminate()
 }
