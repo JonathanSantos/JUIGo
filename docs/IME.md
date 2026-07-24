@@ -34,16 +34,29 @@ candidatos aparecer no lugar certo.
 
 ## Plano recomendado
 
-1. **Fase D (lib, sem dependência nova)** — definir o protocolo de
-   composição na lib, moldado pela API do PR do GLFW para o encaixe ser
-   direto: `event.PreeditEvent{Texto, Cursor, Blocos}`, desenho do preedit
-   sublinhado no caret do Input/TextArea, `CaretRect()` para o
-   posicionamento futuro da janela de candidatos, e o commit da composição
-   pelo caminho normal de `CharEvent`. Tudo dirigível pelo uitest.
+1. **Fase D (lib, sem dependência nova) — ✅ FEITA (jul/2026)** — o
+   protocolo de composição vive na lib, moldado pela API do PR do GLFW:
+   `event.PreeditEvent{Text, Caret, Blocks, FocusedBlock}` roteado por foco
+   (`Session.Preedit`); Input e TextArea desenham a composição INLINE no
+   cursor, sublinhada (blocos com o em conversão destacado), sem entrar no
+   texto — o commit chega pelos `CharEvent` normais; compor sobre seleção a
+   substitui e o blur descarta; `CaretRect()` (contrato `widget.TextCaret`
+   + `Session.CaretRect`) é a âncora da janela de candidatos. Tudo
+   dirigível headless por `uitest.Preedit`. Limitação aceita: na TextArea a
+   composição não recalcula o soft wrap (composições são curtas; o excesso
+   recorta à direita).
 2. **Rota de plataforma** — decisão em aberto (é uma dependência nova):
-   adotar o fork com o patch (opção B) quando a fase D existir, ou esperar
-   o merge (opção A). Reavaliar a cada release do GLFW.
+   adotar o fork com o patch (opção B), ou esperar o merge (opção A).
+   Reavaliar a cada release do GLFW. Quando existir, a fiação é: preedit
+   callback → `Session.Preedit`; caret/foco mudou → `Session.CaretRect` →
+   `glfwSetPreeditCursorPos`.
+3. **Fonte** — pré-requisito paralelo da rota de plataforma: a Go Regular
+   embutida NÃO cobre CJK (os glifos da composição real sairiam como
+   quadrados). Exibir japonês/chinês/coreano pede fallback de fonte no
+   tema (uma segunda face consultada quando o glifo falta) — independente
+   do IME em si.
 
 Enquanto isso, o que já funciona hoje: entrada Latin completa (acentos e
 dead keys simples chegam compostos pelo `CharCallback`), índices em runes
-em todos os campos.
+em todos os campos, e toda a mecânica de composição pronta e testada na
+lib.

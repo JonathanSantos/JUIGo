@@ -89,6 +89,62 @@ func TestPreeditNoInput(t *testing.T) {
 	}
 }
 
+// TestPreeditNaTextArea: a composição aparece inline na linha VISUAL do
+// cursor, o CaretRect anda dentro dela e o commit entra pelo Type.
+func TestPreeditNaTextArea(t *testing.T) {
+	area := juigo.NewTextArea("Notas…")
+	h := uitest.New(t, juigo.NewVBox(juigo.Grow(area, 1)), 320, 200)
+	th := h.Session().Theme()
+	pad := th.PaddingPx()
+
+	h.Click(uitest.OfType[*juigo.TextArea]())
+	h.Type("linha um")
+	h.Key(juigo.KeyEnter)
+	h.Type("dois")
+	h.Preedit("かな", 1)
+	if area.Text() != "linha um\ndois" {
+		t.Fatalf("a composição não deveria entrar no texto; veio %q", area.Text())
+	}
+	img := h.Screenshot()
+
+	compX := area.Bounds().Min.X + pad + th.MeasureString("dois")
+	subY := area.Bounds().Min.Y + pad + th.LineHeight() + th.Ascent() + th.Px(2)
+	if got := img.RGBAAt(compX+th.MeasureString("かな")/2, subY); got != th.Text {
+		t.Fatalf("a composição na 2ª linha deveria estar sublinhada; veio %v", got)
+	}
+	caret := area.CaretRect()
+	if want := compX + th.MeasureString("か"); caret.Min.X != want {
+		t.Fatalf("cursor dentro da composição: x=%d, esperado %d", caret.Min.X, want)
+	}
+
+	h.Preedit("", 0)
+	h.Type("仮名")
+	if area.Text() != "linha um\ndois仮名" {
+		t.Fatalf("o commit deveria entrar no cursor; veio %q", area.Text())
+	}
+}
+
+// TestPreeditEmTextAreaVazia: compor num campo vazio desenha a composição
+// na primeira linha (o placeholder não volta durante a composição).
+func TestPreeditEmTextAreaVazia(t *testing.T) {
+	area := juigo.NewTextArea("Notas…")
+	h := uitest.New(t, juigo.NewVBox(juigo.Grow(area, 1)), 320, 160)
+	th := h.Session().Theme()
+	pad := th.PaddingPx()
+
+	h.Click(uitest.OfType[*juigo.TextArea]())
+	h.Preedit("あ", 1)
+	img := h.Screenshot()
+	subY := area.Bounds().Min.Y + pad + th.Ascent() + th.Px(2)
+	x := area.Bounds().Min.X + pad + th.MeasureString("あ")/2
+	if got := img.RGBAAt(x, subY); got != th.Text {
+		t.Fatalf("a composição em campo vazio deveria aparecer sublinhada; veio %v", got)
+	}
+	if area.Text() != "" {
+		t.Fatalf("o texto deveria seguir vazio; veio %q", area.Text())
+	}
+}
+
 // TestPreeditSubstituiSelecao: começar a compor sobre uma seleção a
 // substitui, como digitar.
 func TestPreeditSubstituiSelecao(t *testing.T) {

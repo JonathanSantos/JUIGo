@@ -73,6 +73,12 @@ type TextArea struct {
 
 	caretOn     bool
 	blinkCancel func()
+
+	// Composição de IME (event.PreeditEvent): desenhada inline na LINHA
+	// VISUAL do cursor, sublinhada, sem entrar em runes nem recalcular a
+	// quebra — composições são curtas; uma maior que a largura restante é
+	// recortada ao campo. O commit chega pelos CharEvent normais.
+	pre preeditState
 }
 
 // NewTextArea cria um editor vazio com o placeholder dado. O tema é herdado
@@ -205,7 +211,37 @@ func (t *TextArea) sync() {
 	} else {
 		t.caretLine, t.caretX, t.anchorLine, t.anchorX, t.syncFace = 0, 0, 0, 0, nil
 	}
+	t.pre.measure(t.theme)
 	t.restartBlink()
+}
+
+// setPreedit registra o estado da composição vindo do IME. Compor sobre uma
+// seleção a substitui, como digitar; texto vazio encerra a composição.
+func (t *TextArea) setPreedit(e event.PreeditEvent) {
+	if e.Text != "" && t.deleteSelection() {
+		t.sync()
+		t.emitChange()
+	}
+	t.pre.set(e)
+	t.pre.measure(t.theme)
+	t.restartBlink()
+	t.Invalidate()
+}
+
+// CaretRect devolve o retângulo do cursor de texto em coordenadas absolutas
+// da janela — durante uma composição, o do cursor DENTRO da pré-edição. É a
+// âncora da janela de candidatos do IME (ver widget.TextCaret). Reflete o
+// último frame desenhado (a rolagem vertical é ajustada no Draw).
+func (t *TextArea) CaretRect() image.Rectangle {
+	if t.theme == nil {
+		return image.Rectangle{}
+	}
+	t.ensureWrap()
+	th := t.theme
+	vli := t.visualOf(t.cursor)
+	x := t.Bounds().Min.X + th.PaddingPx() + t.visualX(t.cursor, vli) + t.pre.caretX
+	y := t.Bounds().Min.Y + th.PaddingPx() + vli*th.LineHeight() - t.scrollY
+	return image.Rect(x, y, x+th.BorderPx(), y+th.LineHeight())
 }
 
 // lineOf devolve a linha que contém o índice dado.
@@ -398,6 +434,9 @@ func (t *TextArea) HandleEvent(ev event.Event) bool {
 	case event.CharEvent:
 		t.insert(e.Rune)
 		return true
+	case event.PreeditEvent:
+		t.setPreedit(e)
+		return true
 	case event.KeyEvent:
 		return t.handleKey(e)
 	case event.FocusEvent:
@@ -409,6 +448,11 @@ func (t *TextArea) HandleEvent(ev event.Event) bool {
 			}
 		} else {
 			t.stopBlink()
+			// Perder o foco descarta a composição em andamento (o IME do
+			// sistema a cancela de qualquer forma).
+			if t.pre.clear() {
+				t.Invalidate()
+			}
 			if t.onBlur != nil {
 				t.onBlur()
 			}
@@ -810,13 +854,38 @@ func (t *TextArea) Draw(dst *image.RGBA) {
 				render.FillRect(view, image.Rect(textX+x0, y, textX+x1, y+lineH), th.Selection)
 			}
 		}
-		th.DrawText(view, seg, image.Pt(textX, y+th.Ascent()), th.Text)
+		if t.pre.active() && vi == caretVLine {
+			t.drawCompositionLine(view, seg, v, textX, y)
+		} else {
+			th.DrawText(view, seg, image.Pt(textX, y+th.Ascent()), th.Text)
+		}
 	}
 
 	if t.focused && t.caretOn {
 		y := innerTop + caretVLine*lineH - t.scrollY
-		cx := textX + t.visualX(t.cursor, caretVLine)
+		cx := textX + t.visualX(t.cursor, caretVLine) + t.pre.caretX
 		render.FillRect(view, image.Rect(cx, y, cx+th.BorderPx(), y+lineH), th.Cursor)
 	}
 	t.drawDisabledOverlay(dst)
+}
+
+// drawCompositionLine desenha a linha visual do cursor com a composição de
+// IME inline: o trecho confirmado antes, a composição sublinhada (ver
+// preeditState.drawUnderline) e o restante da linha deslocado — SEM
+// recalcular a quebra: composições são curtas, e uma maior que a largura
+// restante recorta à direita do campo.
+func (t *TextArea) drawCompositionLine(view *image.RGBA, seg string, v vline, textX, y int) {
+	th := t.theme
+	antes := runePrefix(seg, t.cursor-t.startIdx(v))
+	depois := seg[len(antes):]
+	baseline := y + th.Ascent()
+	if antes != "" {
+		th.DrawText(view, antes, image.Pt(textX, baseline), th.Text)
+	}
+	compX := textX + th.MeasureString(antes)
+	th.DrawText(view, t.pre.text, image.Pt(compX, baseline), th.Text)
+	if depois != "" {
+		th.DrawText(view, depois, image.Pt(compX+t.pre.w, baseline), th.Text)
+	}
+	t.pre.drawUnderline(view, th, compX, baseline+th.Px(2))
 }
