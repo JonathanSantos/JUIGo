@@ -22,16 +22,33 @@ const (
 	ButtonStatePressed
 )
 
+// buttonVariant é a hierarquia visual do botão (ver Secondary e Ghost).
+type buttonVariant int
+
+const (
+	buttonPrimary buttonVariant = iota
+	buttonSecondary
+	buttonGhost
+)
+
 // Button é um botão de ação com rótulo. Semântica de clique:
 //   - event.MouseDown dentro: passa a pressed.
 //   - event.MouseUp dentro E pressed: dispara OnClick.
 //   - event.MouseLeave enquanto pressed: cancela sem disparar.
 //
 // É focável; Enter ou Espaço disparam OnClick quando focado.
+//
+// A hierarquia visual tem três níveis: primário (preenchido com as cores
+// Button* do tema — o padrão, para A ação da tela), Secondary (superfície
+// com fio, texto na cor de tinta — ações comuns) e Ghost (só o rótulo,
+// fundo apenas no hover — ações discretas, barras densas).
 type Button struct {
 	BaseWidget
 	// Label é o texto do botão.
 	Label string
+
+	// variant é a hierarquia visual (primário por padrão).
+	variant buttonVariant
 
 	// padding é o espaço interno entre o rótulo e as bordas, em unidades
 	// lógicas (ver Pad); negativo usa o padrão do tema (Theme.Padding).
@@ -66,6 +83,24 @@ func NewButton(label string, onClick func()) *Button {
 // Encadeável.
 func (b *Button) OnClick(fn func()) *Button {
 	b.onClick = fn
+	return b
+}
+
+// Secondary rebaixa o botão ao nível intermediário da hierarquia: fundo de
+// superfície (Theme.Surface), fio (Theme.InputBorder) e rótulo na cor do
+// texto — para ações comuns ao lado de UMA primária. Encadeável.
+func (b *Button) Secondary() *Button {
+	b.variant = buttonSecondary
+	b.Invalidate()
+	return b
+}
+
+// Ghost rebaixa o botão ao nível mais discreto: só o rótulo, sem fundo nem
+// fio em repouso (o hover ganha Theme.HoverBackground) — para ações de
+// barra e cantos densos. Encadeável.
+func (b *Button) Ghost() *Button {
+	b.variant = buttonGhost
+	b.Invalidate()
 	return b
 }
 
@@ -248,17 +283,12 @@ func (b *Button) Draw(dst *image.RGBA) {
 	}
 	bounds := b.Bounds()
 
-	bg := b.theme.ButtonNormal
-	switch b.state {
-	case ButtonStateHover:
-		bg = b.theme.ButtonHover
-	case ButtonStatePressed:
-		bg = b.theme.ButtonPressed
-	}
 	radius := b.theme.RadiusPx()
-	render.FillRoundRect(dst, bounds, radius, bg)
-	if b.theme.ButtonBorder.A > 0 {
-		render.StrokeRoundRect(dst, bounds, radius, b.theme.BorderPx(), b.theme.ButtonBorder)
+	if bg := b.bgColor(); bg.A > 0 {
+		render.FillRoundRect(dst, bounds, radius, bg)
+	}
+	if border := b.borderColor(); border.A > 0 {
+		render.StrokeRoundRect(dst, bounds, radius, b.theme.BorderPx(), border)
 	}
 
 	if b.focused {
@@ -272,7 +302,7 @@ func (b *Button) Draw(dst *image.RGBA) {
 		labelW := b.theme.MeasureString(b.Label)
 		x := bounds.Min.X + (bounds.Dx()-labelW)/2
 		y := bounds.Min.Y + (bounds.Dy()-b.theme.LineHeight())/2 + b.theme.Ascent()
-		b.theme.DrawText(view, b.Label, image.Pt(x, y), b.theme.ButtonText)
+		b.theme.DrawText(view, b.Label, image.Pt(x, y), b.fgColor())
 	}
 	b.drawDisabledOverlay(dst)
 }
@@ -288,18 +318,42 @@ func (b *Button) drawSpinner(dst *image.RGBA, bounds image.Rectangle) {
 	cy := bounds.Min.Y + bounds.Dy()/2
 	// Pontos inativos: rótulo misturado 50/50 com o fundo do estado
 	// (FillCircle é sólido, então a "transparência" é pré-misturada).
-	dim := mix(th.ButtonText, b.bgColor())
+	fundo := b.bgColor()
+	if fundo.A == 0 {
+		fundo = th.Background // Ghost em repouso: o fundo visível é a janela
+	}
+	fg := b.fgColor()
+	dim := mix(fg, fundo)
 	for i := 0; i < 3; i++ {
 		c := dim
 		if i == b.spinnerPhase {
-			c = th.ButtonText
+			c = fg
 		}
 		render.FillCircle(dst, image.Pt(cx+i*step, cy), r, c)
 	}
 }
 
-// bgColor devolve a cor de fundo do estado atual do botão.
+// bgColor devolve a cor de fundo do estado atual, conforme a variante
+// (alfa zero = sem fundo).
 func (b *Button) bgColor() color.RGBA {
+	switch b.variant {
+	case buttonSecondary:
+		switch b.state {
+		case ButtonStateHover:
+			return b.theme.HoverBackground
+		case ButtonStatePressed:
+			return b.theme.Selection
+		}
+		return b.theme.Surface
+	case buttonGhost:
+		switch b.state {
+		case ButtonStateHover:
+			return b.theme.HoverBackground
+		case ButtonStatePressed:
+			return b.theme.Selection
+		}
+		return color.RGBA{}
+	}
 	switch b.state {
 	case ButtonStateHover:
 		return b.theme.ButtonHover
@@ -307,6 +361,25 @@ func (b *Button) bgColor() color.RGBA {
 		return b.theme.ButtonPressed
 	}
 	return b.theme.ButtonNormal
+}
+
+// borderColor devolve o fio da variante (alfa zero = sem fio).
+func (b *Button) borderColor() color.RGBA {
+	switch b.variant {
+	case buttonSecondary:
+		return b.theme.InputBorder
+	case buttonGhost:
+		return color.RGBA{}
+	}
+	return b.theme.ButtonBorder
+}
+
+// fgColor devolve a cor do rótulo da variante.
+func (b *Button) fgColor() color.RGBA {
+	if b.variant == buttonPrimary {
+		return b.theme.ButtonText
+	}
+	return b.theme.Text
 }
 
 // mix devolve a média aritmética de duas cores (mistura 50/50).

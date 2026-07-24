@@ -65,6 +65,10 @@ type (
 	SplitPane = widget.SplitPane
 	// Sized fixa o tamanho preferido de um filho em unidades lógicas.
 	Sized = widget.Sized
+	// Card agrupa conteúdo numa superfície elevada com fio e cantos do tema.
+	Card = widget.Card
+	// Divider é o fio horizontal separador do design system.
+	Divider = widget.Divider
 	// Transition é o efeito visual da troca de telas do Navigator.
 	Transition = widget.Transition
 	// DropTarget é implementado por widgets que aceitam soltar um arrasto
@@ -292,6 +296,14 @@ func NewSplitPane(a, b Widget) *SplitPane { return widget.NewSplitPane(a, b) }
 // NewSized envolve child com o tamanho preferido dado, em unidades lógicas;
 // zero em um eixo herda a medida do filho (ver widget.Sized).
 func NewSized(child Widget, w, h int) *Sized { return widget.NewSized(child, w, h) }
+
+// NewCard cria um cartão — superfície elevada com fio e cantos do tema —
+// em volta de child (ver widget.Card).
+func NewCard(child Widget) *Card { return widget.NewCard(child) }
+
+// NewDivider cria o fio horizontal separador do design system (ver
+// widget.Divider).
+func NewDivider() *Divider { return widget.NewDivider() }
 
 // NewTree cria uma árvore virtualizada sobre o modelo dado por callbacks
 // (ver widget.Tree).
