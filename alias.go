@@ -376,6 +376,14 @@ func DarkTheme() (*Theme, error) { return theme.Dark() }
 // DefaultTheme constrói o tema padrão na escala 1 (ver theme.Default).
 func DefaultTheme() (*Theme, error) { return theme.Default() }
 
+// ClaudeTheme constrói o tema claro "papel e tinta" do design system do
+// JUIGo (ver theme.Claude e docs/DESIGN.md).
+func ClaudeTheme() (*Theme, error) { return theme.Claude() }
+
+// ClaudeDarkTheme constrói o par escuro do "papel e tinta" (ver
+// theme.ClaudeDark).
+func ClaudeDarkTheme() (*Theme, error) { return theme.ClaudeDark() }
+
 // ClassicTheme constrói o tema claro com o visual clássico — cantos retos e
 // botão sem borda (ver theme.Classic).
 func ClassicTheme() (*Theme, error) { return theme.Classic() }
