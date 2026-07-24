@@ -58,6 +58,11 @@ type (
 	Popup = widget.Popup
 	// Tabs organiza páginas de conteúdo em abas.
 	Tabs = widget.Tabs
+	// Navigator gerencia uma pilha de telas com transições animadas
+	// (Push/Pop/Replace).
+	Navigator = widget.Navigator
+	// Transition é o efeito visual da troca de telas do Navigator.
+	Transition = widget.Transition
 	// DropTarget é implementado por widgets que aceitam soltar um arrasto
 	// (ver StartDrag).
 	DropTarget = widget.DropTarget
@@ -151,6 +156,13 @@ const (
 	CursorDefault = widget.CursorDefault
 	CursorText    = widget.CursorText
 	CursorHand    = widget.CursorHand
+
+	TransitionNone       = widget.TransitionNone
+	TransitionFade       = widget.TransitionFade
+	TransitionSlideLeft  = widget.TransitionSlideLeft
+	TransitionSlideRight = widget.TransitionSlideRight
+	TransitionSlideUp    = widget.TransitionSlideUp
+	TransitionSlideDown  = widget.TransitionSlideDown
 
 	MouseDown  = event.MouseDown
 	MouseUp    = event.MouseUp
@@ -258,6 +270,10 @@ func NewPopup(content Widget) *Popup { return widget.NewPopup(content) }
 // NewTabs cria um conjunto de abas vazio; adicione páginas com Add (ver
 // widget.Tabs).
 func NewTabs() *Tabs { return widget.NewTabs() }
+
+// NewNavigator cria um navegador de telas com a pilha vazia; empilhe a tela
+// inicial com Push (ver widget.Navigator).
+func NewNavigator() *Navigator { return widget.NewNavigator() }
 
 // StartDrag inicia um arrasto com o payload e o rótulo do fantasma; chame
 // de um widget fonte durante uma captura de mouse (ver widget.StartDrag e

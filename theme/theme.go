@@ -250,6 +250,9 @@ type Theme struct {
 	TextAreaMinLines int
 	// SpinnerStep é o intervalo entre quadros do indicador de loading.
 	SpinnerStep time.Duration
+	// TransitionDuration é a duração das transições animadas de tela do
+	// Navigator. Zero desliga a animação (a troca vira um corte seco).
+	TransitionDuration time.Duration
 	// Backdrop é a cor translúcida do pano de fundo do Modal.
 	Backdrop color.RGBA
 	// DisabledWash é a lavagem translúcida aplicada sobre widgets
@@ -339,15 +342,16 @@ func Default() (*Theme, error) {
 		ScrollStep:           40,
 		ScrollbarWidth:       4,
 
-		CaretBlink:       530 * time.Millisecond,
-		TooltipDelay:     600 * time.Millisecond,
-		ToastDuration:    2500 * time.Millisecond,
-		ScrollAxisLock:   150 * time.Millisecond,
-		DoubleClick:      400 * time.Millisecond,
-		TextAreaMinLines: 4,
-		SpinnerStep:      250 * time.Millisecond,
-		Backdrop:         color.RGBA{A: 0x66},
-		DisabledWash:     color.RGBA{R: 0xF2, G: 0xF3, B: 0xF5, A: 0x99},
+		CaretBlink:         530 * time.Millisecond,
+		TooltipDelay:       600 * time.Millisecond,
+		ToastDuration:      2500 * time.Millisecond,
+		ScrollAxisLock:     150 * time.Millisecond,
+		DoubleClick:        400 * time.Millisecond,
+		TextAreaMinLines:   4,
+		SpinnerStep:        250 * time.Millisecond,
+		TransitionDuration: 280 * time.Millisecond,
+		Backdrop:           color.RGBA{A: 0x66},
+		DisabledWash:       color.RGBA{R: 0xF2, G: 0xF3, B: 0xF5, A: 0x99},
 
 		fnt:     parsed,
 		monoFnt: mono,
