@@ -29,10 +29,11 @@ própria lib — [`go run ./docs/gerar`](docs/gerar/main.go).*
   com soft wrap, CodeEditor (fonte mono, gutter, tabs, undo coalescido,
   linhas virtualizadas e highlight de sintaxe INCREMENTAL — lexers Go/JSON
   em `juigo/syntax`, contrato aberto para os seus), Checkbox, Radio,
-  Slider, ProgressBar, Dropdown, Image, Tabs, Modal, Popup ancorado,
-  Tooltip, Grid, List virtualizada e Table com cabeçalho fixo — ambas com
-  seleção como State e reordenação por arrasto (`OnReorder`, com indicador
-  de inserção).
+  Slider, ProgressBar, Dropdown, Image, Tabs, SplitPane (painéis
+  redimensionáveis com divisor arrastável), Modal, Popup ancorado,
+  Tooltip, Grid, List virtualizada, Tree (árvore virtualizada com o modelo
+  em callbacks seus) e Table com cabeçalho fixo — com seleção como State e
+  reordenação por arrasto (`OnReorder`, com indicador de inserção).
 - **Navegação entre telas** — `Navigator` com pilha de telas
   (`Push`/`Pop`/`Replace`/`PopToRoot`) e transições animadas prontas:
   deslizar nas quatro direções e fade, com o `Pop` revertendo a transição
@@ -42,8 +43,9 @@ própria lib — [`go run ./docs/gerar`](docs/gerar/main.go).*
   `BindInvalid`) e tudo declarável inline, sem variáveis temporárias.
 - **Formulários em uma expressão** — a camada `quick`: campos com handles
   tipados, validação com mensagens suas, erros por campo e Enter enviando;
-  além de diálogos (`Confirm`/`Alert`/`Prompt`), menu de contexto (`Menu`)
-  e avisos transitórios (`Toast`) de uma chamada.
+  além de diálogos (`Confirm`/`Alert`/`Prompt`), seletor de arquivos
+  100% JUIGo (`OpenFile`/`SaveFile`, sem dependência de plataforma), menu
+  de contexto (`Menu`) e avisos transitórios (`Toast`) de uma chamada.
 - **Testável de verdade** — `uitest` dirige o MESMO núcleo de interação do
   App real, headless, com relógio virtual (nada de sleeps) e screenshots
   determinísticos para golden tests.
@@ -237,6 +239,13 @@ flags de cada widget.
   transições (deslizar, fade, subir), botão Voltar por composição,
   `PopToRoot` no "Concluir", troca da transição padrão em runtime e estado
   preservado nas telas dormentes.
+- **`go run ./examples/arquivos`** — o trio "app de verdade": `SplitPane`
+  redimensionável, `Tree` de pastas virtualizada (filhos lidos do disco sob
+  demanda, expansão por teclado) e o seletor de arquivos
+  `quick.OpenFile`/`SaveFile`.
+
+  ![Arquivos: split, árvore e o seletor de arquivos](docs/arquivos.png)
+
 - **`go run ./examples/kanban`** — drag-and-drop: cartões arrastados entre
   colunas com fantasma e realce do alvo, cancelamento no Escape e a UI
   reconstruída da projeção do modelo.
