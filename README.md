@@ -27,7 +27,8 @@ própria lib — [`go run ./docs/gerar`](docs/gerar/main.go).*
 - **20+ widgets** — Text, Button, Input (seleção/clipboard/filtro), TextArea
   com soft wrap, Checkbox, Radio, Slider, ProgressBar, Dropdown, Image,
   Tabs, Modal, Popup ancorado, Tooltip, Grid, List virtualizada e Table com
-  cabeçalho fixo — ambas com seleção como State.
+  cabeçalho fixo — ambas com seleção como State e reordenação por arrasto
+  (`OnReorder`, com indicador de inserção).
 - **Reatividade tipada** — `State[T]` + `Map`/`Combine`, bindings de duas
   vias (`BindValue`, `BindChecked`, `BindSelected`, `BindDisabled`,
   `BindInvalid`) e tudo declarável inline, sem variáveis temporárias.

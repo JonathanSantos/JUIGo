@@ -19,6 +19,16 @@ type DropTarget interface {
 	Drop(payload any, pos image.Point)
 }
 
+// DropIndicator é implementado por DropTargets que preferem um INDICADOR DE
+// INSERÇÃO no lugar do realce de contorno — listas e tabelas reordenáveis
+// mostram uma linha fina na fronteira em que o item entraria.
+type DropIndicator interface {
+	// DropIndicatorRect devolve o retângulo do indicador para o cursor em
+	// pos (tipicamente uma linha fina na fronteira de inserção mais
+	// próxima). Retângulo vazio desenha nada.
+	DropIndicatorRect(payload any, pos image.Point) image.Rectangle
+}
+
 // StartDrag inicia um arrasto com o payload dado; label é o texto do
 // FANTASMA que segue o cursor. Chame de um widget FONTE durante uma captura
 // de mouse (tipicamente no primeiro MouseMove após o MouseDown que passou
@@ -94,6 +104,16 @@ func (s *Session) updateDrag(pos image.Point) {
 		}
 		s.dragTarget = alvo
 	}
+	// Indicador de inserção: acompanha o cursor DENTRO do mesmo alvo.
+	ind := image.Rectangle{}
+	if di, ok := alvo.(DropIndicator); ok {
+		ind = di.DropIndicatorRect(s.dragPayload, pos)
+	}
+	if ind != s.dragIndicator {
+		s.AddDamage(s.dragIndicator)
+		s.AddDamage(ind)
+		s.dragIndicator = ind
+	}
 }
 
 // finishDrag encerra o arrasto entregando Drop ao alvo sob pos, se houver.
@@ -124,6 +144,10 @@ func (s *Session) endDrag() {
 	if s.dragTarget != nil {
 		s.AddDamage(s.dragTarget.Bounds())
 		s.dragTarget = nil
+	}
+	if !s.dragIndicator.Empty() {
+		s.AddDamage(s.dragIndicator)
+		s.dragIndicator = image.Rectangle{}
 	}
 }
 
@@ -164,7 +188,14 @@ func (s *Session) drawDrag(dst *image.RGBA) {
 		return
 	}
 	if t := s.dragTarget; t != nil {
-		render.StrokeRoundRect(dst, t.Bounds(), s.theme.RadiusPx(), 2*s.theme.BorderPx(), s.theme.Accent)
+		if _, ok := t.(DropIndicator); ok {
+			// Alvo com indicador de inserção: a linha substitui o contorno.
+			if !s.dragIndicator.Empty() {
+				render.FillRect(dst, s.dragIndicator, s.theme.Accent)
+			}
+		} else {
+			render.StrokeRoundRect(dst, t.Bounds(), s.theme.RadiusPx(), 2*s.theme.BorderPx(), s.theme.Accent)
+		}
 	}
 	if s.dragView != nil {
 		s.dragView.Draw(dst)

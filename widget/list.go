@@ -47,6 +47,11 @@ type List[W Widget] struct {
 	viewport image.Rectangle
 	// selected habilita a seleção de linha (ver BindSelected).
 	selected *state.State[int]
+	// reorderLabel/onReorder habilitam a reordenação por arrasto (ver
+	// OnReorder); arm é o estado do gesto entre o MouseDown e o limiar.
+	reorderLabel func(index int) string
+	onReorder    func(de, para int)
+	arm          reorderArm
 }
 
 // NewList cria uma lista virtualizada com count linhas. O tema é herdado no
@@ -71,28 +76,49 @@ func (l *List[W]) BindSelected(s *state.State[int]) *List[W] {
 	return l
 }
 
-// HandleEvent seleciona a linha sob o clique quando BindSelected está
-// ativo.
+// HandleEvent seleciona a linha sob o clique (BindSelected) e arma/dispara
+// a reordenação por arrasto (OnReorder).
 func (l *List[W]) HandleEvent(ev event.Event) bool {
-	if l.selected == nil {
+	if l.selected == nil && l.onReorder == nil {
 		return false
 	}
 	e, ok := ev.(event.MouseEvent)
-	if !ok || e.Kind != event.MouseDown || e.Button != event.MouseButtonLeft {
+	if !ok {
 		return false
 	}
-	if !l.rowSized || l.rowH <= 0 {
+	switch e.Kind {
+	case event.MouseDown:
+		if e.Button != event.MouseButtonLeft || !l.rowSized || l.rowH <= 0 {
+			return false
+		}
+		i := (e.Pos.Y - l.Bounds().Min.Y) / l.rowH
+		if i < 0 || i >= l.count {
+			return false
+		}
+		if l.onReorder != nil {
+			l.arm.arm(i, e.Pos)
+		}
+		if l.selected != nil {
+			if l.selected.Get() != i {
+				l.selected.Set(i)
+			}
+			l.Invalidate()
+		}
+		return true
+	case event.MouseMove:
+		if i, fired := l.arm.fire(e.Pos, dragThreshold(l.theme)); fired {
+			label := ""
+			if l.reorderLabel != nil {
+				label = l.reorderLabel(i)
+			}
+			StartDrag(reorderPayload{owner: l, from: i}, label)
+		}
+		return false
+	case event.MouseUp, event.MouseLeave:
+		l.arm.disarm()
 		return false
 	}
-	i := (e.Pos.Y - l.Bounds().Min.Y) / l.rowH
-	if i < 0 || i >= l.count {
-		return false
-	}
-	if l.selected.Get() != i {
-		l.selected.Set(i)
-	}
-	l.Invalidate()
-	return true
+	return false
 }
 
 // SetCount muda o total de linhas e agenda revinculação e redesenho.

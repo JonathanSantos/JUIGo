@@ -107,7 +107,13 @@ execução só por `internal/hooks`, registrado na inicialização.
   profundo sob o ponteiro cujo `CanDrop(payload)` aceite, entrega
   `Drop(payload, pos)` ao soltar e cancela no Escape ou na abertura de uma
   overlay. A fonte segue recebendo os eventos da própria captura — o gesto
-  dela termina normalmente no MouseUp.
+  dela termina normalmente no MouseUp. `List.OnReorder`/`Table.OnReorder`
+  usam essa infra para reordenar linhas sem widget custom: o próprio widget
+  vira alvo do próprio payload e implementa `DropIndicator` — a Session
+  troca o contorno por uma linha de inserção na fronteira mais próxima do
+  cursor; soltar chama `fn(de, para)` com o índice final (mesmo lugar não
+  chama). Arrastar entre widgets diferentes continua sendo
+  `StartDrag`/`DropTarget` da aplicação.
 - **Tema**: nenhuma cor ou tamanho hardcoded nos widgets — tudo vem de
   `Theme`. `Theme.MeasureString` é a única fonte de verdade para largura de
   texto (layout e posicionamento de cursor). Há dois temas prontos —

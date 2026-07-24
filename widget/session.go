@@ -53,12 +53,13 @@ type Session struct {
 	toastCancel func()
 	toastShown  bool
 
-	// Estado do arrasto (ver drag.go): fantasma seguindo o cursor e o alvo
-	// realçado sob ele.
-	dragging    bool
-	dragPayload any
-	dragView    *TooltipView
-	dragTarget  Widget
+	// Estado do arrasto (ver drag.go): fantasma seguindo o cursor, o alvo
+	// realçado sob ele e o indicador de inserção corrente (DropIndicator).
+	dragging      bool
+	dragPayload   any
+	dragView      *TooltipView
+	dragTarget    Widget
+	dragIndicator image.Rectangle
 
 	// inspect liga a camada do inspector de depuração (ver inspector.go).
 	inspect bool

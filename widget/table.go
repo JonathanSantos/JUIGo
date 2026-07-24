@@ -37,6 +37,10 @@ type Table struct {
 	selected *state.State[int]
 	viewport image.Rectangle
 	clip     image.RGBA
+	// onReorder habilita a reordenação por arrasto (ver OnReorder); arm é o
+	// estado do gesto entre o MouseDown e o limiar.
+	onReorder func(de, para int)
+	arm       reorderArm
 }
 
 // NewTable cria a tabela com os títulos de coluna, o total de linhas e o
@@ -153,32 +157,53 @@ func (t *Table) resolveCols() {
 	t.colX[n] = x
 }
 
-// HandleEvent seleciona a linha sob o clique (ignorando o cabeçalho fixo).
+// HandleEvent seleciona a linha sob o clique (ignorando o cabeçalho fixo)
+// e arma/dispara a reordenação por arrasto (OnReorder).
 func (t *Table) HandleEvent(ev event.Event) bool {
-	if t.selected == nil || t.theme == nil {
+	if (t.selected == nil && t.onReorder == nil) || t.theme == nil {
 		return false
 	}
 	e, ok := ev.(event.MouseEvent)
-	if !ok || e.Kind != event.MouseDown || e.Button != event.MouseButtonLeft {
+	if !ok {
 		return false
 	}
-	// Clique sobre o cabeçalho fixo não seleciona.
-	cab := t.viewport.Min.Y
-	if t.viewport.Empty() {
-		cab = t.Bounds().Min.Y
-	}
-	if e.Pos.Y < cab+t.rowH() {
+	switch e.Kind {
+	case event.MouseDown:
+		if e.Button != event.MouseButtonLeft {
+			return false
+		}
+		// Clique sobre o cabeçalho fixo não seleciona nem arma.
+		cab := t.viewport.Min.Y
+		if t.viewport.Empty() {
+			cab = t.Bounds().Min.Y
+		}
+		if e.Pos.Y < cab+t.rowH() {
+			return true
+		}
+		i := (e.Pos.Y - t.Bounds().Min.Y - t.rowH()) / t.rowH()
+		if i < 0 || i >= t.count {
+			return false
+		}
+		if t.onReorder != nil {
+			t.arm.arm(i, e.Pos)
+		}
+		if t.selected != nil {
+			if t.selected.Get() != i {
+				t.selected.Set(i)
+			}
+			t.Invalidate()
+		}
 		return true
-	}
-	i := (e.Pos.Y - t.Bounds().Min.Y - t.rowH()) / t.rowH()
-	if i < 0 || i >= t.count {
+	case event.MouseMove:
+		if i, fired := t.arm.fire(e.Pos, dragThreshold(t.theme)); fired {
+			StartDrag(reorderPayload{owner: t, from: i}, t.cell(i, 0))
+		}
+		return false
+	case event.MouseUp, event.MouseLeave:
+		t.arm.disarm()
 		return false
 	}
-	if t.selected.Get() != i {
-		t.selected.Set(i)
-	}
-	t.Invalidate()
-	return true
+	return false
 }
 
 // Draw pinta as linhas visíveis (com o realce da selecionada), as divisões
