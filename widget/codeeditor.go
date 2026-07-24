@@ -41,6 +41,9 @@ type CodeEditor struct {
 	onChange  func()
 	// hl é o highlighter de sintaxe (ver Highlight); nil = texto comum.
 	hl Highlighter
+	// readOnly torna o editor um VISOR: navegar, selecionar, copiar e rolar
+	// funcionam; toda mutação é ignorada (ver ReadOnly).
+	readOnly bool
 	// brA/brB são o par de parênteses realçado sob o cursor (brOK válido);
 	// recalculado por updateBrackets a cada movimento/edição.
 	brA, brB textPos
@@ -105,6 +108,23 @@ func (c *CodeEditor) OnChange(fn func()) *CodeEditor {
 	return c
 }
 
+// ReadOnly liga/desliga o modo VISOR: com ele, o conteúdo não pode ser
+// editado — digitação, Enter/Tab, Backspace/Delete, colar, recortar,
+// desfazer/refazer e composição de IME viram no-ops —, mas navegar,
+// selecionar, COPIAR e rolar continuam funcionando. Ideal para exibir
+// respostas, logs e diffs com highlight. SetText segue permitido (é o
+// caminho de quem carrega o conteúdo). Encadeável.
+func (c *CodeEditor) ReadOnly(on bool) *CodeEditor {
+	c.readOnly = on
+	c.Invalidate()
+	return c
+}
+
+// IsReadOnly informa se o editor está em modo visor.
+func (c *CodeEditor) IsReadOnly() bool {
+	return c.readOnly
+}
+
 // TabWidth define a largura do tab em colunas (mínimo 1; padrão 4).
 // Encadeável.
 func (c *CodeEditor) TabWidth(cols int) *CodeEditor {
@@ -151,15 +171,22 @@ func (c *CodeEditor) LineCount() int {
 	return c.buf.count()
 }
 
-// Undo desfaz o último passo de edição (grupo coalescido), se houver.
+// Undo desfaz o último passo de edição (grupo coalescido), se houver. No
+// modo visor não há o que desfazer.
 func (c *CodeEditor) Undo() {
+	if c.readOnly {
+		return
+	}
 	if caret, minLine, ok := c.buf.undoStep(); ok {
 		c.afterHistory(caret, minLine)
 	}
 }
 
-// Redo refaz o último passo desfeito, se houver.
+// Redo refaz o último passo desfeito, se houver (no-op no modo visor).
 func (c *CodeEditor) Redo() {
+	if c.readOnly {
+		return
+	}
 	if caret, minLine, ok := c.buf.redoStep(); ok {
 		c.afterHistory(caret, minLine)
 	}
@@ -502,6 +529,9 @@ func (c *CodeEditor) emitChange() {
 // insertText insere s no cursor (substituindo a seleção), com o tipo de
 // coalescência dado. Digitação dentro da linha repinta só a linha.
 func (c *CodeEditor) insertText(s string, kind editKind) {
+	if c.readOnly {
+		return
+	}
 	structural := c.hasSelection() || containsNewline(s)
 	line := c.cursor.Line
 	if c.hasSelection() {
@@ -546,6 +576,9 @@ func containsNewline(s string) bool {
 // deleteBack apaga a seleção ou a rune antes do cursor (juntando linhas na
 // borda).
 func (c *CodeEditor) deleteBack() bool {
+	if c.readOnly {
+		return false
+	}
 	if c.hasSelection() {
 		c.removeSelection()
 		return true
@@ -570,6 +603,9 @@ func (c *CodeEditor) deleteBack() bool {
 
 // deleteFwd apaga a seleção ou a rune sob o cursor.
 func (c *CodeEditor) deleteFwd() bool {
+	if c.readOnly {
+		return false
+	}
 	if c.hasSelection() {
 		c.removeSelection()
 		return true
@@ -588,8 +624,12 @@ func (c *CodeEditor) deleteFwd() bool {
 	return true
 }
 
-// removeSelection apaga o trecho selecionado (grupo próprio no undo).
+// removeSelection apaga o trecho selecionado (grupo próprio no undo). No
+// modo visor é no-op — o Ctrl/Cmd+X, então, apenas copia.
 func (c *CodeEditor) removeSelection() {
+	if c.readOnly {
+		return
+	}
 	start, end := c.selectionRange()
 	c.buf.deleteRange(start, end, editOther)
 	c.cursor, c.anchor = start, start
@@ -927,6 +967,9 @@ func (c *CodeEditor) stopBlink() {
 // setPreedit registra a composição de IME (medida pela face mono); compor
 // sobre seleção a substitui.
 func (c *CodeEditor) setPreedit(e event.PreeditEvent) {
+	if c.readOnly {
+		return
+	}
 	if e.Text != "" && c.hasSelection() {
 		c.removeSelection()
 	}
