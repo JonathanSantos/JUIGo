@@ -26,10 +26,10 @@ func TestCodeEditorEdicao(t *testing.T) {
 	th := h.Session().Theme()
 
 	h.Type("func main() {")
-	h.Key(juigo.KeyEnter)
-	h.Key(juigo.KeyTab)
+	h.Key(juigo.KeyEnter) // auto-indent: herda e ganha um tab após '{'
 	h.Type(`println("olá")`)
-	h.Key(juigo.KeyEnter)
+	h.Key(juigo.KeyEnter)               // herda o "\t"
+	h.Key(juigo.KeyTab, juigo.ModShift) // Shift+Tab remove a indentação
 	h.Type("}")
 
 	want := "func main() {\n\tprintln(\"olá\")\n}"

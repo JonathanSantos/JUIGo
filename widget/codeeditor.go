@@ -20,11 +20,15 @@ import (
 // que se vê, não o que se tem. Digitar dentro de uma linha repinta SÓ
 // aquela linha (dirty regions).
 //
-// O Tab é LITERAL (insere '\t'; ver ConsumesTab) — para tirar o foco do
-// editor, use o mouse. Não há BindValue deliberadamente: materializar o
-// texto inteiro a cada tecla custaria O(n); use OnChange para saber QUE
-// mudou e Text() quando precisar do conteúdo (salvar, por exemplo).
-// Highlight de sintaxe é a fase 2 do plano.
+// O Tab é LITERAL (ver ConsumesTab): insere '\t', indenta o bloco quando a
+// seleção atravessa linhas, e Shift+Tab remove indentação — para tirar o
+// foco do editor, use o mouse. Enter herda a indentação da linha (mais um
+// tab após um abridor de bloco); a linha do cursor ganha uma faixa sutil e
+// o par de parênteses adjacente ao cursor é realçado (pulando strings e
+// comentários quando há highlight — ver Highlight e juigo/syntax). Não há
+// BindValue deliberadamente: materializar o texto inteiro a cada tecla
+// custaria O(n); use OnChange para saber QUE mudou e Text() quando
+// precisar do conteúdo (salvar, por exemplo).
 type CodeEditor struct {
 	BaseWidget
 
@@ -36,6 +40,10 @@ type CodeEditor struct {
 	onChange  func()
 	// hl é o highlighter de sintaxe (ver Highlight); nil = texto comum.
 	hl Highlighter
+	// brA/brB são o par de parênteses realçado sob o cursor (brOK válido);
+	// recalculado por updateBrackets a cada movimento/edição.
+	brA, brB textPos
+	brOK     bool
 	// tabCols é a largura do tab em COLUNAS (células mono); ver TabWidth.
 	tabCols int
 
@@ -108,6 +116,7 @@ func (c *CodeEditor) SetText(s string) {
 	c.maxDirty = true
 	c.relexFrom(0)
 	c.restartBlink()
+	c.updateBrackets()
 	c.Invalidate()
 }
 
@@ -149,6 +158,7 @@ func (c *CodeEditor) afterHistory(caret textPos, minLine int) {
 	c.maxDirty = true
 	c.relexFrom(minLine)
 	c.restartBlink()
+	c.updateBrackets()
 	c.ensureVisible()
 	c.Invalidate()
 	c.emitChange()
@@ -339,6 +349,7 @@ func (c *CodeEditor) moveTo(pos textPos, extend bool) bool {
 	if changed {
 		c.buf.breakGroup()
 		c.restartBlink()
+		c.updateBrackets()
 		// Seleção surgindo/sumindo ou linha trocada: repinta tudo (a
 		// seleção pode atravessar muitas linhas); movimento simples na
 		// mesma linha repinta só ela.
@@ -521,6 +532,7 @@ func (c *CodeEditor) afterLineEdit(line int) {
 	cascata := c.relexFrom(line) > line
 	c.noteWidth(line)
 	c.restartBlink()
+	c.updateBrackets()
 	if cascata || c.ensureVisible() {
 		c.Invalidate()
 	} else {
@@ -536,6 +548,7 @@ func (c *CodeEditor) afterStructuralAt(line int) {
 	c.maxDirty = true
 	c.relexFrom(line)
 	c.restartBlink()
+	c.updateBrackets()
 	c.ensureVisible()
 	c.Invalidate()
 	c.emitChange()
@@ -565,6 +578,7 @@ func (c *CodeEditor) HandleEvent(ev event.Event) bool {
 				c.Invalidate()
 			}
 		}
+		c.updateBrackets()
 		c.Invalidate()
 		return true
 	case event.ScrollEvent:
@@ -596,9 +610,18 @@ func (c *CodeEditor) HandleEvent(ev event.Event) bool {
 func (c *CodeEditor) handleKey(e event.KeyEvent) bool {
 	switch e.Key {
 	case event.KeyEnter:
-		c.insertText("\n", editOther)
+		// A linha nova herda a indentação (e ganha um tab após { ( [).
+		c.insertText("\n"+c.autoIndent(), editOther)
 		return true
 	case event.KeyTab:
+		if e.Mods.Shift() {
+			c.indentBlock(true)
+			return true
+		}
+		if c.spansLines() {
+			c.indentBlock(false)
+			return true
+		}
 		c.insertText("\t", editType)
 		return true
 	case event.KeyBackspace:
@@ -939,6 +962,19 @@ func (c *CodeEditor) Draw(dst *image.RGBA) {
 			numColor = th.Text
 		}
 		th.DrawMono(gutView, num, image.Pt(gut.Max.X-gutPad-len(num)*c.advance, baseline), numColor)
+
+		// Faixa da linha atual (sem seleção) e o par de parênteses.
+		if c.focused && !c.hasSelection() && i == c.cursor.Line {
+			render.FillRect(textView, image.Rect(ta.Min.X, y, ta.Max.X, y+rowH), th.CurrentLine)
+		}
+		if c.brOK && c.focused {
+			for _, p := range [2]textPos{c.brA, c.brB} {
+				if p.Line == i {
+					bx := ta.Min.X + c.xAt(p.Line, p.Col) - c.scrollX
+					render.FillRect(textView, image.Rect(bx, y, bx+c.advance, y+rowH), th.Selection)
+				}
+			}
+		}
 
 		// Seleção nesta linha (o '\n' selecionado vira um talão de célula).
 		if c.focused && c.hasSelection() && i >= selStart.Line && i <= selEnd.Line {

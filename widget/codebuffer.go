@@ -69,6 +69,10 @@ type codeBuffer struct {
 	// grupo aberto se for do mesmo tipo e contígua ao fim da anterior.
 	lastKind editKind
 	lastPos  textPos
+	// batching agrupa TODAS as operações até endBatch num único passo de
+	// undo (indentação de bloco); batchNew marca a primeira do lote.
+	batching bool
+	batchNew bool
 	// version cresce a cada mutação — invalida caches externos.
 	version int
 }
@@ -255,11 +259,34 @@ func (b *codeBuffer) replace(start, end textPos, text string) textPos {
 	return fim
 }
 
+// beginBatch abre um LOTE: todas as operações até endBatch entram num
+// único grupo de undo (indentação de bloco em várias linhas).
+func (b *codeBuffer) beginBatch() {
+	b.batching, b.batchNew = true, true
+}
+
+// endBatch encerra o lote e a coalescência.
+func (b *codeBuffer) endBatch() {
+	b.batching = false
+	b.lastKind = editOther
+}
+
 // record registra a operação no undo, aderindo ao grupo aberto quando a
 // edição é do mesmo tipo e contígua (digitação corrida, Backspaces em
 // sequência); edições novas descartam o redo.
 func (b *codeBuffer) record(op editOp, kind editKind, caretAfter textPos) {
 	b.redo = b.redo[:0]
+	if b.batching {
+		if b.batchNew || len(b.undo) == 0 {
+			b.undo = append(b.undo, editGroup{ops: []editOp{op}})
+			b.batchNew = false
+		} else {
+			g := &b.undo[len(b.undo)-1]
+			g.ops = append(g.ops, op)
+		}
+		b.lastKind, b.lastPos = editOther, caretAfter
+		return
+	}
 	adere := kind != editOther && kind == b.lastKind && len(b.undo) > 0
 	if adere {
 		switch kind {

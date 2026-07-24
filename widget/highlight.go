@@ -57,6 +57,7 @@ func (c *CodeEditor) Highlight(h Highlighter) *CodeEditor {
 	if h != nil {
 		c.relexFrom(0)
 	}
+	c.updateBrackets()
 	c.Invalidate()
 	return c
 }

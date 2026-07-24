@@ -212,8 +212,11 @@ flags de cada widget.
   ao mesmo tempo.
 - **`go run ./examples/editor [arquivo]`** — o CodeEditor: highlight de
   sintaxe incremental (Go/JSON pela extensão; abrir um `/*` re-lexa só até
-  o estado convergir), gutter numerado, tabs literais por tab stop, seleção
-  multilinha, undo/redo coalescido e rolagem 2D virtualizada.
+  o estado convergir), auto-indentação, Tab/Shift+Tab indentando o bloco
+  selecionado (um passo de undo), linha atual e par de parênteses
+  realçados (pulando strings/comentários), gutter numerado, undo/redo
+  coalescido, rolagem 2D virtualizada e "ir à linha" por composição com
+  `quick.Prompt`.
 
 ![CodeEditor](docs/editor.png)
 

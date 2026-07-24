@@ -68,6 +68,8 @@ type Theme struct {
 	Danger color.RGBA
 	// Syntax é a paleta de highlight do CodeEditor (classes léxicas).
 	Syntax SyntaxPalette
+	// CurrentLine é a faixa sutil atrás da linha do cursor no CodeEditor.
+	CurrentLine color.RGBA
 
 	// Face é a fonte já rasterizada na escala atual (ver SetScale). É
 	// reconstruída a cada mudança de escala; não guarde referências a ela.
@@ -201,6 +203,7 @@ func Default() (*Theme, error) {
 			Comment: color.RGBA{R: 0x6E, G: 0x77, B: 0x81, A: 0xFF},
 			Builtin: color.RGBA{R: 0x95, G: 0x38, B: 0x00, A: 0xFF},
 		},
+		CurrentLine: color.RGBA{R: 0xF2, G: 0xF5, B: 0xFA, A: 0xFF},
 
 		FontSize: 16,
 

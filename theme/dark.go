@@ -40,6 +40,7 @@ func Dark() (*Theme, error) {
 		Comment: color.RGBA{R: 0x8B, G: 0x94, B: 0x9E, A: 0xFF},
 		Builtin: color.RGBA{R: 0xFF, G: 0xA6, B: 0x57, A: 0xFF},
 	}
+	t.CurrentLine = color.RGBA{R: 0x2C, G: 0x32, B: 0x3C, A: 0xFF}
 
 	t.Backdrop = color.RGBA{A: 0x99}
 	t.DisabledWash = color.RGBA{R: 0x1E, G: 0x21, B: 0x26, A: 0x99}

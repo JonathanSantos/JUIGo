@@ -11,9 +11,11 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/quick"
 	"github.com/JonathanSantos/JUIGo/syntax"
 )
 
@@ -58,9 +60,23 @@ func main() {
 	editor.OnChange(atualiza)
 	atualiza()
 
+	// Ir à linha por composição: quick.Prompt + SetCursor.
+	irALinha := juigo.NewButton("Ir à linha…", func() {
+		quick.Prompt("Ir à linha", "número", func(v string) {
+			if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
+				editor.SetCursor(n-1, 0)
+			}
+			juigo.Focus(editor)
+		})
+	})
+
 	raiz := juigo.NewVBox(
 		juigo.Grow(editor, 1),
-		juigo.NewText("").BindText(status),
+		juigo.NewHBox(
+			juigo.Centered(juigo.NewText("").BindText(status)),
+			juigo.NewSpacer(),
+			irALinha,
+		).Gap(8),
 	).Pad(8).Gap(6)
 
 	app, err := juigo.New("Editor — CodeEditor em JUIGo", 720, 480)
