@@ -36,7 +36,7 @@ func (s *Session) ShowToast(text string, d time.Duration) {
 	if s.toastView == nil {
 		s.toastView = NewTooltipView()
 	}
-	Mount(s.toastView, s.theme)
+	s.mount(s.toastView, s.theme)
 	s.toastView.SetText(text)
 	s.toastShown = true
 	// Posiciona já: o diff de bounds do Layout danifica posição antiga e

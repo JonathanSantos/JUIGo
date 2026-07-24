@@ -52,7 +52,7 @@ func (s *Session) StartDrag(payload any, label string) {
 	if s.dragView == nil {
 		s.dragView = NewTooltipView()
 	}
-	Mount(s.dragView, s.theme)
+	s.mount(s.dragView, s.theme)
 	s.dragView.SetText(label)
 	s.hideTooltip()
 	s.updateDrag(s.lastCursor)

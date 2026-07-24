@@ -63,6 +63,12 @@ type BaseWidget struct {
 	// themeExplicit protege um tema definido via SetTheme de ser
 	// sobrescrito pela injeção do mount.
 	themeExplicit bool
+	// session é a sessão DONA do widget, anexada no mount pela própria
+	// Session — é o que mantém o dano preciso com múltiplas janelas: cada
+	// Invalidate vai direto à sessão certa. Nil fora de uma sessão
+	// (offscreen, árvores recém-criadas): o dano cai no fallback global
+	// dos hooks, que o App reparte entre todas as janelas.
+	session *Session
 	// grow e cross são os parâmetros de layout em VBox/HBox, definidos
 	// pelas funções Grow, Centered, AtStart e AtEnd (ver flex.go).
 	grow  int
@@ -80,8 +86,8 @@ type BaseWidget struct {
 // repintadas sem nenhum trabalho dos widgets.
 func (b *BaseWidget) Layout(bounds image.Rectangle) {
 	if bounds != b.bounds {
-		hooks.AddDamage(b.bounds)
-		hooks.AddDamage(bounds)
+		b.damage(b.bounds)
+		b.damage(bounds)
 	}
 	b.bounds = bounds
 }
@@ -91,7 +97,30 @@ func (b *BaseWidget) Layout(bounds image.Rectangle) {
 // personalizados que mudam de aparência fora do fluxo de eventos devem
 // chamá-lo também.
 func (b *BaseWidget) Invalidate() {
-	hooks.AddDamage(b.bounds)
+	b.damage(b.bounds)
+}
+
+// damage acumula a região na sessão dona do widget; sem sessão (antes do
+// primeiro mount, offscreen), cai no fallback global dos hooks.
+func (b *BaseWidget) damage(r image.Rectangle) {
+	if b.session != nil {
+		b.session.AddDamage(r)
+		return
+	}
+	hooks.AddDamage(r)
+}
+
+// attachSession registra a sessão dona do widget (chamado pelo mount da
+// Session). Um widget movido para outra janela é re-anexado no próximo
+// mount dela.
+func (b *BaseWidget) attachSession(s *Session) {
+	b.session = s
+}
+
+// sessionHost é satisfeito por todo widget que embute BaseWidget; a Session
+// o usa para se anexar à árvore durante o próprio mount.
+type sessionHost interface {
+	attachSession(s *Session)
 }
 
 // Bounds devolve o retângulo absoluto definido pelo último Layout.

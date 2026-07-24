@@ -99,11 +99,30 @@ func (s *Session) markDirty() {
 	}
 }
 
+// mount injeta o tema E anexa esta sessão à árvore — a versão de Mount que
+// a própria Session usa a cada renderização. O anexo dá identidade de
+// janela ao dano: Invalidate/Layout dos widgets montados vão direto à
+// sessão dona, sem passar pelo fallback global (que, com múltiplas
+// janelas, reparte o dano entre todas).
+func (s *Session) mount(w Widget, t *theme.Theme) {
+	if h, ok := w.(sessionHost); ok {
+		h.attachSession(s)
+	}
+	if h, ok := w.(themeHost); ok {
+		t = h.inheritTheme(t)
+	}
+	if p, ok := w.(ParentWidget); ok {
+		for _, ch := range p.Children() {
+			s.mount(ch, t)
+		}
+	}
+}
+
 // SetRoot define a raiz da árvore e injeta o tema (mount).
 func (s *Session) SetRoot(w Widget) {
 	s.root = w
 	if w != nil {
-		Mount(w, s.theme)
+		s.mount(w, s.theme)
 	}
 	s.InvalidateAll()
 }
@@ -351,7 +370,7 @@ func (s *Session) OpenOverlay(w Widget) {
 		s.overlayPrevFocus = s.focused
 	}
 	s.overlay = w
-	Mount(w, s.theme)
+	s.mount(w, s.theme)
 	// Layout imediato: a camada nasce com geometria válida, pronta para
 	// eventos e foco antes mesmo do primeiro frame (como o Render faria).
 	if spansWindow(w) {
@@ -450,7 +469,7 @@ func (s *Session) showTooltip(text string) {
 	if s.tipView == nil {
 		s.tipView = NewTooltipView()
 	}
-	Mount(s.tipView, s.theme)
+	s.mount(s.tipView, s.theme)
 	s.tipView.SetText(text)
 	pref := s.tipView.PreferredSize()
 	off := s.theme.PaddingPx()
@@ -579,11 +598,11 @@ func (s *Session) Render(dst *image.RGBA) (image.Rectangle, bool) {
 	if s.root != nil {
 		// Re-injeta o tema antes do layout para cobrir widgets adicionados
 		// dinamicamente à árvore (idempotente, sem alocações).
-		Mount(s.root, s.theme)
+		s.mount(s.root, s.theme)
 		s.root.Layout(dst.Bounds())
 	}
 	if s.overlay != nil {
-		Mount(s.overlay, s.theme)
+		s.mount(s.overlay, s.theme)
 		if spansWindow(s.overlay) {
 			s.overlay.Layout(dst.Bounds())
 		} else {
@@ -592,7 +611,7 @@ func (s *Session) Render(dst *image.RGBA) (image.Rectangle, bool) {
 	}
 
 	if s.toastShown && s.toastView != nil {
-		Mount(s.toastView, s.theme)
+		s.mount(s.toastView, s.theme)
 		s.layoutToast(dst.Bounds())
 	}
 
