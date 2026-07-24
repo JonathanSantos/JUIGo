@@ -319,12 +319,14 @@ func (h *Harness) Scroll(sel Selector, dy float64) {
 	h.session.Scroll(center(h.mustFind(sel).Bounds()), 0, dy)
 }
 
-// Find procura o primeiro widget que casa com o seletor, na overlay (se
-// aberta) e depois na árvore, em pré-ordem. Devolve nil se não encontrar.
+// Find procura o primeiro widget que casa com o seletor, nas overlays (da
+// camada do topo à base) e depois na árvore, em pré-ordem. Devolve nil se
+// não encontrar.
 func (h *Harness) Find(sel Selector) widget.Widget {
 	h.sync()
-	if ov := h.session.Overlay(); ov != nil {
-		if w := findIn(ov, sel); w != nil {
+	ovs := h.session.Overlays()
+	for i := len(ovs) - 1; i >= 0; i-- {
+		if w := findIn(ovs[i], sel); w != nil {
 			return w
 		}
 	}
@@ -332,13 +334,14 @@ func (h *Harness) Find(sel Selector) widget.Widget {
 }
 
 // FindAll devolve TODOS os widgets que casam com o seletor, em ordem de
-// árvore (overlay primeiro, depois a raiz). Útil quando vários widgets
-// compartilham o mesmo texto ou tipo.
+// árvore (overlays da camada do topo à base, depois a raiz). Útil quando
+// vários widgets compartilham o mesmo texto ou tipo.
 func (h *Harness) FindAll(sel Selector) []widget.Widget {
 	h.sync()
 	var out []widget.Widget
-	if ov := h.session.Overlay(); ov != nil {
-		collectIn(ov, sel, &out)
+	ovs := h.session.Overlays()
+	for i := len(ovs) - 1; i >= 0; i-- {
+		collectIn(ovs[i], sel, &out)
 	}
 	collectIn(h.session.Root(), sel, &out)
 	return out

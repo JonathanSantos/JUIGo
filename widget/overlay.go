@@ -2,21 +2,24 @@ package widget
 
 import "github.com/JonathanSantos/JUIGo/internal/hooks"
 
-// OpenOverlay exibe w como a camada de SOBREPOSIÇÃO da aplicação: desenhada
+// OpenOverlay exibe w como camada de SOBREPOSIÇÃO da aplicação: desenhada
 // por cima da árvore normal e com prioridade nos eventos de mouse/rolagem.
-// Um clique fora dos bounds de w fecha a camada (engolindo o clique), assim
-// como Tab/foco fora dela — é a base de popups como o do Dropdown. Se w for
-// focável, recebe o foco ao abrir; ao fechar, o foco anterior é restaurado
-// e w recebe FocusEvent{Gained: false}. Há uma única camada por vez: abrir
-// outra substitui a atual. Fora de uma aplicação, é um no-op.
+// As camadas formam uma PILHA — abrir outra a empilha por cima (um popup
+// aberto de dentro de um modal fica sobre ele), e as regras de fechamento
+// valem para a camada do TOPO: um clique fora dos bounds dela a fecha
+// (engolindo o clique), assim como Tab/foco fora dela — é a base de popups
+// como o do Dropdown. Se w for focável, recebe o foco ao abrir; ao fechar,
+// o foco de quando ELA abriu é restaurado e w recebe
+// FocusEvent{Gained: false}. Fora de uma aplicação, é um no-op.
 func OpenOverlay(w Widget) {
 	if hooks.OpenOverlay != nil {
 		hooks.OpenOverlay(w)
 	}
 }
 
-// CloseOverlay remove w da camada de sobreposição, se ele for a camada
-// atual. Fora de uma aplicação, é um no-op.
+// CloseOverlay remove w da pilha de sobreposição, se ele estiver nela,
+// junto com as camadas abertas por cima dele. Fora de uma aplicação, é um
+// no-op.
 func CloseOverlay(w Widget) {
 	if hooks.CloseOverlay != nil {
 		hooks.CloseOverlay(w)
@@ -24,8 +27,9 @@ func CloseOverlay(w Widget) {
 }
 
 // Focus move o foco de teclado para w programaticamente — um campo de
-// edição recém-criado, por exemplo. Focar fora de uma overlay aberta a
-// fecha (mesma regra do Tab). Fora de uma aplicação, é um no-op.
+// edição recém-criado, por exemplo. Focar fora da overlay do topo a fecha
+// (mesma regra do Tab), camada por camada até a que contém w. Fora de uma
+// aplicação, é um no-op.
 func Focus(w Widget) {
 	hooks.RequestFocus(w)
 }

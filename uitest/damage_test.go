@@ -33,7 +33,11 @@ func TestIncrementalIgualCompleto(t *testing.T) {
 		func(row *juigo.Text, i int) { row.SetText(fmt.Sprintf("linha %03d", i)) },
 	)
 	area := juigo.NewTextArea("obs…")
-	modal := juigo.NewModal(juigo.NewVBox(juigo.NewText("Diálogo"), juigo.NewInput("interno")))
+	modal := juigo.NewModal(juigo.NewVBox(
+		juigo.NewText("Diálogo"),
+		juigo.NewInput("interno"),
+		juigo.NewDropdown("Um", "Dois"),
+	))
 
 	ui := juigo.NewVBox(
 		eco.Center(),
@@ -143,6 +147,15 @@ func TestIncrementalIgualCompleto(t *testing.T) {
 	h.Click(uitest.Placeholder("interno"))
 	h.Type("çã")
 	verifica("digitação no modal")
+
+	// Pilha de overlays: popup do dropdown POR CIMA do modal, realce e
+	// fechamento camada a camada (o modal precisa continuar íntegro).
+	h.Click(uitest.Text("Um"))
+	verifica("popup empilhado sobre o modal")
+	h.Key(juigo.KeyDown)
+	verifica("realce no popup empilhado")
+	h.Key(juigo.KeyEscape)
+	verifica("popup do modal fechado")
 	h.Key(juigo.KeyEscape)
 	verifica("modal fechado")
 

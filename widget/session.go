@@ -11,7 +11,7 @@ import (
 
 // Session é o NÚCLEO DE INTERAÇÃO de uma interface JUIGo, sem janela e sem
 // GLFW: roteamento de mouse/teclado/rolagem, foco (clique e Tab), captura de
-// mouse, hover (Enter/Leave, formato do cursor), camada de overlay e
+// mouse, hover (Enter/Leave, formato do cursor), pilha de overlays e
 // tooltip, além da composição do frame (Render).
 //
 // O App real é uma casca fina que traduz eventos do GLFW para os métodos da
@@ -34,11 +34,16 @@ type Session struct {
 	// ser solto, recebe movimento e soltura DIRETAMENTE (captura de mouse),
 	// mesmo fora dos próprios bounds — essencial para arrastar.
 	captured Widget
-	// overlay é a camada de sobreposição (popups/modais): desenhada por
-	// cima e com prioridade nos eventos; overlayPrevFocus guarda o foco a
-	// restaurar no fechamento.
-	overlay          Widget
-	overlayPrevFocus Widget
+	// overlays é a PILHA de camadas de sobreposição (popups/modais),
+	// da base ao topo: desenhadas na ordem, com o topo por cima e com
+	// prioridade nos eventos. Cada camada guarda o foco a restaurar no seu
+	// próprio fechamento — um popup aberto de dentro de um modal fecha
+	// devolvendo o foco ao campo do modal, e o modal segue aberto.
+	// overlayOpening marca um OpenOverlay em andamento: fechamentos
+	// re-entrantes (camada que fecha ao perder o foco para a recém-aberta)
+	// removem só a própria camada, sem derrubar a que está nascendo.
+	overlays       []overlayEntry
+	overlayOpening bool
 
 	cursorShape CursorShape
 	lastCursor  image.Point
@@ -70,6 +75,13 @@ type Session struct {
 	damage      image.Rectangle
 	full        bool
 	clipScratch image.RGBA
+}
+
+// overlayEntry é uma camada da pilha de sobreposição: o widget exibido e o
+// foco a restaurar quando ELA fechar.
+type overlayEntry struct {
+	widget    Widget
+	prevFocus Widget
 }
 
 // NewSession cria uma sessão com o tema dado.
@@ -162,9 +174,42 @@ func (s *Session) Captured() Widget {
 	return s.captured
 }
 
-// Overlay devolve a camada de sobreposição atual (nil se nenhuma).
+// Overlay devolve a camada de sobreposição do TOPO da pilha (nil se
+// nenhuma) — a que recebe os eventos.
 func (s *Session) Overlay() Widget {
-	return s.overlay
+	return s.topOverlay()
+}
+
+// Overlays devolve as camadas de sobreposição abertas, da base ao topo (nil
+// se nenhuma). A fatia é uma cópia recém-alocada — pensada para asserções e
+// depuração, não para o caminho quente.
+func (s *Session) Overlays() []Widget {
+	if len(s.overlays) == 0 {
+		return nil
+	}
+	out := make([]Widget, len(s.overlays))
+	for i, e := range s.overlays {
+		out[i] = e.widget
+	}
+	return out
+}
+
+// topOverlay devolve o widget do topo da pilha de overlays (nil se vazia).
+func (s *Session) topOverlay() Widget {
+	if n := len(s.overlays); n > 0 {
+		return s.overlays[n-1].widget
+	}
+	return nil
+}
+
+// inOverlay informa se w pertence a alguma camada da pilha de overlays.
+func (s *Session) inOverlay(w Widget) bool {
+	for i := range s.overlays {
+		if Contains(s.overlays[i].widget, w) {
+			return true
+		}
+	}
+	return false
 }
 
 // CursorShape devolve o formato de cursor desejado pelo widget sob o
@@ -179,32 +224,41 @@ func (s *Session) TooltipVisible() bool {
 }
 
 // Resize registra o novo tamanho do buffer. Popups ancorados no layout
-// antigo fecham; overlays de janela inteira (Modal) apenas se reacomodam.
+// antigo fecham (em qualquer posição da pilha); overlays de janela inteira
+// (Modal) apenas se reacomodam.
 func (s *Session) Resize(size image.Point) {
 	s.size = size
-	if s.overlay != nil && !spansWindow(s.overlay) {
-		s.closeOverlay()
+	for i := len(s.overlays) - 1; i >= 0; i-- {
+		// O fechamento de uma camada pode fechar outras re-entrantemente
+		// (restauração de foco); o índice pode ter ficado para trás.
+		if i >= len(s.overlays) {
+			continue
+		}
+		if !spansWindow(s.overlays[i].widget) {
+			s.removeOverlayAt(i)
+		}
 	}
 	s.hideTooltip()
 	s.InvalidateAll()
 }
 
 // PointerDown processa o pressionar de um botão do mouse em pos: fecha o
-// tooltip, aplica as regras de overlay (clique fora fecha e é ENGOLIDO),
-// move o foco para o focável sob o ponto e inicia a captura em quem consumir.
+// tooltip, aplica as regras de overlay (clique fora da camada do TOPO fecha
+// só ela e é ENGOLIDO), move o foco para o focável sob o ponto e inicia a
+// captura em quem consumir.
 func (s *Session) PointerDown(pos image.Point, btn event.MouseButton) {
 	s.lastCursor = pos
 	s.hideTooltip()
 	ev := event.MouseEvent{Kind: event.MouseDown, Pos: pos, Button: btn}
-	if s.overlay != nil {
-		if !pos.In(s.overlay.Bounds()) {
-			s.closeOverlay()
+	if top := s.topOverlay(); top != nil {
+		if !pos.In(top.Bounds()) {
+			s.closeTopOverlay()
 			return
 		}
-		if f := FocusableAt(s.overlay, pos); f != nil {
+		if f := FocusableAt(top, pos); f != nil {
 			s.setFocus(f)
 		}
-		if c := DispatchMouse(s.overlay, ev); c != nil {
+		if c := DispatchMouse(top, ev); c != nil {
 			s.captured = c
 			s.AddDamage(c.Bounds())
 		}
@@ -215,8 +269,8 @@ func (s *Session) PointerDown(pos image.Point, btn event.MouseButton) {
 }
 
 // PointerUp processa o soltar de um botão: encerra a captura entregando o
-// evento ao capturado, ou roteia por geometria (restrito à overlay, se
-// aberta).
+// evento ao capturado, ou roteia por geometria (restrito à camada do topo,
+// se houver overlay aberta).
 func (s *Session) PointerUp(pos image.Point, btn event.MouseButton) {
 	s.lastCursor = pos
 	ev := event.MouseEvent{Kind: event.MouseUp, Pos: pos, Button: btn}
@@ -232,9 +286,9 @@ func (s *Session) PointerUp(pos image.Point, btn event.MouseButton) {
 		s.finishDrag(pos)
 		return
 	}
-	if s.overlay != nil {
-		if pos.In(s.overlay.Bounds()) {
-			if c := DispatchMouse(s.overlay, ev); c != nil {
+	if top := s.topOverlay(); top != nil {
+		if pos.In(top.Bounds()) {
+			if c := DispatchMouse(top, ev); c != nil {
 				s.AddDamage(c.Bounds())
 			}
 		}
@@ -244,8 +298,8 @@ func (s *Session) PointerUp(pos image.Point, btn event.MouseButton) {
 }
 
 // PointerMove processa o movimento do ponteiro: durante a captura vai direto
-// ao capturado (hover suspenso); com overlay, restrito a ela; senão, rastreia
-// hover e roteia por geometria.
+// ao capturado (hover suspenso); com overlay, restrito à camada do topo;
+// senão, rastreia hover e roteia por geometria.
 func (s *Session) PointerMove(pos image.Point) {
 	s.lastCursor = pos
 	if s.inspect {
@@ -265,10 +319,10 @@ func (s *Session) PointerMove(pos image.Point) {
 	if s.dragging {
 		s.updateDrag(pos)
 	}
-	if s.overlay != nil {
-		if pos.In(s.overlay.Bounds()) {
-			s.updateHoverIn(s.overlay, pos)
-			if c := DispatchMouse(s.overlay, ev); c != nil {
+	if top := s.topOverlay(); top != nil {
+		if pos.In(top.Bounds()) {
+			s.updateHoverIn(top, pos)
+			if c := DispatchMouse(top, ev); c != nil {
 				s.AddDamage(c.Bounds())
 			}
 		} else {
@@ -281,9 +335,9 @@ func (s *Session) PointerMove(pos image.Point) {
 }
 
 // KeyPress processa uma tecla: Tab/Shift+Tab navegam o foco (restrito à
-// overlay quando aberta); as demais vão ao widget focado; Escape não
-// consumido com overlay aberta vai à própria overlay (fecha Modal mesmo com
-// o foco em um campo interno).
+// camada do topo quando há overlay aberta); as demais vão ao widget focado;
+// Escape não consumido com overlay aberta vai à camada do topo (fecha Modal
+// mesmo com o foco em um campo interno).
 func (s *Session) KeyPress(k event.Key, mods event.Modifiers) {
 	if k == event.KeyUnknown {
 		return
@@ -314,17 +368,17 @@ func (s *Session) KeyPress(k event.Key, mods event.Modifiers) {
 	}
 	ke := event.KeyEvent{Key: k, Mods: mods}
 	consumed := false
-	// Referências locais: o próprio handler pode fechar overlays ou mover o
-	// foco (Escape num Modal zera s.overlay), e o dano é do widget original.
+	// Referência local: o próprio handler pode fechar overlays ou mover o
+	// foco (Escape num Modal o tira da pilha), e o dano é do widget original.
 	if f := s.focused; f != nil && !DisabledOf(f) {
 		consumed = f.HandleEvent(ke)
 		if consumed {
 			s.AddDamage(f.Bounds())
 		}
 	}
-	if ov := s.overlay; !consumed && k == event.KeyEscape && ov != nil {
-		if ov.HandleEvent(ke) {
-			s.AddDamage(ov.Bounds())
+	if top := s.topOverlay(); !consumed && k == event.KeyEscape && top != nil {
+		if top.HandleEvent(ke) {
+			s.AddDamage(top.Bounds())
 		}
 	}
 }
@@ -341,8 +395,8 @@ func (s *Session) Char(r rune) {
 	}
 }
 
-// Scroll roteia a rolagem por geometria (restrita à overlay quando aberta;
-// fora dela, fecha e engole).
+// Scroll roteia a rolagem por geometria (restrita à camada do topo quando há
+// overlay aberta; fora dela, fecha só o topo e engole).
 func (s *Session) Scroll(pos image.Point, dx, dy float64) {
 	if s.root == nil {
 		return
@@ -350,13 +404,13 @@ func (s *Session) Scroll(pos image.Point, dx, dy float64) {
 	s.lastCursor = pos
 	s.hideTooltip()
 	ev := event.ScrollEvent{Pos: pos, DX: dx, DY: dy}
-	if s.overlay != nil {
-		if pos.In(s.overlay.Bounds()) {
-			if c := DispatchScroll(s.overlay, ev); c != nil {
+	if top := s.topOverlay(); top != nil {
+		if pos.In(top.Bounds()) {
+			if c := DispatchScroll(top, ev); c != nil {
 				s.AddDamage(c.Bounds())
 			}
 		} else {
-			s.closeOverlay()
+			s.closeTopOverlay()
 		}
 		return
 	}
@@ -365,19 +419,29 @@ func (s *Session) Scroll(pos image.Point, dx, dy float64) {
 	}
 }
 
-// OpenOverlay exibe w como camada de sobreposição, guardando o foco atual e
-// focando w se for focável. O dono da sessão liga este método em
-// hooks.OpenOverlay.
+// OpenOverlay EMPILHA w como nova camada de sobreposição por cima das já
+// abertas (um popup aberto de dentro de um modal fica sobre ele), guardando
+// o foco atual — restaurado quando ESTA camada fechar — e focando o primeiro
+// focável de w. O dono da sessão liga este método em hooks.OpenOverlay.
 func (s *Session) OpenOverlay(w Widget) {
 	if w == nil {
 		return
 	}
 	s.hideTooltip()
 	s.CancelDrag() // abrir uma camada no meio de um arrasto o cancela
-	if s.overlay == nil {
-		s.overlayPrevFocus = s.focused
+	for i := range s.overlays {
+		if s.overlays[i].widget == w {
+			// Já empilhada: mantém a posição e só garante o redesenho
+			// (Popup.ShowAt reposiciona por conta própria).
+			s.InvalidateAll()
+			return
+		}
 	}
-	s.overlay = w
+	s.overlays = append(s.overlays, overlayEntry{widget: w, prevFocus: s.focused})
+	// Do empilhamento até o foco inicial, fechamentos re-entrantes ficam em
+	// modo camada única (ver CloseOverlayIf).
+	prevOpening := s.overlayOpening
+	s.overlayOpening = true
 	s.mount(w, s.theme)
 	// Layout imediato: a camada nasce com geometria válida, pronta para
 	// eventos e foco antes mesmo do primeiro frame (como o Render faria).
@@ -402,24 +466,68 @@ func (s *Session) OpenOverlay(w Widget) {
 	if target != nil {
 		s.setFocus(target)
 	}
+	s.overlayOpening = prevOpening
 	s.InvalidateAll()
 }
 
-// CloseOverlayIf fecha a camada se w for a camada atual (hooks.CloseOverlay).
+// CloseOverlayIf fecha a camada de w se ele estiver na pilha, junto com
+// TODAS as camadas acima dela — abertas a partir do conteúdo dela, não fazem
+// sentido órfãs (hooks.CloseOverlay).
 func (s *Session) CloseOverlayIf(w Widget) {
-	if w != nil && w == s.overlay {
-		s.closeOverlay()
+	if w == nil {
+		return
+	}
+	for i := len(s.overlays) - 1; i >= 0; i-- {
+		if s.overlays[i].widget != w {
+			continue
+		}
+		if s.overlayOpening {
+			// Fechamento re-entrante no meio do empilhamento de OUTRA
+			// camada (ex.: popup do Dropdown fechando ao perder o foco
+			// para um modal recém-aberto por cima): remove só a camada
+			// de w, preservando a que está nascendo acima.
+			s.removeOverlayAt(i)
+			return
+		}
+		// A restauração de foco de cada fechamento pode fechar outras
+		// camadas re-entrantemente; o teto é reavaliado a cada volta.
+		for len(s.overlays) > i {
+			s.closeTopOverlay()
+		}
+		return
 	}
 }
 
-// closeOverlay remove a camada e restaura o foco anterior.
-func (s *Session) closeOverlay() {
-	if s.overlay == nil {
-		return
+// closeTopOverlay remove a camada do topo e restaura o foco dela.
+func (s *Session) closeTopOverlay() {
+	if n := len(s.overlays); n > 0 {
+		s.removeOverlayAt(n - 1)
 	}
-	s.overlay = nil
-	s.setFocus(s.overlayPrevFocus)
-	s.overlayPrevFocus = nil
+}
+
+// removeOverlayAt remove a camada i da pilha. No topo, restaura o foco
+// guardado por ela; no meio (Resize fechando um popup sob um modal), o foco
+// atual — que vive numa camada acima — fica intocado, e o foco guardado é
+// repassado à camada de cima, para a cadeia de restauração não apontar para
+// uma camada já fechada.
+func (s *Session) removeOverlayAt(i int) {
+	e := s.overlays[i]
+	top := i == len(s.overlays)-1
+	if !top {
+		above := &s.overlays[i+1]
+		if above.prevFocus != nil && Contains(e.widget, above.prevFocus) {
+			above.prevFocus = e.prevFocus
+		}
+	}
+	// Remove ANTES de mexer no foco: os FocusEvents disparados podem tentar
+	// fechar esta mesma camada de novo (ex.: dropdownList ao perder o foco).
+	n := len(s.overlays) - 1
+	copy(s.overlays[i:], s.overlays[i+1:])
+	s.overlays[n] = overlayEntry{}
+	s.overlays = s.overlays[:n]
+	if top {
+		s.setFocus(e.prevFocus)
+	}
 	s.InvalidateAll()
 }
 
@@ -461,7 +569,7 @@ func (s *Session) updateHoverIn(root Widget, pos image.Point) {
 
 	// Tooltip: cancela o do alvo anterior e agenda o do novo, se houver.
 	s.hideTooltip()
-	if target != nil && s.overlay == nil && s.theme != nil {
+	if target != nil && len(s.overlays) == 0 && s.theme != nil {
 		if text := TooltipTextOf(target); text != "" {
 			s.tipCancel = hooks.ScheduleAfter(s.theme.TooltipDelay, func() {
 				s.tipCancel = nil
@@ -522,10 +630,15 @@ func (s *Session) Focus(w Widget) {
 }
 
 // setFocus move o foco para w (nil limpa), notificando com FocusEvent.
-// Focar fora da overlay aberta a fecha (Tab, clique em outro campo).
+// Focar fora da camada do topo a fecha (Tab, clique em outro campo) —
+// camada por camada, até a que contém w ou até a pilha esvaziar.
 func (s *Session) setFocus(w Widget) {
-	if s.overlay != nil && w != nil && !Contains(s.overlay, w) {
-		s.closeOverlay()
+	for w != nil {
+		top := s.topOverlay()
+		if top == nil || Contains(top, w) {
+			break
+		}
+		s.closeTopOverlay()
 	}
 	if s.focused == w {
 		return
@@ -574,10 +687,11 @@ func (s *Session) focusPrev() {
 	s.setFocus(order[prev])
 }
 
-// focusRoot devolve a árvore onde o Tab circula: a overlay quando aberta.
+// focusRoot devolve a árvore onde o Tab circula: a camada do topo quando há
+// overlay aberta.
 func (s *Session) focusRoot() Widget {
-	if s.overlay != nil {
-		return s.overlay
+	if top := s.topOverlay(); top != nil {
+		return top
 	}
 	return s.root
 }
@@ -609,12 +723,13 @@ func (s *Session) Render(dst *image.RGBA) (image.Rectangle, bool) {
 		s.mount(s.root, s.theme)
 		s.root.Layout(dst.Bounds())
 	}
-	if s.overlay != nil {
-		s.mount(s.overlay, s.theme)
-		if spansWindow(s.overlay) {
-			s.overlay.Layout(dst.Bounds())
+	for i := range s.overlays {
+		ov := s.overlays[i].widget
+		s.mount(ov, s.theme)
+		if spansWindow(ov) {
+			ov.Layout(dst.Bounds())
 		} else {
-			s.overlay.Layout(s.overlay.Bounds())
+			ov.Layout(ov.Bounds())
 		}
 	}
 
@@ -647,8 +762,8 @@ func (s *Session) Render(dst *image.RGBA) (image.Rectangle, bool) {
 	if s.root != nil {
 		s.root.Draw(target)
 	}
-	if s.overlay != nil {
-		s.overlay.Draw(target)
+	for i := range s.overlays {
+		s.overlays[i].widget.Draw(target)
 	}
 	if s.tipShown && s.tipView != nil {
 		s.tipView.Draw(target)

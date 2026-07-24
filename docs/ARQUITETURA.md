@@ -97,10 +97,14 @@ execução só por `internal/hooks`, registrado na inicialização.
   repintura completa após dezenas de interações. Regra prática: mude a
   interface por setters/States; mutação direta de campos públicos exige
   `App.Invalidate()`.
-- **Overlay**: uma camada de sobreposição (popup do Dropdown) desenhada por
-  cima da árvore, com prioridade nos eventos: clique/rolagem fora fecham e
-  são engolidos, Tab/foco fora fecham, e o foco anterior é restaurado. O
-  tooltip (`Tooltip(w, texto)`) é uma camada passiva acima de tudo, fora do
+- **Overlays**: uma PILHA de camadas de sobreposição (popup do Dropdown,
+  Modal) desenhada na ordem por cima da árvore, com a camada do topo tendo
+  prioridade nos eventos: clique/rolagem fora fecham SÓ o topo e são
+  engolidos, Tab/foco fora fecham camada a camada, e cada camada restaura o
+  foco de quando ela abriu — um popup aberto de dentro de um modal fecha
+  devolvendo o foco ao modal, que segue aberto. O resize fecha só as camadas
+  ancoradas (não-`SpansWindow`), em qualquer posição da pilha. O tooltip
+  (`Tooltip(w, texto)`) é uma camada passiva acima de tudo, fora do
   hit-test.
 - **Multi-janela**: cada `Window` tem tema (`Theme.Clone`; a escala segue o
   monitor da janela) e `Session` próprios — foco, overlay, tooltip e toast

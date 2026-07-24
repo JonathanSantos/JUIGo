@@ -152,11 +152,12 @@ func (s *Session) endDrag() {
 }
 
 // dropTargetAt devolve o widget mais profundo sob pos que aceita o payload
-// corrente, buscando na overlay (se aberta e contendo pos) ou na raiz.
+// corrente, buscando na camada de overlay do topo (se aberta e contendo pos)
+// ou na raiz.
 func (s *Session) dropTargetAt(pos image.Point) Widget {
 	root := s.root
-	if s.overlay != nil && pos.In(s.overlay.Bounds()) {
-		root = s.overlay
+	if top := s.topOverlay(); top != nil && pos.In(top.Bounds()) {
+		root = top
 	}
 	return dropTargetIn(root, pos, s.dragPayload)
 }

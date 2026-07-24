@@ -17,8 +17,9 @@ import (
 //
 // O painel é posicionado no ponto (deslocado para caber na janela); clicar
 // fora fecha E engole o clique; Escape fecha (entrega de fallback da
-// overlay); o primeiro focável do conteúdo abre focado. Como o Modal, é de
-// camada única — abrir outro overlay substitui.
+// overlay); o primeiro focável do conteúdo abre focado. Como o Modal, entra
+// na PILHA de overlays — aberto de dentro de um modal, fica sobre ele e
+// fecha sozinho, devolvendo o foco ao modal.
 type Popup struct {
 	BaseWidget
 	// onClose é chamado quando o popup fecha, por qualquer caminho (ver

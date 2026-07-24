@@ -82,9 +82,16 @@ func (s *Session) drawInspector(dst *image.RGBA) {
 		return
 	}
 	outlineTree(dst, s.root)
-	outlineTree(dst, s.overlay)
+	for i := range s.overlays {
+		outlineTree(dst, s.overlays[i].widget)
+	}
 
-	target := inspectTargetAt(s.overlay, s.lastCursor)
+	// O alvo é procurado da camada do topo para a base, depois na raiz —
+	// a mesma prioridade do roteamento de eventos.
+	var target Widget
+	for i := len(s.overlays) - 1; i >= 0 && target == nil; i-- {
+		target = inspectTargetAt(s.overlays[i].widget, s.lastCursor)
+	}
 	if target == nil {
 		target = inspectTargetAt(s.root, s.lastCursor)
 	}
@@ -142,7 +149,7 @@ func (s *Session) drawInspectorBadge(dst *image.RGBA, target Widget) {
 	if DisabledOf(target) {
 		flags = append(flags, "desabilitado")
 	}
-	if s.overlay != nil && Contains(s.overlay, target) {
+	if s.inOverlay(target) {
 		flags = append(flags, "overlay")
 	}
 	l2 := strings.Join(flags, " · ")
