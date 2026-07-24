@@ -511,6 +511,8 @@ func mapKey(key glfw.Key) event.Key {
 		return event.KeyV
 	case glfw.KeyX:
 		return event.KeyX
+	case glfw.KeyZ:
+		return event.KeyZ
 	default:
 		return event.KeyUnknown
 	}

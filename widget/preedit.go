@@ -54,16 +54,26 @@ func (p *preeditState) clear() bool {
 	return true
 }
 
-// measure recalcula os caches de medida para o tema dado.
+// measure recalcula os caches de medida com a fonte REGULAR do tema.
 func (p *preeditState) measure(th *theme.Theme) {
-	if !p.active() || th == nil {
+	if th == nil {
+		p.measureWith(nil)
+		return
+	}
+	p.measureWith(th.MeasureString)
+}
+
+// measureWith recalcula os caches de medida com o medidor dado (a face
+// regular no Input/TextArea, a mono no CodeEditor); nil zera tudo.
+func (p *preeditState) measureWith(measure func(string) int) {
+	if !p.active() || measure == nil {
 		p.text, p.w, p.caretX = "", 0, 0
 		p.blockX = p.blockX[:0]
 		return
 	}
 	p.text = string(p.runes)
-	p.w = th.MeasureString(p.text)
-	p.caretX = th.MeasureString(string(p.runes[:p.caret]))
+	p.w = measure(p.text)
+	p.caretX = measure(string(p.runes[:p.caret]))
 	// Fronteiras dos blocos em pixels (prefixos acumulados), para o desenho
 	// dos sublinhados não medir nada por frame.
 	p.blockX = p.blockX[:0]
@@ -75,7 +85,7 @@ func (p *preeditState) measure(th *theme.Theme) {
 			if pos > len(p.runes) {
 				pos = len(p.runes)
 			}
-			p.blockX = append(p.blockX, th.MeasureString(string(p.runes[:pos])))
+			p.blockX = append(p.blockX, measure(string(p.runes[:pos])))
 		}
 	}
 }

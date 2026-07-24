@@ -293,6 +293,14 @@ func (s *Session) KeyPress(k event.Key, mods event.Modifiers) {
 		return
 	}
 	if k == event.KeyTab {
+		// Editores de código consomem o Tab LITERAL (ver ConsumesTab); para
+		// eles o Tab não navega o foco — saia com o mouse ou Escape.
+		if f := s.focused; f != nil && !DisabledOf(f) && consumesTab(f) {
+			if f.HandleEvent(event.KeyEvent{Key: k, Mods: mods}) {
+				s.AddDamage(f.Bounds())
+			}
+			return
+		}
 		if mods.Shift() {
 			s.focusPrev()
 		} else {

@@ -270,6 +270,19 @@ func collectFocusable(w Widget, out *[]Widget) {
 	}
 }
 
+// tabConsumer é implementado por widgets que precisam do Tab LITERAL
+// (editores de código): com um deles focado, a Session entrega o Tab ao
+// widget em vez de navegar o foco.
+type tabConsumer interface {
+	ConsumesTab() bool
+}
+
+// consumesTab informa se w reivindica o Tab literal.
+func consumesTab(w Widget) bool {
+	c, ok := w.(tabConsumer)
+	return ok && c.ConsumesTab()
+}
+
 // DeepestAt devolve o widget mais profundo cujo Bounds contém p, ou nil.
 // Usado pelo App para rastrear hover (event.MouseEnter/event.MouseLeave).
 func DeepestAt(w Widget, p image.Point) Widget {

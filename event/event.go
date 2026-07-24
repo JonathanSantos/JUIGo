@@ -84,14 +84,15 @@ const (
 	KeyEscape
 	// KeyI é a letra do atalho do inspector de depuração (Ctrl/Cmd+I).
 	KeyI
-	// KeyA, KeyC, KeyV e KeyX são as letras dos atalhos de edição —
-	// selecionar tudo, copiar, colar e recortar — quando combinadas com o
-	// modificador de comando. Texto comum não passa por Key: chega como
-	// CharEvent.
+	// KeyA, KeyC, KeyV, KeyX e KeyZ são as letras dos atalhos de edição —
+	// selecionar tudo, copiar, colar, recortar e desfazer (com Shift,
+	// refazer) — quando combinadas com o modificador de comando. Texto
+	// comum não passa por Key: chega como CharEvent.
 	KeyA
 	KeyC
 	KeyV
 	KeyX
+	KeyZ
 )
 
 // Modifiers é o conjunto (bitmask) de teclas modificadoras ativas em um
