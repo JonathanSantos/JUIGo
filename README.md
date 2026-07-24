@@ -224,10 +224,11 @@ por foco, overlay, tema) e os números de performance estão em
 
 ## Fora de escopo (por enquanto)
 
-Acessibilidade, IME (composição de texto asiático), multi-janela, edição
-rica (negrito/itálico) e árvores. A arquitetura foi pensada para recebê-los
-depois: eventos são tipos abertos, o tema é injetado, containers são
-aninháveis e o desenho é isolado em `render/`.
+Acessibilidade, IME (composição de texto asiático — avaliação e plano em
+[docs/IME.md](docs/IME.md)), multi-janela, edição rica (negrito/itálico) e
+árvores. A arquitetura foi pensada para recebê-los depois: eventos são
+tipos abertos, o tema é injetado, containers são aninháveis e o desenho é
+isolado em `render/`.
 
 ## Licença
 
