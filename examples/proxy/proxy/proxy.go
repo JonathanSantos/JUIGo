@@ -89,6 +89,7 @@ func (p *Proxy) serveMock(w http.ResponseWriter, ex *Exchange, rule *MockRule) {
 	ex.RespType = shortType(ct)
 	ex.Size = len(body)
 	ex.Mocked = true
+	ex.RespBody = rule.Body
 	ex.ResponseText = "HTTP/1.1 " + statusLine(status) + "\n" +
 		"Content-Type: " + ct + "\nX-Mocked-By: juigo-proxy\n\n" + rule.Body
 }
@@ -131,6 +132,7 @@ func (p *Proxy) forward(w http.ResponseWriter, r *http.Request, reqBody []byte, 
 	ex.Status = resp.StatusCode
 	ex.RespType = shortType(resp.Header.Get("Content-Type"))
 	ex.Size = len(respBody)
+	ex.RespBody = string(respBody)
 	ex.ResponseText = formatResponse(resp, respBody)
 }
 

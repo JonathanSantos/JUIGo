@@ -37,6 +37,9 @@ type Exchange struct {
 
 	RequestText  string
 	ResponseText string
+	// RespBody é só o corpo da resposta (sem a linha de status nem os
+	// cabeçalhos) — a semente do "simular resposta".
+	RespBody string
 }
 
 // StatusText devolve o status como texto para a lista ("—" sem resposta;

@@ -211,6 +211,16 @@ flags de cada widget.
 - **`go run ./examples/janelas`** — multi-janela: `App.NewWindow`, tema por
   janela (uma escura ao lado de claras) e o MESMO `State` reagindo em todas
   ao mesmo tempo.
+- **`go run ./examples/proxy`** — um mini "Burp Suite": proxy de
+  depuração HTTP local que captura as trocas que passam por ele, filtra por
+  método/URL, mostra requisição e resposta em visores `CodeEditor` em modo
+  `ReadOnly` (com highlight JSON) e permite SIMULAR respostas de chamadas
+  específicas (mocks). HTTP é inspecionado; HTTPS passa por túnel (não
+  inspecionado). Aponte um cliente para o proxy:
+  `HTTP_PROXY=http://localhost:8080 curl http://httpbin.org/get`.
+
+  ![Mini-proxy: captura, visor ReadOnly e mocks](docs/proxy.png)
+
 - **`go run ./examples/editor [arquivo]`** — o CodeEditor: highlight de
   sintaxe incremental (Go/JSON pela extensão; abrir um `/*` re-lexa só até
   o estado convergir), auto-indentação, Tab/Shift+Tab indentando o bloco
