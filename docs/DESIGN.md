@@ -1,12 +1,15 @@
 # Design system "papel e tinta"
 
 A identidade visual pronta do JUIGo, inspirada na linguagem visual pública
-do Claude (Anthropic): papel, tinta e terracota. É uma homenagem aproximada
-— o tema não usa marcas nem representa a Anthropic; as cores vêm da paleta
-térrea publicada na identidade da empresa.
+do Claude (Anthropic): papel, tinta, terracota e uma serif de livro nos
+títulos. É uma homenagem aproximada — o tema não usa marcas nem representa
+a Anthropic; as cores vêm da paleta térrea publicada na identidade da
+empresa, e a serif é a [Lora](https://github.com/cyrealtype/Lora) (OFL),
+embutida.
 
 | Claro | Escuro |
 | --- | --- |
+| ![Identidade, claro](identidade-claude.png) | ![Identidade, escuro](identidade-claude-escuro.png) |
 | ![Vitrine papel e tinta, claro](vitrine-claude.png) | ![Vitrine papel e tinta, escuro](vitrine-claude-escuro.png) |
 
 ```go
@@ -71,6 +74,53 @@ Sintaxe (CodeEditor), na mesma família térrea:
 | `Number` | `#4E7396` (azul-névoa) | `#8FB4D9` |
 | `Comment` | `#8C857A` | `#8F8A80` |
 | `Builtin` | `#9A6B2F` (kraft) | `#D4A27F` |
+
+## Tipografia
+
+A hierarquia vem de PAPÉIS tipográficos do tema, não de tamanhos avulsos:
+
+| Papel | Como usar | Fonte | Tamanho lógico |
+| --- | --- | --- | --- |
+| Título | `NewText("…").Title()` | display (Lora no papel e tinta) | `TitleSize` 24 |
+| Subtítulo | `.Subtitle()` | display | `SubtitleSize` 19 |
+| Corpo | `NewText("…")` | regular (Go) | `FontSize` 16 |
+| Legenda | `.Caption()` | regular, menor | `CaptionSize` 13 |
+
+A fonte de display é um token trocável (`Theme.UseDisplayFont`): Go Bold
+nos temas Default/Dark (hierarquia por peso, zero assets), a serif Lora no
+papel e tinta (`theme.Lora()`; `theme.LoraBold()` para títulos mais
+pesados). Regras de uso: **um Título por tela**, Subtítulo abre seções e
+cartões, legenda para metadados — combine `.Caption()` com
+`Color(Theme.Placeholder)` quando quiser apagá-la junto. Tudo reescala com
+o tema (HiDPI) e troca em runtime.
+
+## Componentes e hierarquia
+
+- **Botões em três níveis:** primário (preenchido de terracota — a ÚNICA
+  ação principal do bloco), `Secondary()` (superfície com fio, texto de
+  tinta — ações comuns) e `Ghost()` (só o rótulo; hover ganha fundo —
+  ações discretas, barras densas). Numa barra de ações, no máximo um
+  primário, à direita.
+- **Card** agrupa conteúdo numa superfície elevada (`Surface` +
+  `SurfaceBorder` + raio do tema, respiro interno de 2×Padding). Cartão é
+  agrupamento, não decoração: se tudo na tela é cartão, nada é.
+- **Divider** separa regiões DENTRO de uma superfície (o fio
+  `SurfaceBorder` com o respiro embutido); entre widgets comuns, prefira
+  espaço (`Gap`) a fios.
+
+## Espaçamento e forma
+
+Tudo em unidades lógicas do tema (escalam no HiDPI): a régua é o `Padding`
+(10) — respiro de controle = 1×, respiro de cartão = 2×, `Gap` entre
+grupos = `Spacing` (10). `Radius` 10 nos controles e superfícies; a faixa
+de pega do SplitPane, recuo da Tree e demais métricas herdam do tema.
+
+## Movimento
+
+O movimento do sistema é o das transições de tela (`Navigator`):
+`Theme.TransitionDuration` de 280ms com easing suave, deslizar para
+avançar/voltar e fade para substituir. Animações extras devem usar
+`anim.Tween` sobre os mesmos timers — nada de movimento decorativo.
 
 ## Estendendo
 

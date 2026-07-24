@@ -35,7 +35,7 @@ func vitrine() juigo.Widget {
 	}).BindSelected(selecionada)
 
 	return juigo.NewVBox(
-		juigo.NewText("JUIGo — vitrine de widgets").Center(),
+		juigo.NewText("JUIGo — vitrine de widgets").Subtitle().Center(),
 		juigo.NewHBox(
 			juigo.Grow(juigo.NewInput("Digite aqui…"), 1),
 			juigo.NewButton("Enviar", nil),
@@ -61,6 +61,28 @@ func vitrine() juigo.Widget {
 		),
 		tabela,
 	).Pad(16).Gap(8)
+}
+
+// identidade monta a cena do design system: hierarquia tipográfica (Title/
+// Subtitle/Caption), Card com Divider e as três hierarquias de botão.
+func identidade() juigo.Widget {
+	return juigo.NewVBox(
+		juigo.NewText("Fatura de julho").Title(),
+		juigo.NewText("Papel, tinta e terracota").Subtitle(),
+		juigo.NewCard(juigo.NewVBox(
+			juigo.NewText("Cobrança automática").Subtitle(),
+			juigo.NewText("O cartão termina em 4242 e renova no dia 12."),
+			juigo.NewText("Atualizado há 2 minutos").Caption(),
+			juigo.NewDivider(),
+			juigo.NewHBox(
+				juigo.NewSpacer(),
+				juigo.NewButton("Cancelar", nil).Ghost(),
+				juigo.NewButton("Ver extrato", nil).Secondary(),
+				juigo.NewButton("Pagar agora", nil),
+			).Gap(8),
+		).Gap(8)),
+		juigo.NewText("Um título por tela; uma ação primária por bloco.").Caption(),
+	).Pad(16).Gap(10)
 }
 
 // formulario monta o quick.Form com erros revelados (validação em cena).
@@ -164,6 +186,8 @@ func main() {
 	// quadro um pouco maior.
 	salva("vitrine-claude.png", vitrine(), claude, 470, 500)
 	salva("vitrine-claude-escuro.png", vitrine(), claudeEscuro, 470, 500)
+	salva("identidade-claude.png", identidade(), claude, 480, 340)
+	salva("identidade-claude-escuro.png", identidade(), claudeEscuro, 480, 340)
 	salva("quick-form.png", formulario(), claro, 440, 440)
 	salva("todomvc.png", todomvc(), claro, 440, 400)
 	salva("contatos.png", agenda(), claro, 720, 420)

@@ -149,14 +149,18 @@ de verdade e a interface é uma projeção dele.
 
 | Claro | Escuro |
 | --- | --- |
-| ![Papel e tinta, claro](docs/vitrine-claude.png) | ![Papel e tinta, escuro](docs/vitrine-claude-escuro.png) |
+| ![Papel e tinta, claro](docs/identidade-claude.png) | ![Papel e tinta, escuro](docs/identidade-claude-escuro.png) |
 
 Uma identidade completa pronta para usar, inspirada na linguagem visual do
-Claude (Anthropic): papel e tinta como base, terracota exclusiva para
-ações, neutros sempre quentes e formas generosas. `juigo.ClaudeTheme()` e
-`juigo.ClaudeDarkTheme()` compartilham as métricas — alternam em runtime
-sem a interface pular. Os princípios, a tabela de tokens e como estender
-sem perder a identidade estão em [docs/DESIGN.md](docs/DESIGN.md).
+Claude (Anthropic): papel e tinta como base, títulos na serif Lora
+(embutida, OFL), terracota exclusiva para ações, neutros sempre quentes e
+formas generosas. Vem com o sistema inteiro, não só cores: papéis
+tipográficos (`Text.Title/Subtitle/Caption`, fonte de display trocável),
+hierarquia de botões (`Secondary`/`Ghost`), superfícies (`Card`,
+`Divider`) e movimento. `juigo.ClaudeTheme()` e `juigo.ClaudeDarkTheme()`
+compartilham as métricas — alternam em runtime sem a interface pular. Os
+princípios, a tabela de tokens e como estender sem perder a identidade
+estão em [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Formulários com `quick`
 
