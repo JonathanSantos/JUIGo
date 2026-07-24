@@ -31,6 +31,7 @@ type Exchange struct {
 	Size     int // bytes do corpo da resposta
 	Mocked   bool
 	Tunnel   bool // CONNECT (HTTPS): só o host, sem corpo
+	Secure   bool // HTTPS decifrado por interceptação (MITM)
 	Err      string
 	Started  time.Time
 	Duration time.Duration
