@@ -122,7 +122,9 @@ de verdade e a interface é uma projeção dele.
   `NewModal(conteúdo).CloseOnBackdrop(false).OnClose(f)`. Qualquer
   interface cabe em uma única expressão.
 - **Tema ambiente** — construtores não pedem tema: o App o injeta na árvore
-  no *mount*. `DefaultTheme` (claro) e `DarkTheme` (escuro) prontos, ambos
+  no *mount*. `DefaultTheme` (claro), `DarkTheme` (escuro) e o design
+  system "papel e tinta" (`ClaudeTheme`/`ClaudeDarkTheme` — ver
+  [docs/DESIGN.md](docs/DESIGN.md)) prontos, todos
   com cantos arredondados com antialiasing (`Theme.Radius`, padrão 4);
   `ClassicTheme` (ou `Radius = 0`) devolve o visual reto de antes, pixel a
   pixel. `App.SetTheme` troca em runtime. Métricas são unidades lógicas
@@ -142,6 +144,19 @@ de verdade e a interface é uma projeção dele.
 - **Undo, timers e seleção** — `NewHistory` (pilhas + `CanUndo`/`CanRedo`
   prontos para botões), `After`/`Every` no relógio da aplicação,
   `BindSelected` fazendo da linha selecionada um State como outro qualquer.
+
+## Design system "papel e tinta"
+
+| Claro | Escuro |
+| --- | --- |
+| ![Papel e tinta, claro](docs/vitrine-claude.png) | ![Papel e tinta, escuro](docs/vitrine-claude-escuro.png) |
+
+Uma identidade completa pronta para usar, inspirada na linguagem visual do
+Claude (Anthropic): papel e tinta como base, terracota exclusiva para
+ações, neutros sempre quentes e formas generosas. `juigo.ClaudeTheme()` e
+`juigo.ClaudeDarkTheme()` compartilham as métricas — alternam em runtime
+sem a interface pular. Os princípios, a tabela de tokens e como estender
+sem perder a identidade estão em [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Formulários com `quick`
 

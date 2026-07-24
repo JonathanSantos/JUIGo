@@ -148,8 +148,22 @@ func main() {
 		log.Fatal(err)
 	}
 
+	claude, err := juigo.ClaudeTheme()
+	if err != nil {
+		log.Fatal(err)
+	}
+	claudeEscuro, err := juigo.ClaudeDarkTheme()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	salva("vitrine-claro.png", vitrine(), claro, 440, 460)
 	salva("vitrine-escuro.png", vitrine(), escuro, 440, 460)
+	// O design system "papel e tinta" usa a MESMA vitrine: a diferença entre
+	// os pares é só a pele (docs/DESIGN.md). Padding/Spacing 10 pedem um
+	// quadro um pouco maior.
+	salva("vitrine-claude.png", vitrine(), claude, 470, 500)
+	salva("vitrine-claude-escuro.png", vitrine(), claudeEscuro, 470, 500)
 	salva("quick-form.png", formulario(), claro, 440, 440)
 	salva("todomvc.png", todomvc(), claro, 440, 400)
 	salva("contatos.png", agenda(), claro, 720, 420)
