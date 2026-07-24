@@ -257,6 +257,10 @@ func (w *Window) applyCursor(shape widget.CursorShape) {
 			cur = glfw.CreateStandardCursor(glfw.IBeamCursor)
 		case widget.CursorHand:
 			cur = glfw.CreateStandardCursor(glfw.HandCursor)
+		case widget.CursorResizeH:
+			cur = glfw.CreateStandardCursor(glfw.HResizeCursor)
+		case widget.CursorResizeV:
+			cur = glfw.CreateStandardCursor(glfw.VResizeCursor)
 		}
 		w.stdCursors[shape] = cur
 	}

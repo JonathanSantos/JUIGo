@@ -12,6 +12,12 @@ const (
 	CursorText
 	// CursorHand é a mãozinha de elementos clicáveis/arrastáveis.
 	CursorHand
+	// CursorResizeH é a seta dupla horizontal de divisores verticais (o
+	// SplitPane lado a lado).
+	CursorResizeH
+	// CursorResizeV é a seta dupla vertical de divisores horizontais (o
+	// SplitPane empilhado).
+	CursorResizeV
 )
 
 // CursorShape devolve CursorDefault; widgets interativos sobrescrevem.

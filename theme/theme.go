@@ -253,6 +253,12 @@ type Theme struct {
 	// TransitionDuration é a duração das transições animadas de tela do
 	// Navigator. Zero desliga a animação (a troca vira um corte seco).
 	TransitionDuration time.Duration
+	// SplitterThickness é a espessura da faixa de arraste do SplitPane, em
+	// unidades lógicas (a linha desenhada é mais fina; a faixa é a área de
+	// pega).
+	SplitterThickness int
+	// TreeIndent é o recuo por nível da Tree, em unidades lógicas.
+	TreeIndent int
 	// Backdrop é a cor translúcida do pano de fundo do Modal.
 	Backdrop color.RGBA
 	// DisabledWash é a lavagem translúcida aplicada sobre widgets
@@ -350,6 +356,8 @@ func Default() (*Theme, error) {
 		TextAreaMinLines:   4,
 		SpinnerStep:        250 * time.Millisecond,
 		TransitionDuration: 280 * time.Millisecond,
+		SplitterThickness:  6,
+		TreeIndent:         16,
 		Backdrop:           color.RGBA{A: 0x66},
 		DisabledWash:       color.RGBA{R: 0xF2, G: 0xF3, B: 0xF5, A: 0x99},
 

@@ -61,6 +61,8 @@ type (
 	// Navigator gerencia uma pilha de telas com transições animadas
 	// (Push/Pop/Replace).
 	Navigator = widget.Navigator
+	// SplitPane divide a área entre dois painéis com um divisor arrastável.
+	SplitPane = widget.SplitPane
 	// Transition é o efeito visual da troca de telas do Navigator.
 	Transition = widget.Transition
 	// DropTarget é implementado por widgets que aceitam soltar um arrasto
@@ -156,6 +158,8 @@ const (
 	CursorDefault = widget.CursorDefault
 	CursorText    = widget.CursorText
 	CursorHand    = widget.CursorHand
+	CursorResizeH = widget.CursorResizeH
+	CursorResizeV = widget.CursorResizeV
 
 	TransitionNone       = widget.TransitionNone
 	TransitionFade       = widget.TransitionFade
@@ -274,6 +278,10 @@ func NewTabs() *Tabs { return widget.NewTabs() }
 // NewNavigator cria um navegador de telas com a pilha vazia; empilhe a tela
 // inicial com Push (ver widget.Navigator).
 func NewNavigator() *Navigator { return widget.NewNavigator() }
+
+// NewSplitPane cria um divisor lado a lado entre a (esquerda) e b (direita),
+// meio a meio (ver widget.SplitPane).
+func NewSplitPane(a, b Widget) *SplitPane { return widget.NewSplitPane(a, b) }
 
 // StartDrag inicia um arrasto com o payload e o rótulo do fantasma; chame
 // de um widget fonte durante uma captura de mouse (ver widget.StartDrag e
