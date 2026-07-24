@@ -67,6 +67,21 @@ type Input struct {
 	// edição ou movimento a reinicia com o cursor visível.
 	caretOn     bool
 	blinkCancel func()
+
+	// Composição de IME (event.PreeditEvent): o texto de pré-edição é
+	// desenhado inline no cursor, sublinhado, SEM entrar em runes — o texto
+	// confirmado chega pelos CharEvent normais. Os caches pre* são
+	// atualizados por evento (nunca por frame desenhado).
+	preedit      []rune
+	preeditCaret int
+	preBlocks    []int
+	preFocused   int
+	preText      string
+	preAntes     string
+	preDepois    string
+	preW         int
+	preCaretX    int
+	preBlockX    []int
 }
 
 // NewInput cria um campo de texto vazio com o placeholder dado. O tema é
@@ -188,6 +203,9 @@ func (in *Input) HandleEvent(ev event.Event) bool {
 	case event.CharEvent:
 		in.insert(e.Rune)
 		return true
+	case event.PreeditEvent:
+		in.setPreedit(e)
+		return true
 	case event.KeyEvent:
 		return in.handleKey(e)
 	case event.FocusEvent:
@@ -199,6 +217,9 @@ func (in *Input) HandleEvent(ev event.Event) bool {
 			}
 		} else {
 			in.stopBlink()
+			// Perder o foco descarta a composição em andamento (o IME do
+			// sistema a cancela de qualquer forma).
+			in.clearPreedit()
 			if in.onBlur != nil {
 				in.onBlur()
 			}
@@ -466,6 +487,94 @@ func (in *Input) sync() {
 	in.anchorX = in.theme.MeasureString(string(in.runes[:in.anchor]))
 	in.textW = in.theme.MeasureString(in.text)
 	in.syncFace = in.theme.Face
+	in.syncPreedit()
+}
+
+// composing informa se há uma composição de IME em andamento.
+func (in *Input) composing() bool {
+	return len(in.preedit) > 0
+}
+
+// setPreedit registra o estado da composição vindo do IME. Compor sobre uma
+// seleção a substitui, como digitar; texto vazio encerra a composição.
+func (in *Input) setPreedit(e event.PreeditEvent) {
+	if e.Text != "" && in.deleteSelection() {
+		in.sync()
+		in.emitChange()
+	}
+	in.preedit = []rune(e.Text)
+	in.preeditCaret = e.Caret
+	if in.preeditCaret < 0 {
+		in.preeditCaret = 0
+	}
+	if in.preeditCaret > len(in.preedit) {
+		in.preeditCaret = len(in.preedit)
+	}
+	in.preBlocks = append(in.preBlocks[:0], e.Blocks...)
+	in.preFocused = e.FocusedBlock
+	in.syncPreedit()
+	in.restartBlink()
+	in.Invalidate()
+}
+
+// clearPreedit descarta a composição em andamento, se houver.
+func (in *Input) clearPreedit() {
+	if !in.composing() {
+		return
+	}
+	in.preedit = in.preedit[:0]
+	in.preeditCaret = 0
+	in.preBlocks = in.preBlocks[:0]
+	in.syncPreedit()
+	in.Invalidate()
+}
+
+// syncPreedit atualiza os caches da composição (strings dos segmentos e
+// larguras) — por evento de IME ou mudança de face, nunca por frame.
+func (in *Input) syncPreedit() {
+	if !in.composing() {
+		in.preText, in.preAntes, in.preDepois = "", "", ""
+		in.preW, in.preCaretX = 0, 0
+		return
+	}
+	in.preText = string(in.preedit)
+	in.preAntes = string(in.runes[:in.cursor])
+	in.preDepois = string(in.runes[in.cursor:])
+	if in.theme == nil {
+		in.preW, in.preCaretX = 0, 0
+		return
+	}
+	in.preW = in.theme.MeasureString(in.preText)
+	in.preCaretX = in.theme.MeasureString(string(in.preedit[:in.preeditCaret]))
+	// Fronteiras dos blocos em pixels (prefixos acumulados), para o desenho
+	// dos sublinhados não medir nada por frame.
+	in.preBlockX = in.preBlockX[:0]
+	if len(in.preBlocks) > 0 {
+		in.preBlockX = append(in.preBlockX, 0)
+		pos := 0
+		for _, n := range in.preBlocks {
+			pos += n
+			if pos > len(in.preedit) {
+				pos = len(in.preedit)
+			}
+			in.preBlockX = append(in.preBlockX, in.theme.MeasureString(string(in.preedit[:pos])))
+		}
+	}
+}
+
+// CaretRect devolve o retângulo do cursor de texto em coordenadas absolutas
+// da janela — durante uma composição, o do cursor DENTRO da pré-edição. É a
+// âncora da janela de candidatos do IME (ver widget.TextCaret). Reflete o
+// último frame desenhado (a rolagem horizontal é ajustada no Draw).
+func (in *Input) CaretRect() image.Rectangle {
+	if in.theme == nil {
+		return image.Rectangle{}
+	}
+	th := in.theme
+	bounds := in.Bounds()
+	top := bounds.Min.Y + (bounds.Dy()-th.LineHeight())/2
+	x := bounds.Min.X + th.PaddingPx() - in.scrollX + in.cursorX + in.preCaretX
+	return image.Rect(x, top, x+th.BorderPx(), top+th.LineHeight())
 }
 
 // emitChange propaga uma edição para o State vinculado (se houver) e para o
@@ -541,21 +650,25 @@ func (in *Input) Draw(dst *image.RGBA) {
 	}
 
 	// Rolagem horizontal: limita ao intervalo válido e garante o cursor
-	// visível (com espaço para a própria linha do cursor à direita).
-	if in.textW <= innerW {
+	// visível (com espaço para a própria linha do cursor à direita). Uma
+	// composição de IME conta como parte do texto e o cursor efetivo fica
+	// dentro dela.
+	effTextW := in.textW + in.preW
+	effCaretX := in.cursorX + in.preCaretX
+	if effTextW <= innerW {
 		in.scrollX = 0
-	} else if in.scrollX > in.textW-innerW {
-		in.scrollX = in.textW - innerW
+	} else if in.scrollX > effTextW-innerW {
+		in.scrollX = effTextW - innerW
 	}
 	if in.scrollX < 0 {
 		in.scrollX = 0
 	}
 	if in.focused {
-		if lim := innerW - th.BorderPx(); in.cursorX-in.scrollX > lim && lim > 0 {
-			in.scrollX = in.cursorX - lim
+		if lim := innerW - th.BorderPx(); effCaretX-in.scrollX > lim && lim > 0 {
+			in.scrollX = effCaretX - lim
 		}
-		if in.cursorX-in.scrollX < 0 {
-			in.scrollX = in.cursorX
+		if effCaretX-in.scrollX < 0 {
+			in.scrollX = effCaretX
 		}
 	}
 
@@ -573,6 +686,8 @@ func (in *Input) Draw(dst *image.RGBA) {
 	}
 
 	switch {
+	case in.composing():
+		in.drawComposition(view, textX, baseline)
 	case len(in.runes) > 0:
 		th.DrawText(view, in.text, image.Pt(textX, baseline), th.Text)
 	case !in.focused && in.Placeholder != "":
@@ -581,8 +696,44 @@ func (in *Input) Draw(dst *image.RGBA) {
 
 	if in.focused && in.caretOn {
 		top := baseline - th.Ascent()
-		cx := textX + in.cursorX
+		cx := textX + effCaretX
 		render.FillRect(view, image.Rect(cx, top, cx+th.BorderPx(), top+th.LineHeight()), th.Cursor)
 	}
 	in.drawDisabledOverlay(dst)
+}
+
+// drawComposition desenha texto + pré-edição em três segmentos — as medidas
+// por segmento são a mesma fonte de verdade do posicionamento do cursor — e
+// os sublinhados da composição: um traço único sem blocos; com blocos, um
+// por bloco (com vão de 1px) e o bloco em conversão mais grosso, na cor de
+// destaque. Não aloca: os segmentos e as fronteiras vêm dos caches pre*.
+func (in *Input) drawComposition(view *image.RGBA, textX, baseline int) {
+	th := in.theme
+	if in.preAntes != "" {
+		th.DrawText(view, in.preAntes, image.Pt(textX, baseline), th.Text)
+	}
+	compX := textX + in.cursorX
+	th.DrawText(view, in.preText, image.Pt(compX, baseline), th.Text)
+	if in.preDepois != "" {
+		th.DrawText(view, in.preDepois, image.Pt(compX+in.preW, baseline), th.Text)
+	}
+
+	y := baseline + th.Px(2)
+	esp := th.BorderPx()
+	if len(in.preBlockX) < 2 {
+		render.FillRect(view, image.Rect(compX, y, compX+in.preW, y+esp), th.Text)
+		return
+	}
+	for i := 0; i+1 < len(in.preBlockX); i++ {
+		x0 := compX + in.preBlockX[i]
+		x1 := compX + in.preBlockX[i+1]
+		if i+2 < len(in.preBlockX) && x1 > x0+1 {
+			x1-- // vão entre blocos
+		}
+		alt, cor := esp, th.Text
+		if i == in.preFocused {
+			alt, cor = 2*esp, th.Accent
+		}
+		render.FillRect(view, image.Rect(x0, y, x1, y+alt), cor)
+	}
 }

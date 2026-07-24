@@ -147,6 +147,27 @@ type FocusEvent struct {
 
 func (FocusEvent) isEvent() {}
 
+// PreeditEvent é o estado corrente da PRÉ-EDIÇÃO de um IME: o texto em
+// composição (japonês, chinês, coreano…) ainda NÃO confirmado, desenhado
+// pelo widget de edição no cursor, sublinhado, sem entrar no conteúdo. O
+// texto confirmado chega depois pelos CharEvent normais, e uma nova
+// PreeditEvent (com o restante da composição, ou vazia) encerra o quadro.
+// Roteado por foco. A forma segue a API de IME proposta para o GLFW, para
+// o encaixe da camada de plataforma ser direto (ver docs/IME.md).
+type PreeditEvent struct {
+	// Text é o texto em composição; vazio encerra/cancela a composição.
+	Text string
+	// Caret é a posição do cursor DENTRO do texto em composição, em runes.
+	Caret int
+	// Blocks divide a composição em blocos (as cláusulas de conversão do
+	// japonês, por exemplo), como tamanhos em runes; vazio = bloco único.
+	Blocks []int
+	// FocusedBlock é o índice do bloco em conversão, destacado no desenho.
+	FocusedBlock int
+}
+
+func (PreeditEvent) isEvent() {}
+
 // ScrollEvent é a rolagem da roda do mouse ou do trackpad, roteada por
 // GEOMETRIA para o widget sob o cursor (propaga para cima se não consumida —
 // um container de rolagem no limite devolve false e deixa um ancestral

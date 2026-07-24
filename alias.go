@@ -61,6 +61,12 @@ type (
 	// DropTarget é implementado por widgets que aceitam soltar um arrasto
 	// (ver StartDrag).
 	DropTarget = widget.DropTarget
+	// PreeditEvent é o estado da pré-edição de um IME (composição de
+	// texto), roteado por foco.
+	PreeditEvent = event.PreeditEvent
+	// TextCaret é implementado por editores de texto: o retângulo do
+	// cursor, âncora da janela de candidatos do IME.
+	TextCaret = widget.TextCaret
 	// Table é a tabela de células de texto com cabeçalho fixo e seleção.
 	Table = widget.Table
 	// Grid distribui filhos em grade de N colunas (formulários alinhados).

@@ -281,6 +281,15 @@ func (h *Harness) Type(s string) {
 	}
 }
 
+// Preedit entrega ao widget focado uma pré-edição de IME: o texto em
+// composição, a posição do cursor dentro dele (em runes) e, opcionalmente,
+// os tamanhos dos blocos. Texto vazio encerra a composição; o commit é o
+// Type normal. Para controlar o bloco focado, use Session().Preedit com o
+// event.PreeditEvent completo.
+func (h *Harness) Preedit(text string, caret int, blocks ...int) {
+	h.session.Preedit(event.PreeditEvent{Text: text, Caret: caret, Blocks: blocks})
+}
+
 // Key pressiona uma tecla (com modificadores opcionais, combinados por OU).
 func (h *Harness) Key(k event.Key, mods ...event.Modifiers) {
 	var m event.Modifiers
