@@ -24,7 +24,7 @@ func TestPilhaDeOverlays(t *testing.T) {
 	th := h.Session().Theme()
 
 	h.Click(uitest.Text("Abrir"))
-	h.Layout() // painel centralizado
+	h.Layout()                 // painel centralizado
 	h.Click(uitest.Text("Um")) // gatilho do dropdown dentro do modal
 	if n := len(h.Session().Overlays()); n != 2 {
 		t.Fatalf("popup dentro do modal deveria EMPILHAR; camadas=%d", n)
