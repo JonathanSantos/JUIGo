@@ -237,6 +237,15 @@ type Theme struct {
 	// ToastDuration é quanto tempo um toast (aviso transitório) fica na
 	// tela antes de sumir sozinho.
 	ToastDuration time.Duration
+	// ScrollAxisLock é a janela da TRAVA DE EIXO dos gestos de rolagem 2D:
+	// no trackpad o dedo raramente anda reto, então o gesto segue no eixo
+	// dominante do seu início enquanto os eventos continuarem chegando
+	// dentro desta janela (uma dominância forte do outro eixo retrava na
+	// hora). Zero desliga a trava.
+	ScrollAxisLock time.Duration
+	// DoubleClick é a janela do duplo clique (selecionar a palavra nos
+	// campos de texto). Zero desliga.
+	DoubleClick time.Duration
 	// TextAreaMinLines é a altura preferida da TextArea, em linhas.
 	TextAreaMinLines int
 	// SpinnerStep é o intervalo entre quadros do indicador de loading.
@@ -333,6 +342,8 @@ func Default() (*Theme, error) {
 		CaretBlink:       530 * time.Millisecond,
 		TooltipDelay:     600 * time.Millisecond,
 		ToastDuration:    2500 * time.Millisecond,
+		ScrollAxisLock:   150 * time.Millisecond,
+		DoubleClick:      400 * time.Millisecond,
 		TextAreaMinLines: 4,
 		SpinnerStep:      250 * time.Millisecond,
 		Backdrop:         color.RGBA{A: 0x66},

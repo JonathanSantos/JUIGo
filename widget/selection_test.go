@@ -101,6 +101,7 @@ func TestInputClipboard(t *testing.T) {
 
 func TestInputSelecaoMouse(t *testing.T) {
 	th := newTestTheme(t)
+	th.DoubleClick = 0 // cliques sintéticos instantâneos: sem duplo clique
 	in := NewInput("")
 	in.SetTheme(th)
 	in.Layout(image.Rect(0, 0, 300, 32))

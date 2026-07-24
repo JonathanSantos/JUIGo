@@ -43,7 +43,8 @@ type Input struct {
 	// ponta ativa (a que se move com Shift).
 	cursor    int
 	anchor    int
-	selecting bool // arraste de seleção com o mouse em andamento
+	selecting bool        // arraste de seleção com o mouse em andamento
+	dbl       doubleClick // duplo clique seleciona a palavra
 	focused   bool
 	bound     *state.State[string] // binding de duas vias (ver BindValue)
 
@@ -225,6 +226,12 @@ func (in *Input) HandleEvent(ev event.Event) bool {
 			if e.Button != event.MouseButtonLeft {
 				return false
 			}
+			// Duplo clique: seleciona a palavra sob o ponteiro.
+			if in.theme != nil && in.dbl.hit(e.Pos, in.theme.DoubleClick, in.theme.Px(4)) {
+				in.selectWordAt(in.runeIndexAt(e.Pos.X))
+				in.selecting = false
+				return true
+			}
 			// Posiciona o cursor no ponto clicado (via MeasureString, a
 			// única fonte de verdade de largura) e inicia a seleção por
 			// arraste — os event.MouseMove seguintes chegam pela captura do App.
@@ -343,6 +350,18 @@ func (in *Input) handleKey(e event.KeyEvent) bool {
 		return in.paste()
 	}
 	return false
+}
+
+// selectWordAt seleciona a corrida de caracteres sob o índice (o duplo
+// clique).
+func (in *Input) selectWordAt(idx int) {
+	if len(in.runes) == 0 {
+		return
+	}
+	start, end := wordRangeAt(in.runes, idx)
+	in.anchor, in.cursor = start, end
+	in.sync()
+	in.Invalidate()
 }
 
 // moveCursor move o cursor para pos (limitado ao texto). Com extend, a

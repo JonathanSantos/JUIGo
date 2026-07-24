@@ -2,6 +2,7 @@ package uitest_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/JonathanSantos/JUIGo"
 	"github.com/JonathanSantos/JUIGo/form"
@@ -53,7 +54,9 @@ func TestFormularioNaInterface(t *testing.T) {
 		t.Fatalf("após blur, erro do nome = %q", erroNome.Text())
 	}
 
-	// Corrige o nome: o erro exibido limpa ao vivo enquanto digita.
+	// Corrige o nome: o erro exibido limpa ao vivo enquanto digita. (O
+	// relógio avança para o novo clique não virar duplo clique.)
+	h.Advance(time.Second)
 	h.Click(uitest.Placeholder("Nome"))
 	h.Type("o!") // "ção!" ≥ 3 runes
 	if erroNome.Text() != "" {
@@ -61,6 +64,7 @@ func TestFormularioNaInterface(t *testing.T) {
 	}
 
 	// E-mail inválido: preenche, o botão segue desabilitado.
+	h.Advance(time.Second)
 	h.Click(uitest.Placeholder("E-mail"))
 	h.Type("jon@exemplo")
 	if !salvar.Disabled() {

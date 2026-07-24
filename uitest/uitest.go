@@ -264,6 +264,20 @@ func (h *Harness) RightClick(sel Selector) {
 	h.RightClickAt(center(h.mustFind(sel).Bounds()))
 }
 
+// DoubleClick dá dois cliques rápidos no centro do widget selecionado —
+// dentro da janela de duplo clique do tema (o relógio virtual não avança
+// entre eles). Nos campos de texto, seleciona a palavra.
+func (h *Harness) DoubleClick(sel Selector) {
+	h.t.Helper()
+	h.DoubleClickAt(center(h.mustFind(sel).Bounds()))
+}
+
+// DoubleClickAt dá dois cliques rápidos na posição dada.
+func (h *Harness) DoubleClickAt(pos image.Point) {
+	h.ClickAt(pos)
+	h.ClickAt(pos)
+}
+
 // Drag pressiona em from, arrasta (com captura, como no App real) e solta em
 // to.
 func (h *Harness) Drag(from, to image.Point) {

@@ -34,6 +34,8 @@ type Scroll struct {
 	horizontal bool
 	offsetX    int
 	accumX     float64
+	// axis trava cada gesto de trackpad no eixo dominante (rolagem 2D).
+	axis axisLock
 }
 
 // NewScroll cria um Scroll para o filho dado. O tema é herdado no mount.
@@ -133,12 +135,18 @@ func (s *Scroll) HandleEvent(ev event.Event) bool {
 	}
 	passo := float64(s.theme.Px(s.theme.ScrollStep))
 
+	// Trava de eixo do trackpad: só quando os dois eixos rolam.
+	dxIn, dyIn := e.DX, e.DY
+	if s.horizontal {
+		dxIn, dyIn = s.axis.filter(dxIn, dyIn, s.theme.ScrollAxisLock)
+	}
+
 	// Eixo vertical.
 	consumiu := false
 	if max := s.child.Bounds().Dy() - s.Bounds().Dy(); max > 0 {
 		// Acumula deltas fracionários (trackpad) até renderem pixels
 		// inteiros.
-		delta := e.DY*passo + s.accum
+		delta := dyIn*passo + s.accum
 		step := int(delta)
 		s.accum = delta - float64(step)
 		novo := s.offset - step
@@ -155,7 +163,7 @@ func (s *Scroll) HandleEvent(ev event.Event) bool {
 		case step != 0:
 			// Já estava no limite nesta direção: propaga para o ancestral.
 			s.accum = 0
-		case e.DY != 0:
+		case dyIn != 0:
 			consumiu = true // delta minúsculo: aguardando acumular
 		}
 	}
@@ -163,7 +171,7 @@ func (s *Scroll) HandleEvent(ev event.Event) bool {
 	// Eixo horizontal (quando habilitado).
 	if s.horizontal {
 		if max := s.child.Bounds().Dx() - s.Bounds().Dx(); max > 0 {
-			delta := e.DX*passo + s.accumX
+			delta := dxIn*passo + s.accumX
 			step := int(delta)
 			s.accumX = delta - float64(step)
 			novo := s.offsetX - step
@@ -179,7 +187,7 @@ func (s *Scroll) HandleEvent(ev event.Event) bool {
 				consumiu = true
 			case step != 0:
 				s.accumX = 0
-			case e.DX != 0:
+			case dxIn != 0:
 				consumiu = true
 			}
 		}

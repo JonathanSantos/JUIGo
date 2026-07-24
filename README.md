@@ -24,7 +24,8 @@ própria lib — [`go run ./docs/gerar`](docs/gerar/main.go).*
 
 ## Por que JUIGo
 
-- **20+ widgets** — Text, Button, Input (seleção/clipboard/filtro), TextArea
+- **20+ widgets** — Text, Button, Input (seleção — inclusive palavra por
+  duplo clique —, clipboard, filtro), TextArea
   com soft wrap, CodeEditor (fonte mono, gutter, tabs, undo coalescido,
   linhas virtualizadas e highlight de sintaxe INCREMENTAL — lexers Go/JSON
   em `juigo/syntax`, contrato aberto para os seus), Checkbox, Radio,

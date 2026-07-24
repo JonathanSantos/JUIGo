@@ -53,6 +53,8 @@ type CodeEditor struct {
 	goalX            int
 	scrollX, scrollY int
 	accumX, accumY   float64
+	axis             axisLock
+	dbl              doubleClick
 
 	// wrap liga a quebra visual de linhas (ver WrapLines); wrapW é a
 	// largura usada no último cálculo, wrapGen a versão do buffer coberta
@@ -659,6 +661,11 @@ func (c *CodeEditor) HandleEvent(ev event.Event) bool {
 			if e.Button != event.MouseButtonLeft {
 				return false
 			}
+			if c.theme != nil && c.dbl.hit(e.Pos, c.theme.DoubleClick, c.theme.Px(4)) {
+				c.selectWordAt(c.posAt(e.Pos))
+				c.selecting = false
+				return true
+			}
 			c.selecting = true
 			c.goalX = -1
 			c.moveTo(c.posAt(e.Pos), false)
@@ -769,6 +776,23 @@ func (c *CodeEditor) handleKey(e event.KeyEvent) bool {
 	return false
 }
 
+// selectWordAt seleciona a corrida de caracteres sob a posição (o duplo
+// clique).
+func (c *CodeEditor) selectWordAt(p textPos) {
+	runes := c.buf.lines[p.Line].runes
+	if len(runes) == 0 {
+		return
+	}
+	start, end := wordRangeAt(runes, p.Col)
+	c.anchor = textPos{p.Line, start}
+	c.cursor = textPos{p.Line, end}
+	c.goalX = -1
+	c.buf.breakGroup()
+	c.restartBlink()
+	c.updateBrackets()
+	c.Invalidate()
+}
+
 // prevPos devolve a posição imediatamente anterior (atravessando linhas).
 func (c *CodeEditor) prevPos(p textPos) textPos {
 	if p.Col > 0 {
@@ -818,7 +842,13 @@ func (c *CodeEditor) handleScroll(e event.ScrollEvent) bool {
 	step := float64(c.theme.Px(c.theme.ScrollStep))
 	moved := false
 
-	c.accumY += e.DY * step
+	// Trava de eixo do trackpad: só quando os dois eixos rolam.
+	dxIn, dyIn := e.DX, e.DY
+	if !c.wrap {
+		dxIn, dyIn = c.axis.filter(dxIn, dyIn, c.theme.ScrollAxisLock)
+	}
+
+	c.accumY += dyIn * step
 	dy := int(c.accumY)
 	c.accumY -= float64(dy)
 	if dy != 0 {
@@ -839,7 +869,7 @@ func (c *CodeEditor) handleScroll(e event.ScrollEvent) bool {
 		}
 	}
 
-	c.accumX += e.DX * step
+	c.accumX += dxIn * step
 	dx := int(c.accumX)
 	c.accumX -= float64(dx)
 	if dx != 0 && !c.wrap {

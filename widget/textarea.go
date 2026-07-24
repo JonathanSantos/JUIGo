@@ -43,6 +43,7 @@ type TextArea struct {
 	cursor    int
 	anchor    int
 	selecting bool
+	dbl       doubleClick // duplo clique seleciona a palavra
 	focused   bool
 	bound     *state.State[string]
 
@@ -466,6 +467,12 @@ func (t *TextArea) HandleEvent(ev event.Event) bool {
 			if e.Button != event.MouseButtonLeft {
 				return false
 			}
+			// Duplo clique: seleciona a palavra sob o ponteiro.
+			if t.theme != nil && t.dbl.hit(e.Pos, t.theme.DoubleClick, t.theme.Px(4)) {
+				t.selectWordAt(t.indexAt(e.Pos))
+				t.selecting = false
+				return true
+			}
 			t.selecting = true
 			t.goalX = -1
 			t.moveCursor(t.indexAt(e.Pos), false)
@@ -625,6 +632,19 @@ func (t *TextArea) handleKey(e event.KeyEvent) bool {
 		return t.paste()
 	}
 	return false
+}
+
+// selectWordAt seleciona a corrida de caracteres sob o índice (o duplo
+// clique).
+func (t *TextArea) selectWordAt(idx int) {
+	if len(t.runes) == 0 {
+		return
+	}
+	start, end := wordRangeAt(t.runes, idx)
+	t.anchor, t.cursor = start, end
+	t.goalX = -1
+	t.sync()
+	t.Invalidate()
 }
 
 // moveCursor move o cursor (limitado ao texto); com extend mantém a âncora.
