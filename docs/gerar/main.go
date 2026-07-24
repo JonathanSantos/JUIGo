@@ -18,6 +18,7 @@ import (
 	"github.com/JonathanSantos/JUIGo/examples/todo/ui"
 	"github.com/JonathanSantos/JUIGo/offscreen"
 	"github.com/JonathanSantos/JUIGo/quick"
+	"github.com/JonathanSantos/JUIGo/syntax"
 )
 
 // vitrine monta a árvore de apresentação com os widgets principais.
@@ -110,11 +111,11 @@ func agenda() juigo.Widget {
 	return v.Raiz
 }
 
-// editor monta o CodeEditor com um trecho de Go em cena.
+// editor monta o CodeEditor com um trecho de Go destacado em cena.
 func editor() juigo.Widget {
-	ed := juigo.NewCodeEditor()
-	ed.SetText("package main\n\nimport \"fmt\"\n\nfunc main() {\n\tnome := \"JUIGo\"\n\tfor i := 0; i < 3; i++ {\n\t\tfmt.Printf(\"olá, %s! (%d)\\n\", nome, i)\n\t}\n}")
-	ed.SetCursor(6, 5)
+	ed := juigo.NewCodeEditor().Highlight(syntax.Go())
+	ed.SetText("package main\n\nimport \"fmt\"\n\n// saúda n vezes\nfunc main() {\n\tnome := \"JUIGo\"\n\tfor i := 0; i < 3; i++ {\n\t\tfmt.Printf(\"olá, %s! (%d)\\n\", nome, i)\n\t}\n}")
+	ed.SetCursor(7, 5)
 	return juigo.NewVBox(juigo.Grow(ed, 1)).Pad(10)
 }
 

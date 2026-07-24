@@ -70,6 +70,16 @@ type (
 	// CodeEditor é o editor de texto para código: fonte mono, gutter,
 	// tabs, undo coalescido e rolagem virtualizada.
 	CodeEditor = widget.CodeEditor
+	// Highlighter colore uma linha de código por vez, com estado entre
+	// linhas (lexers prontos em juigo/syntax).
+	Highlighter = widget.Highlighter
+	// HighlightSpan é um trecho contíguo de linha com a mesma classe.
+	HighlightSpan = widget.HighlightSpan
+	// HighlightState é o estado do lexer carregado entre linhas.
+	HighlightState = widget.HighlightState
+	// SyntaxStyle é a classe léxica de um trecho (a cor vem de
+	// Theme.Syntax).
+	SyntaxStyle = widget.SyntaxStyle
 	// Table é a tabela de células de texto com cabeçalho fixo e seleção.
 	Table = widget.Table
 	// Grid distribui filhos em grade de N colunas (formulários alinhados).
@@ -171,6 +181,14 @@ const (
 	KeyV         = event.KeyV
 	KeyX         = event.KeyX
 	KeyZ         = event.KeyZ
+
+	// Classes léxicas do highlight (ver SyntaxStyle).
+	SyntaxText    = widget.SyntaxText
+	SyntaxKeyword = widget.SyntaxKeyword
+	SyntaxString  = widget.SyntaxString
+	SyntaxNumber  = widget.SyntaxNumber
+	SyntaxComment = widget.SyntaxComment
+	SyntaxBuiltin = widget.SyntaxBuiltin
 
 	ModShift   = event.ModShift
 	ModControl = event.ModControl

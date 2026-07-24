@@ -11,8 +11,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/syntax"
 )
 
 const amostra = `package main
@@ -40,6 +42,13 @@ func main() {
 	}
 
 	editor := juigo.NewCodeEditor()
+	// Highlighter pela extensão: Go por padrão (a amostra é Go).
+	switch strings.ToLower(filepath.Ext(titulo)) {
+	case ".json":
+		editor.Highlight(syntax.JSON())
+	default:
+		editor.Highlight(syntax.Go())
+	}
 	editor.SetText(conteudo)
 
 	status := juigo.NewState("")
