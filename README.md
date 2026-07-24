@@ -33,6 +33,10 @@ própria lib — [`go run ./docs/gerar`](docs/gerar/main.go).*
   Tooltip, Grid, List virtualizada e Table com cabeçalho fixo — ambas com
   seleção como State e reordenação por arrasto (`OnReorder`, com indicador
   de inserção).
+- **Navegação entre telas** — `Navigator` com pilha de telas
+  (`Push`/`Pop`/`Replace`/`PopToRoot`) e transições animadas prontas:
+  deslizar nas quatro direções e fade, com o `Pop` revertendo a transição
+  de entrada sozinho; telas dormentes preservam o estado.
 - **Reatividade tipada** — `State[T]` + `Map`/`Combine`, bindings de duas
   vias (`BindValue`, `BindChecked`, `BindSelected`, `BindDisabled`,
   `BindInvalid`) e tudo declarável inline, sem variáveis temporárias.
@@ -160,6 +164,30 @@ chamada. E a regra da rampa: tudo aceita e devolve widgets comuns — quando o
 padrão pronto não servir, desça um nível naquele ponto sem reescrever a
 tela.
 
+## Navegação entre telas
+
+![Navegação em pleno deslize](docs/navegacao.png)
+
+```go
+nav := juigo.NewNavigator()
+nav.Push(telaInicial(nav))
+juigo.Run("App", 800, 600, nav)
+
+// nos botões das telas:
+nav.Push(telaDetalhes(nav))                       // desliza da direita
+nav.Push(telaAjuda(nav), juigo.TransitionSlideUp) // sobe como uma folha
+nav.Pop()                                         // reverte a transição de entrada
+```
+
+O `Navigator` é um widget comum: sirva-o de raiz, aninhe-o numa aba, o que
+for. Só a tela do topo participa de eventos e foco; as demais dormem na
+pilha com o estado intacto (rolagem, campos preenchidos). A transição vai
+por chamada (argumento opcional) ou como padrão (`nav.Transition(…)`), a
+duração vem do tema (`Theme.TransitionDuration`) e, durante a animação, as
+telas viram retratos — a interação é engolida até terminar. As animações
+correm nos timers da aplicação (`anim.Tween`): no `uitest`, `Advance`
+atravessa uma transição deterministicamente, quadro a quadro.
+
 ## Testando sua aplicação
 
 O `uitest` dirige o mesmo núcleo de interação do App real (roteamento,
@@ -205,6 +233,10 @@ flags de cada widget.
   esquerda, detalhe em abas (`Tabs`) com formulário validado e notas à
   direita; seleção preservada por identidade no filtro, menu de contexto no
   botão direito (`quick.Menu`), exclusão com confirmação e toasts.
+- **`go run ./examples/navegacao`** — navegação: três níveis de telas com
+  transições (deslizar, fade, subir), botão Voltar por composição,
+  `PopToRoot` no "Concluir", troca da transição padrão em runtime e estado
+  preservado nas telas dormentes.
 - **`go run ./examples/kanban`** — drag-and-drop: cartões arrastados entre
   colunas com fantasma e realce do alvo, cancelamento no Escape e a UI
   reconstruída da projeção do modelo.
