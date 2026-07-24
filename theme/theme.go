@@ -22,6 +22,92 @@ import (
 //go:embed assets/GoRegular.ttf
 var embeddedFontTTF []byte
 
+// Fira Code (https://github.com/tonsky/FiraCode), licença SIL OFL 1.1
+// (theme/assets/FiraCode-OFL.txt) — alternativa embutida de fonte mono
+// para o CodeEditor (ver FiraCode e UseMonoFont). Sem shaping, as
+// ligaduras não se formam: os glifos saem um a um.
+//
+//go:embed assets/FiraCode-Regular.ttf
+var firaCodeTTF []byte
+
+// firaCode é o parse único da Fira Code (single-threaded por contrato).
+var firaCode *opentype.Font
+
+// FiraCode devolve a fonte Fira Code embutida, interpretada uma única vez —
+// troque a mono do tema com UseMonoFont(theme.FiraCode()).
+func FiraCode() (*opentype.Font, error) {
+	if firaCode != nil {
+		return firaCode, nil
+	}
+	f, err := opentype.Parse(firaCodeTTF)
+	if err != nil {
+		return nil, fmt.Errorf("juigo: falha ao interpretar a Fira Code embutida: %w", err)
+	}
+	firaCode = f
+	return f, nil
+}
+
+// MonoFont é uma fonte monoespaçada pronta para desenhar: face na escala
+// corrente, métricas e cache de glyphs próprio. O tema carrega a padrão
+// (Mono) e fabrica variações de tamanho (MonoSized) — cada CodeEditor pode
+// ter a sua.
+type MonoFont struct {
+	// Face é a face rasterizada; não guarde referências entre mudanças de
+	// escala.
+	Face font.Face
+
+	size       float64
+	ascent     int
+	lineHeight int
+	advance    int
+	cache      *render.GlyphCache
+}
+
+// newMonoFont rasteriza fnt no tamanho lógico dado × escala.
+func newMonoFont(fnt *opentype.Font, size, scale float64) (*MonoFont, error) {
+	face, err := opentype.NewFace(fnt, &opentype.FaceOptions{
+		Size:    size * scale,
+		DPI:     72,
+		Hinting: font.HintingFull,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("juigo: falha ao criar face mono (%.1fpt, escala %v): %w", size, scale, err)
+	}
+	m := face.Metrics()
+	return &MonoFont{
+		Face:       face,
+		size:       size,
+		ascent:     m.Ascent.Ceil(),
+		lineHeight: m.Height.Ceil(),
+		advance:    render.MeasureText(face, "0"),
+		cache:      render.NewGlyphCache(face),
+	}, nil
+}
+
+// Draw desenha s com esta fonte, baseline em dot — cache de glyphs, sem
+// alocação no caminho quente.
+func (m *MonoFont) Draw(dst *image.RGBA, s string, dot image.Point, c color.RGBA) {
+	m.cache.DrawString(dst, s, dot, c)
+}
+
+// Measure devolve a largura de s em pixels.
+func (m *MonoFont) Measure(s string) int {
+	return render.MeasureText(m.Face, s)
+}
+
+// LineHeight devolve a altura de linha em pixels.
+func (m *MonoFont) LineHeight() int { return m.lineHeight }
+
+// Ascent devolve o ascent em pixels.
+func (m *MonoFont) Ascent() int { return m.ascent }
+
+// Advance devolve a largura da célula em pixels — todo glifo coberto
+// avança isto (a base da conta coluna↔pixel).
+func (m *MonoFont) Advance() int { return m.advance }
+
+// Size devolve o tamanho lógico (pontos) desta variação.
+func (m *MonoFont) Size() float64 { return m.size }
+
 // Theme centraliza todas as cores, a fonte e os espaçamentos usados pelos
 // widgets. Nenhum widget deve ter cor ou tamanho hardcoded: tudo vem daqui.
 type Theme struct {
@@ -138,11 +224,8 @@ type Theme struct {
 	lineHeight int
 	cache      *render.GlyphCache
 
-	monoFnt        *opentype.Font
-	monoAscent     int
-	monoLineHeight int
-	monoAdvance    int
-	monoCache      *render.GlyphCache
+	monoFnt *opentype.Font
+	mono    *MonoFont
 }
 
 // SyntaxPalette são as cores das classes léxicas do highlight de código
@@ -259,20 +342,46 @@ func (t *Theme) SetScale(scale float64) error {
 	t.lineHeight = m.Height.Ceil()
 	t.cache = render.NewGlyphCache(face)
 
-	monoFace, err := opentype.NewFace(t.monoFnt, &opentype.FaceOptions{
-		Size:    t.FontSize * scale,
-		DPI:     72,
-		Hinting: font.HintingFull,
-	})
+	mono, err := newMonoFont(t.monoFnt, t.FontSize, scale)
 	if err != nil {
-		return fmt.Errorf("juigo: falha ao criar a face mono na escala %v: %w", scale, err)
+		return err
 	}
-	mm := monoFace.Metrics()
-	t.MonoFace = monoFace
-	t.monoAscent = mm.Ascent.Ceil()
-	t.monoLineHeight = mm.Height.Ceil()
-	t.monoAdvance = render.MeasureText(monoFace, "0")
-	t.monoCache = render.NewGlyphCache(monoFace)
+	t.mono = mono
+	t.MonoFace = mono.Face
+	return nil
+}
+
+// Mono devolve a fonte mono padrão do tema (tamanho FontSize, na escala
+// corrente).
+func (t *Theme) Mono() *MonoFont {
+	return t.mono
+}
+
+// MonoSized fabrica uma variação da fonte mono no tamanho LÓGICO dado
+// (pontos), na escala corrente — cada CodeEditor pode ter o próprio
+// tamanho. A variação vale até a próxima mudança de escala ou de fonte
+// mono (detectável por Theme.MonoFace).
+func (t *Theme) MonoSized(size float64) (*MonoFont, error) {
+	if size <= 0 {
+		return t.mono, nil
+	}
+	return newMonoFont(t.monoFnt, size, t.scale)
+}
+
+// UseMonoFont troca a FONTE mono do tema (ex.: theme.FiraCode()) e refaz a
+// face padrão na escala corrente; editores percebem pelo MonoFace no
+// próximo frame. A fonte regular dos demais widgets não muda.
+func (t *Theme) UseMonoFont(fnt *opentype.Font) error {
+	if fnt == nil || fnt == t.monoFnt {
+		return nil
+	}
+	mono, err := newMonoFont(fnt, t.FontSize, t.scale)
+	if err != nil {
+		return err
+	}
+	t.monoFnt = fnt
+	t.mono = mono
+	t.MonoFace = mono.Face
 	return nil
 }
 
@@ -344,33 +453,31 @@ func (t *Theme) MeasureString(s string) int {
 	return render.MeasureText(t.Face, s)
 }
 
-// DrawMono desenha s em dst com a fonte MONOESPAÇADA do tema, baseline em
-// dot e cor c, usando o cache de glyphs próprio da face mono — o caminho
-// quente de editores de código não aloca.
+// DrawMono desenha s com a fonte mono PADRÃO do tema (ver Mono/MonoFont).
 func (t *Theme) DrawMono(dst *image.RGBA, s string, dot image.Point, c color.RGBA) {
-	t.monoCache.DrawString(dst, s, dot, c)
+	t.mono.Draw(dst, s, dot, c)
 }
 
-// MeasureMono devolve a largura de s em pixels com a fonte mono do tema.
+// MeasureMono devolve a largura de s em pixels na fonte mono padrão.
 func (t *Theme) MeasureMono(s string) int {
-	return render.MeasureText(t.MonoFace, s)
+	return t.mono.Measure(s)
 }
 
-// MonoLineHeight devolve a altura de linha da fonte mono, em pixels.
+// MonoLineHeight devolve a altura de linha da fonte mono padrão.
 func (t *Theme) MonoLineHeight() int {
-	return t.monoLineHeight
+	return t.mono.LineHeight()
 }
 
-// MonoAscent devolve o ascent da fonte mono, em pixels.
+// MonoAscent devolve o ascent da fonte mono padrão.
 func (t *Theme) MonoAscent() int {
-	return t.monoAscent
+	return t.mono.Ascent()
 }
 
-// MonoAdvance devolve a largura da CÉLULA da fonte mono, em pixels — todo
+// MonoAdvance devolve a largura da CÉLULA da fonte mono padrão — todo
 // glifo coberto avança exatamente isso, o que torna a conta coluna↔pixel
 // aritmética pura (a base do CodeEditor).
 func (t *Theme) MonoAdvance() int {
-	return t.monoAdvance
+	return t.mono.Advance()
 }
 
 // LineHeight devolve a altura de uma linha de texto, em pixels.
