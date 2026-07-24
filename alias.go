@@ -108,6 +108,10 @@ type (
 // List é a lista virtualizada de linhas uniformes com pool reciclado.
 type List[W Widget] = widget.List[W]
 
+// Tree é a árvore virtualizada de nós expansíveis, com o modelo consultado
+// por callbacks sobre um ID comparável.
+type Tree[ID comparable, W Widget] = widget.Tree[ID, W]
+
 // History é o valor com pilhas de desfazer/refazer (ver state.History).
 type History[T any] = state.History[T]
 
@@ -282,6 +286,17 @@ func NewNavigator() *Navigator { return widget.NewNavigator() }
 // NewSplitPane cria um divisor lado a lado entre a (esquerda) e b (direita),
 // meio a meio (ver widget.SplitPane).
 func NewSplitPane(a, b Widget) *SplitPane { return widget.NewSplitPane(a, b) }
+
+// NewTree cria uma árvore virtualizada sobre o modelo dado por callbacks
+// (ver widget.Tree).
+func NewTree[ID comparable, W Widget](
+	roots func() []ID,
+	children func(ID) []ID,
+	criar func() W,
+	vincular func(row W, id ID),
+) *Tree[ID, W] {
+	return widget.NewTree(roots, children, criar, vincular)
+}
 
 // StartDrag inicia um arrasto com o payload e o rótulo do fantasma; chame
 // de um widget fonte durante uma captura de mouse (ver widget.StartDrag e
