@@ -110,6 +110,14 @@ func agenda() juigo.Widget {
 	return v.Raiz
 }
 
+// editor monta o CodeEditor com um trecho de Go em cena.
+func editor() juigo.Widget {
+	ed := juigo.NewCodeEditor()
+	ed.SetText("package main\n\nimport \"fmt\"\n\nfunc main() {\n\tnome := \"JUIGo\"\n\tfor i := 0; i < 3; i++ {\n\t\tfmt.Printf(\"olá, %s! (%d)\\n\", nome, i)\n\t}\n}")
+	ed.SetCursor(6, 5)
+	return juigo.NewVBox(juigo.Grow(ed, 1)).Pad(10)
+}
+
 // planilha monta o Cells do 7GUIs com fórmulas em cena.
 func planilha() juigo.Widget {
 	a := cells.New()
@@ -144,5 +152,6 @@ func main() {
 	salva("quick-form.png", formulario(), claro, 440, 440)
 	salva("todomvc.png", todomvc(), claro, 440, 400)
 	salva("contatos.png", agenda(), claro, 720, 420)
+	salva("editor.png", editor(), claro, 520, 300)
 	salva("cells.png", planilha(), claro, 620, 400)
 }

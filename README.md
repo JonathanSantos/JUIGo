@@ -25,10 +25,11 @@ própria lib — [`go run ./docs/gerar`](docs/gerar/main.go).*
 ## Por que JUIGo
 
 - **20+ widgets** — Text, Button, Input (seleção/clipboard/filtro), TextArea
-  com soft wrap, Checkbox, Radio, Slider, ProgressBar, Dropdown, Image,
-  Tabs, Modal, Popup ancorado, Tooltip, Grid, List virtualizada e Table com
-  cabeçalho fixo — ambas com seleção como State e reordenação por arrasto
-  (`OnReorder`, com indicador de inserção).
+  com soft wrap, CodeEditor (fonte mono, gutter, tabs, undo coalescido,
+  linhas virtualizadas), Checkbox, Radio, Slider, ProgressBar, Dropdown,
+  Image, Tabs, Modal, Popup ancorado, Tooltip, Grid, List virtualizada e
+  Table com cabeçalho fixo — ambas com seleção como State e reordenação por
+  arrasto (`OnReorder`, com indicador de inserção).
 - **Reatividade tipada** — `State[T]` + `Map`/`Combine`, bindings de duas
   vias (`BindValue`, `BindChecked`, `BindSelected`, `BindDisabled`,
   `BindInvalid`) e tudo declarável inline, sem variáveis temporárias.
@@ -207,6 +208,11 @@ flags de cada widget.
 - **`go run ./examples/janelas`** — multi-janela: `App.NewWindow`, tema por
   janela (uma escura ao lado de claras) e o MESMO `State` reagindo em todas
   ao mesmo tempo.
+- **`go run ./examples/editor [arquivo]`** — o CodeEditor: gutter numerado,
+  tabs literais por tab stop, seleção multilinha, undo/redo coalescido e
+  rolagem 2D virtualizada (highlight de sintaxe é a fase 2).
+
+![CodeEditor](docs/editor.png)
 
 ![Kanban em pleno arrasto](docs/kanban.png)
 
