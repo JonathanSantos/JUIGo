@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"golang.org/x/image/font"
+	"golang.org/x/image/font/gofont/gomono"
 	"golang.org/x/image/font/opentype"
 
 	"github.com/JonathanSantos/JUIGo/render"
@@ -69,6 +70,10 @@ type Theme struct {
 	// Face é a fonte já rasterizada na escala atual (ver SetScale). É
 	// reconstruída a cada mudança de escala; não guarde referências a ela.
 	Face font.Face
+	// MonoFace é a fonte MONOESPAÇADA do tema (Go Mono, do mesmo projeto da
+	// fonte regular), na escala corrente — editores de código medem e
+	// desenham por ela (DrawMono/MeasureMono). Reconstruída no SetScale.
+	MonoFace font.Face
 	// FontSize é o tamanho LÓGICO da fonte (independente de escala). A face
 	// é criada com FontSize × escala.
 	FontSize float64
@@ -128,6 +133,12 @@ type Theme struct {
 	ascent     int
 	lineHeight int
 	cache      *render.GlyphCache
+
+	monoFnt        *opentype.Font
+	monoAscent     int
+	monoLineHeight int
+	monoAdvance    int
+	monoCache      *render.GlyphCache
 }
 
 // Default constrói o tema padrão do JUIGo na escala 1, interpretando a
@@ -137,6 +148,11 @@ func Default() (*Theme, error) {
 	parsed, err := opentype.Parse(embeddedFontTTF)
 	if err != nil {
 		return nil, fmt.Errorf("juigo: falha ao interpretar a fonte embutida: %w", err)
+	}
+
+	mono, err := opentype.Parse(gomono.TTF)
+	if err != nil {
+		return nil, fmt.Errorf("juigo: falha ao interpretar a fonte mono embutida: %w", err)
 	}
 
 	t := &Theme{
@@ -183,7 +199,8 @@ func Default() (*Theme, error) {
 		Backdrop:         color.RGBA{A: 0x66},
 		DisabledWash:     color.RGBA{R: 0xF2, G: 0xF3, B: 0xF5, A: 0x99},
 
-		fnt: parsed,
+		fnt:     parsed,
+		monoFnt: mono,
 	}
 	if err := t.SetScale(1); err != nil {
 		return nil, err
@@ -214,6 +231,21 @@ func (t *Theme) SetScale(scale float64) error {
 	t.ascent = m.Ascent.Ceil()
 	t.lineHeight = m.Height.Ceil()
 	t.cache = render.NewGlyphCache(face)
+
+	monoFace, err := opentype.NewFace(t.monoFnt, &opentype.FaceOptions{
+		Size:    t.FontSize * scale,
+		DPI:     72,
+		Hinting: font.HintingFull,
+	})
+	if err != nil {
+		return fmt.Errorf("juigo: falha ao criar a face mono na escala %v: %w", scale, err)
+	}
+	mm := monoFace.Metrics()
+	t.MonoFace = monoFace
+	t.monoAscent = mm.Ascent.Ceil()
+	t.monoLineHeight = mm.Height.Ceil()
+	t.monoAdvance = render.MeasureText(monoFace, "0")
+	t.monoCache = render.NewGlyphCache(monoFace)
 	return nil
 }
 
@@ -283,6 +315,35 @@ func (t *Theme) DrawText(dst *image.RGBA, s string, dot image.Point, c color.RGB
 // cursor devem passar por aqui.
 func (t *Theme) MeasureString(s string) int {
 	return render.MeasureText(t.Face, s)
+}
+
+// DrawMono desenha s em dst com a fonte MONOESPAÇADA do tema, baseline em
+// dot e cor c, usando o cache de glyphs próprio da face mono — o caminho
+// quente de editores de código não aloca.
+func (t *Theme) DrawMono(dst *image.RGBA, s string, dot image.Point, c color.RGBA) {
+	t.monoCache.DrawString(dst, s, dot, c)
+}
+
+// MeasureMono devolve a largura de s em pixels com a fonte mono do tema.
+func (t *Theme) MeasureMono(s string) int {
+	return render.MeasureText(t.MonoFace, s)
+}
+
+// MonoLineHeight devolve a altura de linha da fonte mono, em pixels.
+func (t *Theme) MonoLineHeight() int {
+	return t.monoLineHeight
+}
+
+// MonoAscent devolve o ascent da fonte mono, em pixels.
+func (t *Theme) MonoAscent() int {
+	return t.monoAscent
+}
+
+// MonoAdvance devolve a largura da CÉLULA da fonte mono, em pixels — todo
+// glifo coberto avança exatamente isso, o que torna a conta coluna↔pixel
+// aritmética pura (a base do CodeEditor).
+func (t *Theme) MonoAdvance() int {
+	return t.monoAdvance
 }
 
 // LineHeight devolve a altura de uma linha de texto, em pixels.
