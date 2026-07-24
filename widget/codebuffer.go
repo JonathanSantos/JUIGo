@@ -223,6 +223,31 @@ func (b *codeBuffer) deleteRange(start, end textPos, kind editKind) {
 	b.record(editOp{insert: false, start: start, end: end, text: text}, kind, start)
 }
 
+// replace remove [start,end) e insere text no lugar como UM ÚNICO passo de
+// undo (digitar sobre uma seleção, colar sobre uma seleção). Devolve o fim
+// do texto inserido.
+func (b *codeBuffer) replace(start, end textPos, text string) textPos {
+	if end.before(start) {
+		start, end = end, start
+	}
+	b.redo = b.redo[:0]
+	var g editGroup
+	if start != end {
+		removed := b.deleteRaw(start, end)
+		g.ops = append(g.ops, editOp{insert: false, start: start, end: end, text: removed})
+	}
+	fim := start
+	if text != "" {
+		fim = b.insertRaw(start, text)
+		g.ops = append(g.ops, editOp{insert: true, start: start, end: fim, text: text})
+	}
+	if len(g.ops) > 0 {
+		b.undo = append(b.undo, g)
+	}
+	b.lastKind, b.lastPos = editOther, fim
+	return fim
+}
+
 // record registra a operação no undo, aderindo ao grupo aberto quando a
 // edição é do mesmo tipo e contígua (digitação corrida, Backspaces em
 // sequência); edições novas descartam o redo.

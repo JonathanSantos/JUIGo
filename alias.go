@@ -67,6 +67,9 @@ type (
 	// TextCaret é implementado por editores de texto: o retângulo do
 	// cursor, âncora da janela de candidatos do IME.
 	TextCaret = widget.TextCaret
+	// CodeEditor é o editor de texto para código: fonte mono, gutter,
+	// tabs, undo coalescido e rolagem virtualizada.
+	CodeEditor = widget.CodeEditor
 	// Table é a tabela de células de texto com cabeçalho fixo e seleção.
 	Table = widget.Table
 	// Grid distribui filhos em grade de N colunas (formulários alinhados).
@@ -167,6 +170,7 @@ const (
 	KeyC         = event.KeyC
 	KeyV         = event.KeyV
 	KeyX         = event.KeyX
+	KeyZ         = event.KeyZ
 
 	ModShift   = event.ModShift
 	ModControl = event.ModControl
@@ -221,6 +225,9 @@ func NewRadio(label, value string) *Radio { return widget.NewRadio(label, value)
 
 // NewTextArea cria um editor multilinha (ver widget.NewTextArea).
 func NewTextArea(placeholder string) *TextArea { return widget.NewTextArea(placeholder) }
+
+// NewCodeEditor cria um editor de código vazio (ver widget.CodeEditor).
+func NewCodeEditor() *CodeEditor { return widget.NewCodeEditor() }
 
 // NewModal cria um diálogo modal com o conteúdo dado; exiba com Show (ver
 // widget.NewModal).
