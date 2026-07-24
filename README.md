@@ -49,10 +49,11 @@ própria lib — [`go run ./docs/gerar`](docs/gerar/main.go).*
 
 ## Status
 
-Projeto de **estudo**, em evolução ativa: a API quebra sem cerimônia entre
-commits e não há releases versionados. Desenvolvido e verificado no macOS;
-Linux e Windows têm as dependências mapeadas abaixo, mas ainda não foram
-testados. Issues e correções são bem-vindas.
+Projeto de **estudo**, em evolução ativa. Versionado por tags `v0.x`
+(primeira: `v0.1.0`) — na série 0.x a API ainda quebra entre versões, sem
+janela de depreciação. Desenvolvido e verificado no macOS; Linux e Windows
+têm as dependências mapeadas abaixo, mas ainda não foram testados. Issues e
+correções são bem-vindas.
 
 ## Instalação
 
