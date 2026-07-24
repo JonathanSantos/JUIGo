@@ -61,10 +61,23 @@ func Claude() (*Theme, error) {
 
 	t.DisabledWash = color.RGBA{R: 0xFA, G: 0xF9, B: 0xF5, A: 0x99}
 
+	// Cartões brancos sobre o papel, com fio de manilla acinzentada.
+	t.Surface = color.RGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF}
+	t.SurfaceBorder = color.RGBA{R: 0xE6, G: 0xE2, B: 0xD6, A: 0xFF}
+
 	// Formas generosas e respiro maior que o Default: raio 10 e passo 10.
 	t.Radius = 10
 	t.Padding = 10
 	t.Spacing = 10
+
+	// Títulos na serif Lora — a voz tipográfica do papel e tinta.
+	lora, err := Lora()
+	if err != nil {
+		return nil, err
+	}
+	if err := t.UseDisplayFont(lora); err != nil {
+		return nil, err
+	}
 
 	return t, nil
 }
@@ -113,6 +126,9 @@ func ClaudeDark() (*Theme, error) {
 
 	t.Backdrop = color.RGBA{A: 0x99}
 	t.DisabledWash = color.RGBA{R: 0x26, G: 0x26, B: 0x24, A: 0x99}
+
+	t.Surface = color.RGBA{R: 0x30, G: 0x30, B: 0x2E, A: 0xFF}
+	t.SurfaceBorder = color.RGBA{R: 0x4C, G: 0x4A, B: 0x44, A: 0xFF}
 
 	return t, nil
 }

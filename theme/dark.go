@@ -45,5 +45,8 @@ func Dark() (*Theme, error) {
 	t.Backdrop = color.RGBA{A: 0x99}
 	t.DisabledWash = color.RGBA{R: 0x1E, G: 0x21, B: 0x26, A: 0x99}
 
+	t.Surface = color.RGBA{R: 0x26, G: 0x2A, B: 0x31, A: 0xFF}
+	t.SurfaceBorder = color.RGBA{R: 0x3D, G: 0x43, B: 0x4D, A: 0xFF}
+
 	return t, nil
 }

@@ -265,6 +265,19 @@ type Theme struct {
 	// desabilitados, esmaecendo-os em direção ao fundo.
 	DisabledWash color.RGBA
 
+	// Surface é o fundo de superfícies elevadas (Card); SurfaceBorder é o
+	// fio que as contorna (também o Divider).
+	Surface       color.RGBA
+	SurfaceBorder color.RGBA
+
+	// TitleSize, SubtitleSize e CaptionSize são os tamanhos LÓGICOS dos
+	// papéis tipográficos (ver Title/Subtitle/Caption e Text.Title). Título
+	// e subtítulo usam a fonte de DISPLAY (UseDisplayFont; Go Bold por
+	// padrão, Lora no tema Claude); a legenda usa a fonte do corpo.
+	TitleSize    float64
+	SubtitleSize float64
+	CaptionSize  float64
+
 	fnt        *opentype.Font
 	scale      float64
 	ascent     int
@@ -273,6 +286,11 @@ type Theme struct {
 
 	monoFnt *opentype.Font
 	mono    *MonoFont
+
+	displayFnt *opentype.Font
+	title      *TextFont
+	subtitle   *TextFont
+	caption    *TextFont
 }
 
 // SyntaxPalette são as cores das classes léxicas do highlight de código
@@ -335,7 +353,13 @@ func Default() (*Theme, error) {
 		},
 		CurrentLine: color.RGBA{R: 0xF2, G: 0xF5, B: 0xFA, A: 0xFF},
 
-		FontSize: 16,
+		Surface:       color.RGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF},
+		SurfaceBorder: color.RGBA{R: 0xDD, G: 0xE1, B: 0xE6, A: 0xFF},
+
+		FontSize:     16,
+		TitleSize:    24,
+		SubtitleSize: 19,
+		CaptionSize:  13,
 
 		Padding:              8,
 		Spacing:              8,
@@ -400,7 +424,7 @@ func (t *Theme) SetScale(scale float64) error {
 	}
 	t.mono = mono
 	t.MonoFace = mono.Face
-	return nil
+	return t.buildRoles(scale)
 }
 
 // Mono devolve a fonte mono padrão do tema (tamanho FontSize, na escala
