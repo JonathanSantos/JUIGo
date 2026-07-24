@@ -27,9 +27,13 @@ type Vista struct {
 
 	metodo   *juigo.State[string]
 	filtro   *juigo.State[string]
+	inspect  *juigo.State[bool]
 	sel      *juigo.State[int]
 	selID    int
 	visiveis []*proxy.Exchange
+	// exportCA é o callback de "Exportar CA…" (o main faz o I/O e avisa o
+	// caminho); nil esconde o botão.
+	exportCA func()
 
 	tabela   *juigo.Table
 	abas     *juigo.Tabs
@@ -46,13 +50,14 @@ type Vista struct {
 // de outras goroutines e precisa saltar para a main thread).
 func New(prox *proxy.Proxy, post func(func())) *Vista {
 	v := &Vista{
-		prox:   prox,
-		post:   post,
-		metodo: juigo.NewState("Todos"),
-		filtro: juigo.NewState(""),
-		sel:    juigo.NewState(-1),
-		selID:  -1,
-		status: juigo.NewState("parado"),
+		prox:    prox,
+		post:    post,
+		metodo:  juigo.NewState("Todos"),
+		filtro:  juigo.NewState(""),
+		inspect: juigo.NewState(false),
+		sel:     juigo.NewState(-1),
+		selID:   -1,
+		status:  juigo.NewState("parado"),
 	}
 
 	// Mestre: filtros + tabela de trocas.
@@ -63,6 +68,23 @@ func New(prox *proxy.Proxy, post func(func())) *Vista {
 	v.filtro.Watch(func(string) { v.reprojeta() })
 	limpar := juigo.NewButton("Limpar", func() {
 		prox.Store.Clear()
+	}).Pad(4)
+
+	// Interceptação de HTTPS (MITM): liga a inspeção e lembra de instalar a
+	// CA. Sem a CA instalada, o HTTPS daria erro de certificado.
+	inspecionar := juigo.NewCheckbox("Inspecionar HTTPS").BindChecked(v.inspect)
+	v.inspect.Watch(func(on bool) {
+		prox.SetInspect(on)
+		if on {
+			quick.Toast("Inspeção de HTTPS ligada — instale a CA (Exportar CA…) para não dar erro de certificado")
+		}
+	})
+	exportarCA := juigo.NewButton("Exportar CA…", func() {
+		if v.exportCA != nil {
+			v.exportCA()
+		} else {
+			quick.Toast("Sem CA configurada nesta execução")
+		}
 	}).Pad(4)
 
 	v.tabela = juigo.NewTable([]string{"Método", "Status", "Tipo", "URL"}, 0, v.celula).
@@ -101,6 +123,8 @@ func New(prox *proxy.Proxy, post func(func())) *Vista {
 		juigo.NewHBox(
 			juigo.Centered(juigo.NewText("Status:")),
 			juigo.Centered(juigo.NewText("").BindText(v.status)),
+			juigo.Centered(inspecionar),
+			exportarCA,
 			juigo.NewSpacer(),
 			juigo.Centered(juigo.NewText("Método:")),
 			filtroMetodo,
@@ -124,6 +148,13 @@ func New(prox *proxy.Proxy, post func(func())) *Vista {
 // SetStatus atualiza o texto de status (main thread).
 func (v *Vista) SetStatus(s string) {
 	v.status.Set(s)
+}
+
+// OnExportCA registra o callback do botão "Exportar CA…" (o main faz o I/O
+// e avisa o caminho). Encadeável.
+func (v *Vista) OnExportCA(fn func()) *Vista {
+	v.exportCA = fn
+	return v
 }
 
 // SelectFirst seleciona a primeira troca visível, se houver — atalho para

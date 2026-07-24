@@ -215,11 +215,17 @@ flags de cada widget.
   depuração HTTP local que captura as trocas que passam por ele, filtra por
   método/URL, mostra requisição e resposta em visores `CodeEditor` em modo
   `ReadOnly` (com highlight JSON) e permite SIMULAR respostas de chamadas
-  específicas (mocks). HTTP é inspecionado; HTTPS passa por túnel (não
-  inspecionado). Aponte um cliente para o proxy:
-  `HTTP_PROXY=http://localhost:8080 curl http://httpbin.org/get`.
+  específicas (mocks). Inspeciona **HTTP e também HTTPS** (via uma CA local
+  gerada — MITM, a mesma técnica do mitmproxy/Charles): ligue "Inspecionar
+  HTTPS", exporte a CA e instale-a na sua trust store. Aponte um cliente
+  para o proxy:
+  `HTTPS_PROXY=http://localhost:8080 curl https://httpbin.org/get`.
 
-  ![Mini-proxy: captura, visor ReadOnly e mocks](docs/proxy.png)
+  > **Segurança:** a CA nasce e vive só na sua máquina (chave `0600`),
+  > nunca deve ser compartilhada, e a inspeção só se justifica para depurar
+  > o **seu próprio** tráfego. Cert pinning continua rejeitando o proxy.
+
+  ![Mini-proxy: captura HTTP/HTTPS, visor ReadOnly e mocks](docs/proxy.png)
 
 - **`go run ./examples/editor [arquivo]`** — o CodeEditor: highlight de
   sintaxe incremental (Go/JSON pela extensão; abrir um `/*` re-lexa só até
