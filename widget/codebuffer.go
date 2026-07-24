@@ -41,14 +41,20 @@ type editGroup struct {
 }
 
 // codeLine é uma linha do buffer com os caches dela: a string (para
-// desenhar e medir sem alocar por frame) e a largura em pixels, mantida
-// pelo widget (widthOK falso = recalcular).
+// desenhar e medir sem alocar por frame), a largura em pixels e o
+// highlight (spans + estados de entrada/saída do lexer), mantidos pelo
+// widget (flags *OK falsas = recalcular).
 type codeLine struct {
 	runes   []rune
 	text    string
 	textOK  bool
 	width   int
 	widthOK bool
+
+	spans    []HighlightSpan
+	stateIn  HighlightState
+	stateOut HighlightState
+	hlOK     bool
 }
 
 // codeBuffer é o modelo de texto do CodeEditor: linhas separadas (edições
@@ -137,10 +143,11 @@ func (b *codeBuffer) clamp(p textPos) textPos {
 	return p
 }
 
-// dirty invalida os caches da linha i.
+// dirty invalida os caches da linha i (texto, largura e highlight).
 func (b *codeBuffer) dirty(i int) {
 	b.lines[i].textOK = false
 	b.lines[i].widthOK = false
+	b.lines[i].hlOK = false
 }
 
 // insertRaw insere text (pode conter '\n') em pos, sem registrar undo.
@@ -279,10 +286,23 @@ func (b *codeBuffer) breakGroup() {
 	b.lastKind = editOther
 }
 
-// undoStep desfaz o último grupo e devolve a posição do cursor resultante.
-func (b *codeBuffer) undoStep() (textPos, bool) {
+// minLine devolve a menor linha tocada pelas operações do grupo — de onde
+// o highlight precisa re-lexar.
+func (g editGroup) minLine() int {
+	min := 0
+	for i, op := range g.ops {
+		if i == 0 || op.start.Line < min {
+			min = op.start.Line
+		}
+	}
+	return min
+}
+
+// undoStep desfaz o último grupo; devolve o cursor resultante e a menor
+// linha afetada.
+func (b *codeBuffer) undoStep() (textPos, int, bool) {
 	if len(b.undo) == 0 {
-		return textPos{}, false
+		return textPos{}, 0, false
 	}
 	g := b.undo[len(b.undo)-1]
 	b.undo = b.undo[:len(b.undo)-1]
@@ -299,13 +319,14 @@ func (b *codeBuffer) undoStep() (textPos, bool) {
 	}
 	b.redo = append(b.redo, g)
 	b.lastKind = editOther
-	return caret, true
+	return caret, g.minLine(), true
 }
 
-// redoStep refaz o último grupo desfeito e devolve o cursor resultante.
-func (b *codeBuffer) redoStep() (textPos, bool) {
+// redoStep refaz o último grupo desfeito; devolve o cursor resultante e a
+// menor linha afetada.
+func (b *codeBuffer) redoStep() (textPos, int, bool) {
 	if len(b.redo) == 0 {
-		return textPos{}, false
+		return textPos{}, 0, false
 	}
 	g := b.redo[len(b.redo)-1]
 	b.redo = b.redo[:len(b.redo)-1]
@@ -321,7 +342,7 @@ func (b *codeBuffer) redoStep() (textPos, bool) {
 	}
 	b.undo = append(b.undo, g)
 	b.lastKind = editOther
-	return caret, true
+	return caret, g.minLine(), true
 }
 
 // textRange devolve o conteúdo do intervalo [start,end) com '\n' — a base

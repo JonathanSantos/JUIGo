@@ -32,6 +32,15 @@ func Dark() (*Theme, error) {
 	// Vermelho mais claro para contraste no escuro.
 	t.Danger = color.RGBA{R: 0xF8, G: 0x71, B: 0x71, A: 0xFF}
 
+	// Paleta de sintaxe reequilibrada para superfícies escuras.
+	t.Syntax = SyntaxPalette{
+		Keyword: color.RGBA{R: 0xFF, G: 0x7B, B: 0x72, A: 0xFF},
+		String:  color.RGBA{R: 0xA5, G: 0xD6, B: 0xFF, A: 0xFF},
+		Number:  color.RGBA{R: 0x79, G: 0xC0, B: 0xFF, A: 0xFF},
+		Comment: color.RGBA{R: 0x8B, G: 0x94, B: 0x9E, A: 0xFF},
+		Builtin: color.RGBA{R: 0xFF, G: 0xA6, B: 0x57, A: 0xFF},
+	}
+
 	t.Backdrop = color.RGBA{A: 0x99}
 	t.DisabledWash = color.RGBA{R: 0x1E, G: 0x21, B: 0x26, A: 0x99}
 

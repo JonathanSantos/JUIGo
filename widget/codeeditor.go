@@ -2,6 +2,7 @@ package widget
 
 import (
 	"image"
+	"image/color"
 	"strconv"
 	"unicode/utf8"
 
@@ -33,6 +34,8 @@ type CodeEditor struct {
 	selecting bool
 	focused   bool
 	onChange  func()
+	// hl é o highlighter de sintaxe (ver Highlight); nil = texto comum.
+	hl Highlighter
 	// tabCols é a largura do tab em COLUNAS (células mono); ver TabWidth.
 	tabCols int
 
@@ -103,6 +106,7 @@ func (c *CodeEditor) SetText(s string) {
 	c.scrollX, c.scrollY = 0, 0
 	c.goalX = -1
 	c.maxDirty = true
+	c.relexFrom(0)
 	c.restartBlink()
 	c.Invalidate()
 }
@@ -125,23 +129,25 @@ func (c *CodeEditor) LineCount() int {
 
 // Undo desfaz o último passo de edição (grupo coalescido), se houver.
 func (c *CodeEditor) Undo() {
-	if caret, ok := c.buf.undoStep(); ok {
-		c.afterHistory(caret)
+	if caret, minLine, ok := c.buf.undoStep(); ok {
+		c.afterHistory(caret, minLine)
 	}
 }
 
 // Redo refaz o último passo desfeito, se houver.
 func (c *CodeEditor) Redo() {
-	if caret, ok := c.buf.redoStep(); ok {
-		c.afterHistory(caret)
+	if caret, minLine, ok := c.buf.redoStep(); ok {
+		c.afterHistory(caret, minLine)
 	}
 }
 
-// afterHistory conclui um undo/redo: cursor restaurado, tudo repintado.
-func (c *CodeEditor) afterHistory(caret textPos) {
+// afterHistory conclui um undo/redo: cursor restaurado, highlight re-lexado
+// da menor linha afetada, tudo repintado.
+func (c *CodeEditor) afterHistory(caret textPos, minLine int) {
 	c.cursor, c.anchor = caret, caret
 	c.goalX = -1
 	c.maxDirty = true
+	c.relexFrom(minLine)
 	c.restartBlink()
 	c.ensureVisible()
 	c.Invalidate()
@@ -423,6 +429,7 @@ func (c *CodeEditor) insertText(s string, kind editKind) {
 	if c.hasSelection() {
 		// Substituir a seleção é UM passo de undo (replace).
 		start, end := c.selectionRange()
+		line = start.Line
 		c.cursor = c.buf.replace(start, end, s)
 	} else {
 		c.cursor = c.buf.insert(c.cursor, s, kind)
@@ -431,16 +438,15 @@ func (c *CodeEditor) insertText(s string, kind editKind) {
 	c.goalX = -1
 	c.restartBlink()
 	if structural {
-		c.maxDirty = true
-		c.ensureVisible()
+		c.afterStructuralAt(line)
+		return
+	}
+	cascata := c.relexFrom(line) > line
+	c.noteWidth(line)
+	if cascata || c.ensureVisible() {
 		c.Invalidate()
 	} else {
-		c.noteWidth(line)
-		if c.ensureVisible() {
-			c.Invalidate()
-		} else {
-			c.damageLine(line)
-		}
+		c.damageLine(line)
 	}
 	c.emitChange()
 }
@@ -476,7 +482,7 @@ func (c *CodeEditor) deleteBack() bool {
 	start := textPos{pos.Line - 1, c.buf.lineLen(pos.Line - 1)}
 	c.buf.deleteRange(start, pos, editOther)
 	c.cursor, c.anchor = start, start
-	c.afterStructural()
+	c.afterStructuralAt(start.Line)
 	return true
 }
 
@@ -496,7 +502,7 @@ func (c *CodeEditor) deleteFwd() bool {
 		return false
 	}
 	c.buf.deleteRange(pos, textPos{pos.Line + 1, 0}, editOther)
-	c.afterStructural()
+	c.afterStructuralAt(pos.Line)
 	return true
 }
 
@@ -505,15 +511,17 @@ func (c *CodeEditor) removeSelection() {
 	start, end := c.selectionRange()
 	c.buf.deleteRange(start, end, editOther)
 	c.cursor, c.anchor = start, start
-	c.afterStructural()
+	c.afterStructuralAt(start.Line)
 }
 
-// afterLineEdit conclui uma edição dentro de uma única linha.
+// afterLineEdit conclui uma edição dentro de uma única linha: re-lexa (uma
+// cascata de highlight — abrir /* — repinta tudo) e danifica só a linha.
 func (c *CodeEditor) afterLineEdit(line int) {
 	c.goalX = -1
+	cascata := c.relexFrom(line) > line
 	c.noteWidth(line)
 	c.restartBlink()
-	if c.ensureVisible() {
+	if cascata || c.ensureVisible() {
 		c.Invalidate()
 	} else {
 		c.damageLine(line)
@@ -521,10 +529,12 @@ func (c *CodeEditor) afterLineEdit(line int) {
 	c.emitChange()
 }
 
-// afterStructural conclui uma edição que muda a contagem de linhas.
-func (c *CodeEditor) afterStructural() {
+// afterStructuralAt conclui uma edição que muda a contagem de linhas,
+// re-lexando a partir da primeira afetada.
+func (c *CodeEditor) afterStructuralAt(line int) {
 	c.goalX = -1
 	c.maxDirty = true
+	c.relexFrom(line)
 	c.restartBlink()
 	c.ensureVisible()
 	c.Invalidate()
@@ -843,7 +853,7 @@ func (c *CodeEditor) ensureNums(count int) {
 // X absoluto do deslocamento zero. Devolve o deslocamento final. O avanço é
 // a MESMA aritmética de células do xAt (runes × célula) — desenho, caret e
 // seleção nunca divergem. Não aloca: desenha fatias de s.
-func (c *CodeEditor) drawTabbed(view *image.RGBA, s string, xContent, screenX0, baseline int) int {
+func (c *CodeEditor) drawTabbed(view *image.RGBA, s string, xContent, screenX0, baseline int, cor color.RGBA) int {
 	th := c.theme
 	start := 0
 	for i := 0; i < len(s); i++ {
@@ -851,14 +861,14 @@ func (c *CodeEditor) drawTabbed(view *image.RGBA, s string, xContent, screenX0, 
 			continue
 		}
 		if i > start {
-			th.DrawMono(view, s[start:i], image.Pt(screenX0+xContent, baseline), th.Text)
+			th.DrawMono(view, s[start:i], image.Pt(screenX0+xContent, baseline), cor)
 			xContent += utf8.RuneCountInString(s[start:i]) * c.advance
 		}
 		xContent = (xContent/c.tabW() + 1) * c.tabW()
 		start = i + 1
 	}
 	if start < len(s) {
-		th.DrawMono(view, s[start:], image.Pt(screenX0+xContent, baseline), th.Text)
+		th.DrawMono(view, s[start:], image.Pt(screenX0+xContent, baseline), cor)
 		xContent += utf8.RuneCountInString(s[start:]) * c.advance
 	}
 	return xContent
@@ -950,12 +960,14 @@ func (c *CodeEditor) Draw(dst *image.RGBA) {
 		// Texto (com a composição inline na linha do cursor).
 		screenX0 := ta.Min.X - c.scrollX
 		if c.pre.active() && i == c.cursor.Line {
+			// Durante a composição a linha sai em texto comum: os spans
+			// não valem com o preedit intercalado (transitório).
 			x := c.drawTabbedPart(textView, c.preAntes, 0, screenX0, baseline)
 			th.DrawMono(textView, c.pre.text, image.Pt(screenX0+x, baseline), th.Text)
 			c.pre.drawUnderline(textView, th, screenX0+x, baseline+th.Px(2))
 			c.drawTabbedPart(textView, c.preDepois, x+c.pre.w, screenX0, baseline)
 		} else {
-			c.drawTabbed(textView, c.buf.lineText(i), 0, screenX0, baseline)
+			c.drawLine(textView, i, screenX0, baseline)
 		}
 	}
 
@@ -971,5 +983,5 @@ func (c *CodeEditor) drawTabbedPart(view *image.RGBA, s string, xContent, screen
 	if s == "" {
 		return xContent
 	}
-	return c.drawTabbed(view, s, xContent, screenX0, baseline)
+	return c.drawTabbed(view, s, xContent, screenX0, baseline, c.theme.Text)
 }

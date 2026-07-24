@@ -66,6 +66,8 @@ type Theme struct {
 	TooltipText       color.RGBA
 	// Danger é a cor de erros e ações destrutivas (mensagens de validação).
 	Danger color.RGBA
+	// Syntax é a paleta de highlight do CodeEditor (classes léxicas).
+	Syntax SyntaxPalette
 
 	// Face é a fonte já rasterizada na escala atual (ver SetScale). É
 	// reconstruída a cada mudança de escala; não guarde referências a ela.
@@ -141,6 +143,21 @@ type Theme struct {
 	monoCache      *render.GlyphCache
 }
 
+// SyntaxPalette são as cores das classes léxicas do highlight de código
+// (ver widget.SyntaxStyle); texto comum usa Theme.Text.
+type SyntaxPalette struct {
+	// Keyword colore palavras-chave da linguagem.
+	Keyword color.RGBA
+	// String colore literais de texto (incluindo runas e raw strings).
+	String color.RGBA
+	// Number colore literais numéricos.
+	Number color.RGBA
+	// Comment colore comentários.
+	Comment color.RGBA
+	// Builtin colore tipos e identificadores embutidos da linguagem.
+	Builtin color.RGBA
+}
+
 // Default constrói o tema padrão do JUIGo na escala 1, interpretando a
 // fonte embutida. Falhas na fonte são devolvidas como erro. O App ajusta a
 // escala para o monitor via SetScale.
@@ -177,6 +194,13 @@ func Default() (*Theme, error) {
 		TooltipBackground:  color.RGBA{R: 0x2E, G: 0x33, B: 0x3B, A: 0xFF},
 		TooltipText:        color.RGBA{R: 0xF5, G: 0xF7, B: 0xFA, A: 0xFF},
 		Danger:             color.RGBA{R: 0xDC, G: 0x26, B: 0x26, A: 0xFF},
+		Syntax: SyntaxPalette{
+			Keyword: color.RGBA{R: 0xCF, G: 0x22, B: 0x2E, A: 0xFF},
+			String:  color.RGBA{R: 0x0A, G: 0x30, B: 0x69, A: 0xFF},
+			Number:  color.RGBA{R: 0x05, G: 0x50, B: 0xAE, A: 0xFF},
+			Comment: color.RGBA{R: 0x6E, G: 0x77, B: 0x81, A: 0xFF},
+			Builtin: color.RGBA{R: 0x95, G: 0x38, B: 0x00, A: 0xFF},
+		},
 
 		FontSize: 16,
 

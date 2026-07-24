@@ -51,23 +51,23 @@ func TestCodeBufferUndoCoalescido(t *testing.T) {
 		t.Fatalf("dois grupos esperados; texto=%q grupos=%d", b.String(), len(b.undo))
 	}
 
-	caret, ok := b.undoStep()
+	caret, _, ok := b.undoStep()
 	if !ok || b.String() != "abc" || caret != (textPos{0, 3}) {
 		t.Fatalf("undo do 2º grupo: texto=%q caret=%v", b.String(), caret)
 	}
-	caret, _ = b.undoStep()
+	caret, _, _ = b.undoStep()
 	if b.String() != "" || caret != (textPos{0, 0}) {
 		t.Fatalf("undo do 1º grupo: texto=%q caret=%v", b.String(), caret)
 	}
 
-	caret, _ = b.redoStep()
+	caret, _, _ = b.redoStep()
 	if b.String() != "abc" || caret != (textPos{0, 3}) {
 		t.Fatalf("redo: texto=%q caret=%v", b.String(), caret)
 	}
 
 	// Edição nova descarta o redo pendente.
 	b.insert(textPos{0, 3}, "!", editType)
-	if _, ok := b.redoStep(); ok {
+	if _, _, ok := b.redoStep(); ok {
 		t.Fatal("edição nova deveria descartar o redo")
 	}
 
@@ -79,7 +79,7 @@ func TestCodeBufferUndoCoalescido(t *testing.T) {
 	if len(b2.undo) != 2 { // "xyz" + o grupo dos backspaces
 		t.Fatalf("backspaces deveriam coalescer; grupos=%d", len(b2.undo))
 	}
-	caret, _ = b2.undoStep()
+	caret, _, _ = b2.undoStep()
 	if b2.String() != "xyz" || caret != (textPos{0, 3}) {
 		t.Fatalf("undo dos backspaces: texto=%q caret=%v", b2.String(), caret)
 	}
@@ -110,7 +110,7 @@ func TestCodeBufferSetText(t *testing.T) {
 	if b.count() != 3 || b.lineText(1) != "dois" || b.String() != "um\ndois\ntrês" {
 		t.Fatalf("setText: %q (%d linhas)", b.String(), b.count())
 	}
-	if _, ok := b.undoStep(); ok {
+	if _, _, ok := b.undoStep(); ok {
 		t.Fatal("setText deveria zerar o undo")
 	}
 	if b.clamp(textPos{5, 99}) != (textPos{2, 4}) {
