@@ -223,7 +223,12 @@ flags de cada widget.
 
   > **Segurança:** a CA nasce e vive só na sua máquina (chave `0600`),
   > nunca deve ser compartilhada, e a inspeção só se justifica para depurar
-  > o **seu próprio** tráfego. Cert pinning continua rejeitando o proxy.
+  > o **seu próprio** tráfego. Cert pinning continua rejeitando o proxy. O
+  > proxy escuta só em `127.0.0.1` — expor na rede (`-addr :8080`) o
+  > transforma num relay aberto para quem estiver no mesmo wifi.
+
+  É um proxy **explícito**: captura o que for apontado para ele, não o
+  tráfego inteiro da máquina.
 
   ![Mini-proxy: captura HTTP/HTTPS, visor ReadOnly e mocks](docs/proxy.png)
 

@@ -9,6 +9,11 @@
 // store do sistema/navegador — é a mesma técnica do mitmproxy/Charles. A CA
 // vive só na sua máquina; use apenas para depurar o SEU próprio tráfego.
 //
+// O proxy é EXPLÍCITO: captura só o que for apontado para ele (variáveis
+// HTTP_PROXY/HTTPS_PROXY, configuração do navegador ou o proxy do sistema)
+// — nada é interceptado automaticamente. E escuta só em 127.0.0.1: veja o
+// comentário do -addr.
+//
 //	go run ./examples/proxy
 //	# noutro terminal:
 //	HTTP_PROXY=http://localhost:8080 curl http://httpbin.org/get
@@ -30,7 +35,11 @@ import (
 )
 
 func main() {
-	addr := flag.String("addr", ":8080", "endereço do proxy (host:porta)")
+	// Só o localhost por padrão: um proxy de encaminhamento aberto na rede
+	// vira um RELAY — qualquer um no mesmo wifi navegaria através da sua
+	// máquina, com o seu IP. Para expor de propósito (testar de um celular,
+	// por exemplo), passe -addr :8080 conscientemente.
+	addr := flag.String("addr", "127.0.0.1:8080", "endereço do proxy (host:porta; fora de 127.0.0.1 vira relay aberto na rede)")
 	flag.Parse()
 
 	prox := proxy.New()
