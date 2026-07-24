@@ -55,6 +55,12 @@ type codeLine struct {
 	stateIn  HighlightState
 	stateOut HighlightState
 	hlOK     bool
+
+	// wrapStarts são as colunas onde começam as linhas VISUAIS além da
+	// primeira (quando o editor está com WrapLines); wrapOK falso =
+	// recalcular.
+	wrapStarts []int
+	wrapOK     bool
 }
 
 // codeBuffer é o modelo de texto do CodeEditor: linhas separadas (edições
@@ -147,11 +153,12 @@ func (b *codeBuffer) clamp(p textPos) textPos {
 	return p
 }
 
-// dirty invalida os caches da linha i (texto, largura e highlight).
+// dirty invalida os caches da linha i (texto, largura, highlight e wrap).
 func (b *codeBuffer) dirty(i int) {
 	b.lines[i].textOK = false
 	b.lines[i].widthOK = false
 	b.lines[i].hlOK = false
+	b.lines[i].wrapOK = false
 }
 
 // insertRaw insere text (pode conter '\n') em pos, sem registrar undo.

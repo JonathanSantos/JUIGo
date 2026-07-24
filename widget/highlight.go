@@ -1,9 +1,6 @@
 package widget
 
-import (
-	"image"
-	"image/color"
-)
+import "image/color"
 
 // SyntaxStyle é a classe léxica de um trecho de código; a cor vem da
 // paleta do tema (Theme.Syntax) — texto comum usa Theme.Text.
@@ -114,28 +111,5 @@ func (c *CodeEditor) styleColor(s SyntaxStyle) color.RGBA {
 	return th.Text
 }
 
-// drawLine desenha a linha i com os spans do highlight (ou texto comum sem
-// highlighter), respeitando os tab stops através dos spans.
-func (c *CodeEditor) drawLine(view *image.RGBA, i, screenX0, baseline int) {
-	line := c.buf.lineText(i)
-	l := &c.buf.lines[i]
-	if c.hl == nil || !l.hlOK {
-		c.drawTabbed(view, line, 0, screenX0, baseline, c.theme.Text)
-		return
-	}
-	x, off := 0, 0
-	for _, sp := range l.spans {
-		end := off + sp.Len
-		if end > len(line) {
-			end = len(line)
-		}
-		if end > off {
-			x = c.drawTabbed(view, line[off:end], x, screenX0, baseline, c.styleColor(sp.Style))
-		}
-		off = end
-	}
-	if off < len(line) {
-		// Lexer não cobriu a linha inteira: o resto sai como texto comum.
-		c.drawTabbed(view, line[off:], x, screenX0, baseline, c.theme.Text)
-	}
-}
+// O desenho por spans vive em CodeEditor.drawRow (codeeditor.go), que
+// recorta os spans à linha VISUAL — com ou sem WrapLines.

@@ -215,7 +215,10 @@ flags de cada widget.
   o estado convergir), auto-indentação, Tab/Shift+Tab indentando o bloco
   selecionado (um passo de undo), linha atual e par de parênteses
   realçados (pulando strings/comentários), gutter numerado, undo/redo
-  coalescido, rolagem 2D virtualizada e "ir à linha" por composição com
+  coalescido, rolagem 2D virtualizada com indicadores, quebra visual de
+  linhas opcional (`WrapLines`; o padrão é rolagem horizontal), tamanho de
+  fonte por editor (`FontSize`) e Go Mono ↔ Fira Code embutidas
+  (`Theme.UseMonoFont`), além de "ir à linha" por composição com
   `quick.Prompt`.
 
 ![CodeEditor](docs/editor.png)

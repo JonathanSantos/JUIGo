@@ -11,6 +11,7 @@ import (
 	"github.com/JonathanSantos/JUIGo/event"
 	"github.com/JonathanSantos/JUIGo/internal/hooks"
 	"github.com/JonathanSantos/JUIGo/render"
+	"github.com/JonathanSantos/JUIGo/theme"
 )
 
 // CodeEditor é o editor de texto para CÓDIGO: fonte monoespaçada do tema,
@@ -53,7 +54,19 @@ type CodeEditor struct {
 	scrollX, scrollY int
 	accumX, accumY   float64
 
-	// Caches de métrica da face mono corrente (ver ensureMetrics).
+	// wrap liga a quebra visual de linhas (ver WrapLines); wrapW é a
+	// largura usada no último cálculo, wrapGen a versão do buffer coberta
+	// e rowStart o prefixo linha lógica → primeira linha visual.
+	wrap     bool
+	wrapW    int
+	wrapGen  int
+	rowStart []int
+
+	// Caches de métrica da fonte mono corrente (ver ensureMetrics): mono é
+	// a variação em uso (a padrão do tema, ou a de fontSize).
+	mono     *theme.MonoFont
+	fontSize float64
+	monoSize float64
 	syncFace font.Face
 	advance  int
 	// maxW é a maior largura de linha em px (com maxWLine como dona);
@@ -176,25 +189,60 @@ func (c *CodeEditor) PreferredSize() image.Point {
 	if c.theme == nil {
 		return image.Point{}
 	}
+	c.ensureMetrics()
 	return image.Point{
 		X: c.theme.InputMinWidthPx(),
-		Y: c.theme.TextAreaMinLines * c.theme.MonoLineHeight(),
+		Y: c.theme.TextAreaMinLines * c.mono.LineHeight(),
 	}
 }
 
-// ensureMetrics revalida os caches dependentes da face mono (escala ou
-// tema trocado): célula, larguras de linha e números do gutter.
+// FontSize define o tamanho LÓGICO da fonte DESTE editor, em pontos (zero
+// volta ao tamanho do tema). A variação é fabricada pelo tema na escala
+// corrente (Theme.MonoSized). Encadeável.
+func (c *CodeEditor) FontSize(pts float64) *CodeEditor {
+	if pts < 0 {
+		pts = 0
+	}
+	if pts == c.fontSize {
+		return c
+	}
+	c.fontSize = pts
+	c.Invalidate() // ensureMetrics do próximo frame refaz as métricas
+	return c
+}
+
+// ensureMetrics revalida os caches dependentes da fonte mono corrente
+// (escala, tema ou FontSize trocados): variação em uso, célula, larguras
+// de linha e quebra visual.
 func (c *CodeEditor) ensureMetrics() {
-	if c.theme == nil || c.syncFace == c.theme.MonoFace {
+	if c.theme == nil {
+		return
+	}
+	if c.mono != nil && c.syncFace == c.theme.MonoFace && c.monoSize == c.fontSize {
 		return
 	}
 	c.syncFace = c.theme.MonoFace
-	c.advance = c.theme.MonoAdvance()
+	c.monoSize = c.fontSize
+	c.mono = c.theme.Mono()
+	if c.fontSize > 0 {
+		if m, err := c.theme.MonoSized(c.fontSize); err == nil {
+			c.mono = m
+		}
+	}
+	c.advance = c.mono.Advance()
 	for i := range c.buf.lines {
 		c.buf.lines[i].widthOK = false
+		c.buf.lines[i].wrapOK = false
 	}
 	c.maxDirty = true
-	c.pre.measureWith(c.theme.MeasureMono)
+	c.wrapW = -1
+	c.pre.measureWith(c.cellMeasure)
+}
+
+// cellMeasure mede em CÉLULAS (runes × avanço) — a mesma grade do desenho
+// e do caret; a composição de IME usa isto, não a medida natural da fonte.
+func (c *CodeEditor) cellMeasure(s string) int {
+	return utf8.RuneCountInString(s) * c.advance
 }
 
 // tabW devolve a largura do tab stop em px.
@@ -304,22 +352,25 @@ func (c *CodeEditor) textArea() image.Rectangle {
 	return image.Rect(in.Min.X+c.gutterW()+c.theme.Px(6), in.Min.Y, in.Max.X, in.Max.Y)
 }
 
-// rowH devolve a altura de linha da face mono.
+// rowH devolve a altura de linha da fonte mono em uso.
 func (c *CodeEditor) rowH() int {
-	return c.theme.MonoLineHeight()
+	c.ensureMetrics()
+	return c.mono.LineHeight()
 }
 
-// posAt converte um ponto absoluto em posição de texto.
+// posAt converte um ponto absoluto em posição de texto (pela linha VISUAL
+// sob o ponto).
 func (c *CodeEditor) posAt(p image.Point) textPos {
 	ta := c.textArea()
-	line := (p.Y - ta.Min.Y + c.scrollY) / c.rowH()
-	if line < 0 {
-		line = 0
+	row := (p.Y - ta.Min.Y + c.scrollY) / c.rowH()
+	if row < 0 {
+		row = 0
 	}
-	if line >= c.buf.count() {
-		line = c.buf.count() - 1
+	if rows := c.totalRows(); row >= rows {
+		row = rows - 1
 	}
-	return textPos{line, c.colAt(line, p.X-ta.Min.X+c.scrollX)}
+	line, k := c.lineOfRow(row)
+	return textPos{line, c.colAtRow(line, k, p.X-ta.Min.X+c.scrollX)}
 }
 
 // selectionRange devolve os limites ordenados da seleção.
@@ -371,7 +422,7 @@ func (c *CodeEditor) ensureVisible() bool {
 	}
 	ta := c.textArea()
 	changed := false
-	top := c.cursor.Line * c.rowH()
+	top := c.rowOfPos(c.cursor) * c.rowH()
 	if top < c.scrollY {
 		c.scrollY = top
 		changed = true
@@ -379,6 +430,9 @@ func (c *CodeEditor) ensureVisible() bool {
 	if bot := top + c.rowH(); bot > c.scrollY+ta.Dy() {
 		c.scrollY = bot - ta.Dy()
 		changed = true
+	}
+	if c.wrap {
+		return changed // sem rolagem horizontal com quebra visual
 	}
 	cx := c.xAt(c.cursor.Line, c.cursor.Col) + c.pre.caretX
 	margin := 2 * c.advance
@@ -396,14 +450,24 @@ func (c *CodeEditor) ensureVisible() bool {
 	return changed
 }
 
-// damageLine danifica a faixa da linha i (texto e gutter).
+// damageLine danifica a faixa da linha LÓGICA i (texto e gutter) — com
+// WrapLines, todas as linhas visuais dela.
 func (c *CodeEditor) damageLine(i int) {
 	if c.theme == nil {
 		return
 	}
 	in := c.inner()
-	y := in.Min.Y + i*c.rowH() - c.scrollY
-	c.damage(image.Rect(in.Min.X, y, in.Max.X, y+c.rowH()))
+	startRow, rows := i, 1
+	if c.wrap {
+		c.ensureWrap()
+		if i >= c.buf.count() {
+			i = c.buf.count() - 1
+		}
+		startRow = c.rowStart[i]
+		rows = c.rowsOfLine(i)
+	}
+	y := in.Min.Y + startRow*c.rowH() - c.scrollY
+	c.damage(image.Rect(in.Min.X, y, in.Max.X, y+rows*c.rowH()))
 	hooks.RequestFrame()
 }
 
@@ -420,8 +484,9 @@ func (c *CodeEditor) CaretRect() image.Rectangle {
 		return image.Rectangle{}
 	}
 	ta := c.textArea()
-	x := ta.Min.X + c.xAt(c.cursor.Line, c.cursor.Col) + c.pre.caretX - c.scrollX
-	y := ta.Min.Y + c.cursor.Line*c.rowH() - c.scrollY
+	k := c.rowIndexIn(c.cursor.Line, c.cursor.Col)
+	x := ta.Min.X + c.rowXAt(c.cursor.Line, k, c.cursor.Col) + c.pre.caretX - c.scrollX
+	y := ta.Min.Y + c.rowOfPos(c.cursor)*c.rowH() - c.scrollY
 	return image.Rect(x, y, x+c.theme.BorderPx(), y+c.rowH())
 }
 
@@ -454,10 +519,14 @@ func (c *CodeEditor) insertText(s string, kind editKind) {
 	}
 	cascata := c.relexFrom(line) > line
 	c.noteWidth(line)
-	if cascata || c.ensureVisible() {
+	c.updateBrackets()
+	// Com WrapLines, editar pode mudar quantas linhas visuais a linha
+	// ocupa — tudo abaixo desloca: repinta inteiro.
+	if c.wrap || cascata || c.ensureVisible() {
 		c.Invalidate()
 	} else {
 		c.damageLine(line)
+		c.damageHScrollbar()
 	}
 	c.emitChange()
 }
@@ -533,10 +602,11 @@ func (c *CodeEditor) afterLineEdit(line int) {
 	c.noteWidth(line)
 	c.restartBlink()
 	c.updateBrackets()
-	if cascata || c.ensureVisible() {
+	if c.wrap || cascata || c.ensureVisible() {
 		c.Invalidate()
 	} else {
 		c.damageLine(line)
+		c.damageHScrollbar()
 	}
 	c.emitChange()
 }
@@ -724,15 +794,17 @@ func (c *CodeEditor) nextPos(p textPos) textPos {
 // moveVertical sobe/desce uma linha preservando a coluna DESEJADA em px
 // (goalX), como a TextArea.
 func (c *CodeEditor) moveVertical(delta int, extend bool) bool {
-	line := c.cursor.Line + delta
-	if line < 0 || line >= c.buf.count() {
+	row := c.rowOfPos(c.cursor) + delta
+	if row < 0 || row >= c.totalRows() {
 		return false
 	}
 	if c.goalX < 0 {
-		c.goalX = c.xAt(c.cursor.Line, c.cursor.Col)
+		k := c.rowIndexIn(c.cursor.Line, c.cursor.Col)
+		c.goalX = c.rowXAt(c.cursor.Line, k, c.cursor.Col)
 	}
 	goal := c.goalX
-	moved := c.moveTo(textPos{line, c.colAt(line, goal)}, extend)
+	line, k := c.lineOfRow(row)
+	moved := c.moveTo(textPos{line, c.colAtRow(line, k, goal)}, extend)
 	c.goalX = goal // moveTo não zera: a intenção vertical sobrevive
 	return moved
 }
@@ -750,7 +822,7 @@ func (c *CodeEditor) handleScroll(e event.ScrollEvent) bool {
 	dy := int(c.accumY)
 	c.accumY -= float64(dy)
 	if dy != 0 {
-		max := c.buf.count()*c.rowH() - c.textArea().Dy()
+		max := c.totalRows()*c.rowH() - c.textArea().Dy()
 		if max < 0 {
 			max = 0
 		}
@@ -770,7 +842,7 @@ func (c *CodeEditor) handleScroll(e event.ScrollEvent) bool {
 	c.accumX += e.DX * step
 	dx := int(c.accumX)
 	c.accumX -= float64(dx)
-	if dx != 0 {
+	if dx != 0 && !c.wrap {
 		max := c.maxWidth() + 2*c.advance - c.textArea().Dx()
 		if max < 0 {
 			max = 0
@@ -838,10 +910,11 @@ func (c *CodeEditor) setPreedit(e event.PreeditEvent) {
 // syncPreedit atualiza medidas (face mono) e os trechos da linha do cursor
 // ao redor da composição.
 func (c *CodeEditor) syncPreedit() {
-	if c.theme == nil {
+	c.ensureMetrics()
+	if c.mono == nil {
 		c.pre.measureWith(nil)
 	} else {
-		c.pre.measureWith(c.theme.MeasureMono)
+		c.pre.measureWith(c.cellMeasure)
 	}
 	if !c.pre.active() {
 		c.preAntes, c.preDepois = "", ""
@@ -877,28 +950,28 @@ func (c *CodeEditor) ensureNums(count int) {
 // a MESMA aritmética de células do xAt (runes × célula) — desenho, caret e
 // seleção nunca divergem. Não aloca: desenha fatias de s.
 func (c *CodeEditor) drawTabbed(view *image.RGBA, s string, xContent, screenX0, baseline int, cor color.RGBA) int {
-	th := c.theme
 	start := 0
 	for i := 0; i < len(s); i++ {
 		if s[i] != '\t' {
 			continue
 		}
 		if i > start {
-			th.DrawMono(view, s[start:i], image.Pt(screenX0+xContent, baseline), cor)
+			c.mono.Draw(view, s[start:i], image.Pt(screenX0+xContent, baseline), cor)
 			xContent += utf8.RuneCountInString(s[start:i]) * c.advance
 		}
 		xContent = (xContent/c.tabW() + 1) * c.tabW()
 		start = i + 1
 	}
 	if start < len(s) {
-		th.DrawMono(view, s[start:], image.Pt(screenX0+xContent, baseline), cor)
+		c.mono.Draw(view, s[start:], image.Pt(screenX0+xContent, baseline), cor)
 		xContent += utf8.RuneCountInString(s[start:]) * c.advance
 	}
 	return xContent
 }
 
-// Draw desenha fundo, borda, gutter numerado, as LINHAS VISÍVEIS (seleção,
-// texto com tabs, composição de IME) e o cursor.
+// Draw desenha fundo, borda, gutter numerado, as LINHAS VISUAIS visíveis
+// (faixa da linha atual, par de parênteses, seleção, texto com tabs,
+// composição de IME), o cursor e os indicadores de rolagem.
 func (c *CodeEditor) Draw(dst *image.RGBA) {
 	if c.theme == nil {
 		return
@@ -918,20 +991,24 @@ func (c *CodeEditor) Draw(dst *image.RGBA) {
 	in := c.inner()
 	ta := c.textArea()
 	rowH := c.rowH()
-	count := c.buf.count()
+	rows := c.totalRows()
 
 	// Recorte de rolagem (nunca além do conteúdo).
-	if max := count*rowH - ta.Dy(); c.scrollY > max {
+	if max := rows*rowH - ta.Dy(); c.scrollY > max {
 		c.scrollY = max
 	}
 	if c.scrollY < 0 {
 		c.scrollY = 0
 	}
-	if max := c.maxWidth() + 2*c.advance - ta.Dx(); c.scrollX > max {
-		c.scrollX = max
-	}
-	if c.scrollX < 0 {
+	if c.wrap {
 		c.scrollX = 0
+	} else {
+		if max := c.maxWidth() + 2*c.advance - ta.Dx(); c.scrollX > max {
+			c.scrollX = max
+		}
+		if c.scrollX < 0 {
+			c.scrollX = 0
+		}
 	}
 
 	// Gutter: fundo, separador e números das linhas visíveis.
@@ -942,76 +1019,129 @@ func (c *CodeEditor) Draw(dst *image.RGBA) {
 
 	first := c.scrollY / rowH
 	last := (c.scrollY + ta.Dy() - 1) / rowH
-	if last >= count {
-		last = count - 1
+	if last >= rows {
+		last = rows - 1
 	}
-	c.ensureNums(last + 1)
 
 	textView := render.Clip(dst, ta, &c.clipText)
 	selStart, selEnd := c.selectionRange()
 	gutPad := th.Px(6)
+	curRowIdx := -1
+	if c.pre.active() {
+		curRowIdx = c.rowIndexIn(c.cursor.Line, c.cursor.Col)
+	}
 
-	for i := first; i <= last; i++ {
-		y := in.Min.Y + i*rowH - c.scrollY
-		baseline := y + th.MonoAscent()
+	for row := first; row <= last; row++ {
+		i, k := c.lineOfRow(row)
+		y := in.Min.Y + row*rowH - c.scrollY
+		baseline := y + c.mono.Ascent()
 
-		// Número da linha, alinhado à direita; a do cursor em destaque.
-		num := c.numCache[i]
-		numColor := th.Placeholder
-		if i == c.cursor.Line {
-			numColor = th.Text
+		// Número só na primeira linha visual; a do cursor em destaque.
+		if k == 0 {
+			c.ensureNums(i + 1)
+			num := c.numCache[i]
+			numColor := th.Placeholder
+			if i == c.cursor.Line {
+				numColor = th.Text
+			}
+			c.mono.Draw(gutView, num, image.Pt(gut.Max.X-gutPad-len(num)*c.advance, baseline), numColor)
 		}
-		th.DrawMono(gutView, num, image.Pt(gut.Max.X-gutPad-len(num)*c.advance, baseline), numColor)
 
-		// Faixa da linha atual (sem seleção) e o par de parênteses.
+		// Faixa da linha atual (todas as linhas visuais dela) e o par de
+		// parênteses.
 		if c.focused && !c.hasSelection() && i == c.cursor.Line {
 			render.FillRect(textView, image.Rect(ta.Min.X, y, ta.Max.X, y+rowH), th.CurrentLine)
 		}
 		if c.brOK && c.focused {
 			for _, p := range [2]textPos{c.brA, c.brB} {
-				if p.Line == i {
-					bx := ta.Min.X + c.xAt(p.Line, p.Col) - c.scrollX
+				if p.Line == i && c.rowIndexIn(p.Line, p.Col) == k {
+					bx := ta.Min.X + c.rowXAt(i, k, p.Col) - c.scrollX
 					render.FillRect(textView, image.Rect(bx, y, bx+c.advance, y+rowH), th.Selection)
 				}
 			}
 		}
 
-		// Seleção nesta linha (o '\n' selecionado vira um talão de célula).
+		a := c.rowStartCol(i, k)
+		b := c.rowEndCol(i, k)
+
+		// Seleção nesta linha visual (o '\n' selecionado vira um talão de
+		// célula na última linha visual da linha lógica).
 		if c.focused && c.hasSelection() && i >= selStart.Line && i <= selEnd.Line {
-			x0 := 0
+			sCol := 0
 			if i == selStart.Line {
-				x0 = c.xAt(i, selStart.Col)
+				sCol = selStart.Col
 			}
-			var x1 int
+			eCol := len(c.buf.lines[i].runes) + 1 // +1 = o '\n'
 			if i == selEnd.Line {
-				x1 = c.xAt(i, selEnd.Col)
-			} else {
-				x1 = c.lineWidth(i) + c.advance
+				eCol = selEnd.Col
 			}
-			if x1 > x0 {
+			s2, e2 := max(sCol, a), min(eCol, b)
+			talao := 0
+			if eCol > b && b == len(c.buf.lines[i].runes) {
+				e2 = b
+				talao = c.advance
+			}
+			if e2 > s2 || talao > 0 {
+				x0 := c.rowXAt(i, k, s2)
+				x1 := c.rowXAt(i, k, e2) + talao
 				render.FillRect(textView, image.Rect(ta.Min.X+x0-c.scrollX, y, ta.Min.X+x1-c.scrollX, y+rowH), th.Selection)
 			}
 		}
 
-		// Texto (com a composição inline na linha do cursor).
+		// Texto (com a composição inline na linha visual do cursor).
 		screenX0 := ta.Min.X - c.scrollX
-		if c.pre.active() && i == c.cursor.Line {
-			// Durante a composição a linha sai em texto comum: os spans
+		if c.pre.active() && i == c.cursor.Line && k == curRowIdx {
+			// Durante a composição o trecho sai em texto comum: os spans
 			// não valem com o preedit intercalado (transitório).
-			x := c.drawTabbedPart(textView, c.preAntes, 0, screenX0, baseline)
-			th.DrawMono(textView, c.pre.text, image.Pt(screenX0+x, baseline), th.Text)
+			text := c.buf.lineText(i)
+			aB, cB, bB := byteOffset(text, a), byteOffset(text, c.cursor.Col), byteOffset(text, b)
+			x := c.drawTabbedPart(textView, text[aB:cB], 0, screenX0, baseline)
+			c.mono.Draw(textView, c.pre.text, image.Pt(screenX0+x, baseline), th.Text)
 			c.pre.drawUnderline(textView, th, screenX0+x, baseline+th.Px(2))
-			c.drawTabbedPart(textView, c.preDepois, x+c.pre.w, screenX0, baseline)
+			c.drawTabbedPart(textView, text[cB:bB], x+c.pre.w, screenX0, baseline)
 		} else {
-			c.drawLine(textView, i, screenX0, baseline)
+			c.drawRow(textView, i, k, screenX0, baseline)
 		}
 	}
 
 	if c.focused && c.caretOn {
-		r := c.CaretRect()
-		render.FillRect(textView, r, th.Cursor)
+		render.FillRect(textView, c.CaretRect(), th.Cursor)
 	}
+	c.drawScrollbars(textView, ta)
 	c.drawDisabledOverlay(dst)
+}
+
+// drawRow desenha a k-ésima linha visual da linha i: os spans do highlight
+// recortados ao intervalo da linha visual (ou texto comum), atravessando os
+// tab stops dela.
+func (c *CodeEditor) drawRow(view *image.RGBA, i, k, screenX0, baseline int) {
+	text := c.buf.lineText(i)
+	aB := byteOffset(text, c.rowStartCol(i, k))
+	bB := byteOffset(text, c.rowEndCol(i, k))
+	l := &c.buf.lines[i]
+	if c.hl == nil || !l.hlOK {
+		if bB > aB {
+			c.drawTabbed(view, text[aB:bB], 0, screenX0, baseline, c.theme.Text)
+		}
+		return
+	}
+	x, off, covered := 0, 0, aB
+	for _, sp := range l.spans {
+		spEnd := off + sp.Len
+		s, e := max(off, aB), min(spEnd, bB)
+		if e > s {
+			x = c.drawTabbed(view, text[s:e], x, screenX0, baseline, c.styleColor(sp.Style))
+			covered = e
+		}
+		off = spEnd
+		if off >= bB {
+			break
+		}
+	}
+	if covered < bB {
+		// Lexer não cobriu a linha inteira: o resto sai como texto comum.
+		c.drawTabbed(view, text[covered:bB], x, screenX0, baseline, c.theme.Text)
+	}
 }
 
 // drawTabbedPart é o drawTabbed para os trechos ao redor da composição.

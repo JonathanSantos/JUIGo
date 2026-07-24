@@ -17,6 +17,7 @@ import (
 	"github.com/JonathanSantos/JUIGo"
 	"github.com/JonathanSantos/JUIGo/quick"
 	"github.com/JonathanSantos/JUIGo/syntax"
+	"github.com/JonathanSantos/JUIGo/theme"
 )
 
 const amostra = `package main
@@ -41,6 +42,11 @@ func main() {
 		}
 		conteudo = string(dados)
 		titulo = filepath.Base(os.Args[1])
+	}
+
+	app, err := juigo.New("Editor — CodeEditor em JUIGo", 720, 480)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	editor := juigo.NewCodeEditor()
@@ -70,19 +76,61 @@ func main() {
 		})
 	})
 
+	// Tamanho da fonte deste editor (0 = o do tema).
+	tamanho := 0.0
+	ajusta := func(delta float64) {
+		if tamanho == 0 {
+			tamanho = 16
+		}
+		tamanho += delta
+		if tamanho < 8 {
+			tamanho = 8
+		}
+		if tamanho > 32 {
+			tamanho = 32
+		}
+		editor.FontSize(tamanho)
+	}
+	menor := juigo.NewButton("A−", func() { ajusta(-2) }).Pad(4)
+	maior := juigo.NewButton("A+", func() { ajusta(+2) }).Pad(4)
+
+	// Quebra visual de linhas (sem rolagem horizontal).
+	quebra := juigo.NewCheckbox("Quebrar linhas").OnChange(func(v bool) {
+		editor.WrapLines(v)
+	})
+
+	// Fonte mono do tema: Go Mono ↔ Fira Code (embutidas).
+	fonteSel := juigo.NewState("Go Mono")
+	fonteSel.Watch(func(nome string) {
+		fnt, err := theme.GoMono()
+		if nome == "Fira Code" {
+			fnt, err = theme.FiraCode()
+		}
+		if err != nil {
+			log.Println("editor:", err)
+			return
+		}
+		if err := app.Theme().UseMonoFont(fnt); err != nil {
+			log.Println("editor:", err)
+			return
+		}
+		app.Invalidate()
+	})
+	fonte := juigo.NewDropdown("Go Mono", "Fira Code").BindValue(fonteSel)
+
 	raiz := juigo.NewVBox(
 		juigo.Grow(editor, 1),
 		juigo.NewHBox(
 			juigo.Centered(juigo.NewText("").BindText(status)),
 			juigo.NewSpacer(),
+			juigo.Centered(quebra),
+			fonte,
+			menor,
+			maior,
 			irALinha,
 		).Gap(8),
 	).Pad(8).Gap(6)
 
-	app, err := juigo.New("Editor — CodeEditor em JUIGo", 720, 480)
-	if err != nil {
-		log.Fatal(err)
-	}
 	app.SetRoot(raiz)
 	if err := app.Run(); err != nil {
 		log.Fatal(err)

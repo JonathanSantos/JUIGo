@@ -7,6 +7,7 @@ import (
 	"image/color"
 	"math"
 	"time"
+	"unicode/utf8"
 
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/gomono"
@@ -30,8 +31,27 @@ var embeddedFontTTF []byte
 //go:embed assets/FiraCode-Regular.ttf
 var firaCodeTTF []byte
 
-// firaCode é o parse único da Fira Code (single-threaded por contrato).
-var firaCode *opentype.Font
+// firaCode e goMono são os parses únicos das fontes mono embutidas
+// (single-threaded por contrato).
+var (
+	firaCode *opentype.Font
+	goMono   *opentype.Font
+)
+
+// GoMono devolve a fonte Go Mono embutida (a mono padrão do tema),
+// interpretada uma única vez — o par de FiraCode para voltar atrás num
+// UseMonoFont.
+func GoMono() (*opentype.Font, error) {
+	if goMono != nil {
+		return goMono, nil
+	}
+	f, err := opentype.Parse(gomono.TTF)
+	if err != nil {
+		return nil, fmt.Errorf("juigo: falha ao interpretar a Go Mono embutida: %w", err)
+	}
+	goMono = f
+	return f, nil
+}
 
 // FiraCode devolve a fonte Fira Code embutida, interpretada uma única vez —
 // troque a mono do tema com UseMonoFont(theme.FiraCode()).
@@ -84,10 +104,19 @@ func newMonoFont(fnt *opentype.Font, size, scale float64) (*MonoFont, error) {
 	}, nil
 }
 
-// Draw desenha s com esta fonte, baseline em dot — cache de glyphs, sem
-// alocação no caminho quente.
+// Draw desenha s GLIFO A GLIFO, um por célula (x avança Advance por rune):
+// o desenho cai exatamente na grade da conta coluna↔pixel do CodeEditor,
+// para qualquer fonte e tamanho — avanços fracionários (Fira Code em
+// tamanhos ímpares) não derivam ao longo de tokens compridos. Cache de
+// glyphs, sem alocação no caminho quente (fatias de s).
 func (m *MonoFont) Draw(dst *image.RGBA, s string, dot image.Point, c color.RGBA) {
-	m.cache.DrawString(dst, s, dot, c)
+	x := dot.X
+	for i := 0; i < len(s); {
+		_, size := utf8.DecodeRuneInString(s[i:])
+		m.cache.DrawString(dst, s[i:i+size], image.Pt(x, dot.Y), c)
+		x += m.advance
+		i += size
+	}
 }
 
 // Measure devolve a largura de s em pixels.
@@ -252,9 +281,9 @@ func Default() (*Theme, error) {
 		return nil, fmt.Errorf("juigo: falha ao interpretar a fonte embutida: %w", err)
 	}
 
-	mono, err := opentype.Parse(gomono.TTF)
+	mono, err := GoMono()
 	if err != nil {
-		return nil, fmt.Errorf("juigo: falha ao interpretar a fonte mono embutida: %w", err)
+		return nil, err
 	}
 
 	t := &Theme{
