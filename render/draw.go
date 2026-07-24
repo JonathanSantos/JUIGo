@@ -227,6 +227,41 @@ func blendRingPixel(dst *image.RGBA, clip image.Rectangle, x, y int, c image.Poi
 	p[3] = uint8((uint32(col.A)*f + uint32(p[3])*inv + 127) / 255)
 }
 
+// CrossFade preenche a região r de dst com a mistura linear entre a e b:
+// t=0 copia a, t=1 copia b, valores intermediários fundem os dois canal a
+// canal. a e b devem estar ALINHADOS a dst (mesmo sistema de coordenadas —
+// como os snapshots do Navigator, criados com os bounds do widget); a região
+// é recortada à interseção dos três. É a base da transição de fade entre
+// telas. Não aloca.
+func CrossFade(dst *image.RGBA, a, b *image.RGBA, r image.Rectangle, t float64) {
+	r = r.Intersect(dst.Bounds()).Intersect(a.Bounds()).Intersect(b.Bounds())
+	if r.Empty() {
+		return
+	}
+	f := int32(t*256 + 0.5)
+	if f <= 0 {
+		draw.Draw(dst, r, a, r.Min, draw.Src)
+		return
+	}
+	if f >= 256 {
+		draw.Draw(dst, r, b, r.Min, draw.Src)
+		return
+	}
+	rowLen := r.Dx() * 4
+	for y := r.Min.Y; y < r.Max.Y; y++ {
+		di := dst.PixOffset(r.Min.X, y)
+		ai := a.PixOffset(r.Min.X, y)
+		bi := b.PixOffset(r.Min.X, y)
+		drow := dst.Pix[di : di+rowLen : di+rowLen]
+		arow := a.Pix[ai : ai+rowLen : ai+rowLen]
+		brow := b.Pix[bi : bi+rowLen : bi+rowLen]
+		for x := 0; x < rowLen; x++ {
+			va := int32(arow[x])
+			drow[x] = uint8(va + (int32(brow[x])-va)*f/256)
+		}
+	}
+}
+
 // Clip preenche out com uma VISÃO de dst recortada a r — mesmos pixels, sem
 // cópia e sem alocação (out é um scratch reutilizável, normalmente um campo
 // do widget) — e a devolve. Desenhar na visão não alcança nada fora de r,
