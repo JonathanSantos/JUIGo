@@ -16,9 +16,9 @@ func Confirm(title string, onResult func(ok bool)) *widget.Modal {
 	ok := false
 	var m *widget.Modal
 	m = widget.NewModal(widget.NewVBox(
-		widget.NewText(title),
+		widget.NewText(title).Subtitle(),
 		Buttons(
-			widget.NewButton("Cancel", func() { m.Close() }),
+			widget.NewButton("Cancel", func() { m.Close() }).Secondary(),
 			widget.NewButton("OK", func() { ok = true; m.Close() }),
 		),
 	)).OnClose(func() {
@@ -51,10 +51,10 @@ func Prompt(title, placeholder string, onSubmit func(value string)) *widget.Moda
 	var m *widget.Modal
 	accept := func() { accepted = true; m.Close() }
 	m = widget.NewModal(widget.NewVBox(
-		widget.NewText(title),
+		widget.NewText(title).Subtitle(),
 		widget.NewInput(placeholder).BindValue(value).OnSubmit(accept),
 		Buttons(
-			widget.NewButton("Cancel", func() { m.Close() }),
+			widget.NewButton("Cancel", func() { m.Close() }).Secondary(),
 			widget.NewButton("OK", accept),
 		),
 	)).OnClose(func() {

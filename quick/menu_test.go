@@ -77,7 +77,9 @@ func TestToast(t *testing.T) {
 	if !h.Session().ToastVisible() {
 		t.Fatal("o toast deveria estar visível")
 	}
-	prefY := th.LineHeight() + pad
+	// O toast fala no papel de LEGENDA (ver TooltipView): a caixa mede pela
+	// fonte de legenda do tema.
+	prefY := th.Caption().LineHeight() + pad
 	topo := 200 - 2*pad - prefY
 	img := h.Screenshot()
 	if got := img.RGBAAt(150, topo+1); got != th.TooltipBackground {

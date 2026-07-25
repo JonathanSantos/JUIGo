@@ -151,7 +151,7 @@ func (d *fileDialog) vista(title string, extra widget.Widget, acoes *widget.HBox
 		widget.NewText("").BindText(d.caminho),
 	).Gap(8)
 	v := widget.NewVBox(
-		widget.NewText(title),
+		widget.NewText(title).Subtitle(),
 		cab,
 		widget.NewSized(d.rolar, 380, 240),
 		widget.NewText("").BindText(d.erro).Danger(),
@@ -189,7 +189,7 @@ func OpenFileIn(dir, title string, onResult func(path string, ok bool)) *widget.
 	})
 	widget.BindDisabled(abrir, state.Map(d.selArq, func(s string) bool { return s == "" }))
 	m = widget.NewModal(d.vista(title, nil, Buttons(
-		widget.NewButton("Cancel", func() { m.Close() }),
+		widget.NewButton("Cancel", func() { m.Close() }).Secondary(),
 		abrir,
 	))).OnClose(func() {
 		if onResult != nil {
@@ -233,7 +233,7 @@ func SaveFileIn(dir, title, initialName string, onResult func(path string, ok bo
 	}))
 	campo := Labeled("Nome:", widget.NewInput("nome do arquivo…").BindValue(nome).OnSubmit(salvar))
 	m = widget.NewModal(d.vista(title, campo, Buttons(
-		widget.NewButton("Cancel", func() { m.Close() }),
+		widget.NewButton("Cancel", func() { m.Close() }).Secondary(),
 		confirmar,
 	))).OnClose(func() {
 		if onResult != nil {

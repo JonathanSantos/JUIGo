@@ -557,7 +557,7 @@ func Section(title string) *SectionItem {
 func (s *SectionItem) addTo(a *assembly) {
 	a.steps = append(a.steps, func(m *form.Form, v *FormView) {
 		a.flush(v)
-		v.Add(widget.NewText(s.title))
+		v.Add(widget.NewText(s.title).Subtitle())
 	})
 }
 

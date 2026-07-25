@@ -55,9 +55,11 @@ func (t *TooltipView) PreferredSize() image.Point {
 	if t.theme == nil {
 		return image.Point{}
 	}
+	// Dicas falam no papel de LEGENDA: menores que o conteúdo que explicam.
+	f := t.theme.Caption()
 	return image.Point{
-		X: t.theme.MeasureString(t.text) + 2*t.theme.PaddingPx(),
-		Y: t.theme.LineHeight() + t.theme.PaddingPx(),
+		X: f.Measure(t.text) + 2*t.theme.PaddingPx(),
+		Y: f.LineHeight() + t.theme.PaddingPx(),
 	}
 }
 
@@ -71,6 +73,7 @@ func (t *TooltipView) Draw(dst *image.RGBA) {
 	view := render.Clip(dst, bounds, &t.clip)
 	render.FillRoundRect(view, bounds, th.RadiusPx(), th.TooltipBackground)
 	x := bounds.Min.X + th.PaddingPx()
-	y := bounds.Min.Y + (bounds.Dy()-th.LineHeight())/2 + th.Ascent()
-	th.DrawText(view, t.text, image.Pt(x, y), th.TooltipText)
+	f := th.Caption()
+	y := bounds.Min.Y + (bounds.Dy()-f.LineHeight())/2 + f.Ascent()
+	f.Draw(view, t.text, image.Pt(x, y), th.TooltipText)
 }

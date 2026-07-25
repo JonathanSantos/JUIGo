@@ -254,10 +254,14 @@ func (t *Table) Draw(dst *image.RGBA) {
 	cabTop := region.Min.Y
 	cab := image.Rect(b.Min.X, cabTop, b.Max.X, cabTop+h)
 	render.FillRect(dst, cab, th.HoverBackground)
+	// Títulos no papel de LEGENDA (menores que as células): a hierarquia
+	// tipográfica do design system aplicada ao dado tabular.
+	cap := th.Caption()
+	capBase := cab.Min.Y + (h-cap.LineHeight())/2 + cap.Ascent()
 	for c, título := range t.titles {
 		cel := image.Rect(t.colX[c], cab.Min.Y, t.colX[c+1], cab.Max.Y)
 		view := render.Clip(dst, cel, &t.clip)
-		th.DrawText(view, título, image.Pt(cel.Min.X+th.PaddingPx(), baseline(cab.Min.Y)), th.Text)
+		cap.Draw(view, título, image.Pt(cel.Min.X+th.PaddingPx(), capBase), th.Text)
 	}
 	render.FillRect(dst, image.Rect(b.Min.X, cab.Max.Y-1, b.Max.X, cab.Max.Y), th.InputBorder)
 	// Divisões verticais por toda a região visível.
