@@ -341,7 +341,9 @@ thread, loop dirigido a eventos com dirty regions, e o pacote raiz como
 fachada — aplicações importam só `github.com/JonathanSantos/JUIGo`. A
 organização de pacotes, os contratos (Widget, roteamento por geometria e
 por foco, overlay, tema) e os números de performance estão em
-[docs/ARQUITETURA.md](docs/ARQUITETURA.md).
+[docs/ARQUITETURA.md](docs/ARQUITETURA.md). O benchmark completo — frames
+por tema e escala, primitivas, memória, cobertura e a análise de
+viabilidade — está em [docs/BENCHMARK.md](docs/BENCHMARK.md).
 
 ## Fora de escopo (por enquanto)
 

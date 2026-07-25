@@ -108,15 +108,23 @@ func (l *Label) bump() {
 	l.Invalidate()
 }
 
-// metrics devolve as métricas do papel tipográfico atual: função de medida,
-// altura de linha, ascent e a CHAVE de invalidação (a face — muda em troca
-// de tema ou escala).
-func (l *Label) metrics() (measure func(string) int, lineH, ascent int, key any) {
+// measure mede s pelo papel tipográfico atual (método, não method value —
+// nada de closure alocando no caminho quente).
+func (l *Label) measure(s string) int {
 	if f := l.roleFont(); f != nil {
-		return f.Measure, f.LineHeight(), f.Ascent(), f.Face
+		return f.Measure(s)
+	}
+	return l.theme.MeasureString(s)
+}
+
+// metrics devolve altura de linha, ascent e a CHAVE de invalidação do papel
+// atual (a face — muda em troca de tema ou escala).
+func (l *Label) metrics() (lineH, ascent int, key any) {
+	if f := l.roleFont(); f != nil {
+		return f.LineHeight(), f.Ascent(), f.Face
 	}
 	th := l.theme
-	return th.MeasureString, th.LineHeight(), th.Ascent(), th.Face
+	return th.LineHeight(), th.Ascent(), th.Face
 }
 
 // roleFont devolve a fonte do papel atual, ou nil para o corpo.
@@ -149,14 +157,14 @@ func (l *Label) wrapWidth() int {
 
 // ensureWrap recalcula as linhas visuais para a largura dada, se preciso.
 func (l *Label) ensureWrap(width int) {
-	measure, _, _, key := l.metrics()
+	_, _, key := l.metrics()
 	if l.wrapW == width && l.wrapVer == l.ver && l.wrapKey == key {
 		return
 	}
 	l.wrapW, l.wrapVer, l.wrapKey = width, l.ver, key
 	l.lines = l.lines[:0]
 
-	spaceW := measure(" ")
+	spaceW := l.measure(" ")
 	start := 0
 	for start <= len(l.text) {
 		// Linha DURA corrente: até o próximo \n (ou o fim).
@@ -165,7 +173,7 @@ func (l *Label) ensureWrap(width int) {
 		if end >= 0 {
 			hardEnd = start + end
 		}
-		l.wrapHardLine(start, hardEnd, width, spaceW, measure)
+		l.wrapHardLine(start, hardEnd, width, spaceW)
 		if hardEnd == len(l.text) {
 			break
 		}
@@ -179,7 +187,7 @@ func (l *Label) ensureWrap(width int) {
 // wrapHardLine quebra o trecho [start,end) por palavras dentro de width
 // (width <= 0 não quebra). A largura acumula palavra a palavra (mais o
 // espaço) — kerning atravessando espaços é desprezível.
-func (l *Label) wrapHardLine(start, end, width, spaceW int, measure func(string) int) {
+func (l *Label) wrapHardLine(start, end, width, spaceW int) {
 	if start >= end {
 		l.lines = append(l.lines, [2]int{start, start})
 		return
@@ -198,7 +206,7 @@ func (l *Label) wrapHardLine(start, end, width, spaceW int, measure func(string)
 		for i < end && l.text[i] != ' ' {
 			i++
 		}
-		wordW := measure(l.text[wordStart:i])
+		wordW := l.measure(l.text[wordStart:i])
 		switch {
 		case lineStart < 0:
 			lineStart, lineW = wordStart, wordW
@@ -230,11 +238,11 @@ func (l *Label) PreferredSize() image.Point {
 	if l.theme == nil {
 		return image.Point{}
 	}
-	measure, lineH, _, _ := l.metrics()
+	lineH, _, _ := l.metrics()
 	l.ensureWrap(l.wrapWidth())
 	var w int
 	for _, ln := range l.lines {
-		if lw := measure(l.text[ln[0]:ln[1]]); lw > w {
+		if lw := l.measure(l.text[ln[0]:ln[1]]); lw > w {
 			w = lw
 		}
 	}
@@ -249,7 +257,7 @@ func (l *Label) Layout(bounds image.Rectangle) {
 	if l.theme == nil {
 		return
 	}
-	_, lineH, _, _ := l.metrics()
+	lineH, _, _ := l.metrics()
 	l.ensureWrap(l.wrapWidth())
 	if len(l.lines)*lineH != bounds.Dy() {
 		l.Invalidate()
@@ -268,7 +276,7 @@ func (l *Label) Draw(dst *image.RGBA) {
 	} else if c == (color.RGBA{}) {
 		c = l.theme.Text
 	}
-	_, lineH, ascent, _ := l.metrics()
+	lineH, ascent, _ := l.metrics()
 	l.ensureWrap(l.wrapWidth())
 	view := render.Clip(dst, b, &l.clip)
 	f := l.roleFont()
