@@ -24,7 +24,8 @@ própria lib — [`go run ./docs/gerar`](docs/gerar/main.go).*
 
 ## Por que JUIGo
 
-- **20+ widgets** — Text, Button, Input (seleção — inclusive palavra por
+- **25+ widgets** — Text, Label (parágrafo com quebra de linha e papéis
+  tipográficos), Button, Input (seleção — inclusive palavra por
   duplo clique —, clipboard, filtro), TextArea
   com soft wrap, CodeEditor (fonte mono, gutter, tabs, undo coalescido,
   linhas virtualizadas e highlight de sintaxe INCREMENTAL — lexers Go/JSON
@@ -32,8 +33,15 @@ própria lib — [`go run ./docs/gerar`](docs/gerar/main.go).*
   Slider, ProgressBar, Dropdown, Image, Tabs, SplitPane (painéis
   redimensionáveis com divisor arrastável), Modal, Popup ancorado,
   Tooltip, Grid, List virtualizada, Tree (árvore virtualizada com o modelo
-  em callbacks seus) e Table com cabeçalho fixo — com seleção como State e
-  reordenação por arrasto (`OnReorder`, com indicador de inserção).
+  em callbacks seus), Table com cabeçalho fixo — com seleção como State e
+  reordenação por arrasto (`OnReorder`, com indicador de inserção) —,
+  Card, Divider, Calendar e MenuBar.
+- **Comandos globais e paleta** — `Command{Título, atalho, ação}`
+  registrado no App (o atalho respeita o widget focado), `MenuBar` cujos
+  itens são comandos e se registram sozinhos, e a paleta **Ctrl/Cmd+K**
+  embutida: busca, Enter executa.
+- **Gráficos temáticos** — `juigo/chart`: sparkline, linha e barras com
+  antialiasing (`render.StrokeLine`), 100% nas cores do tema.
 - **Navegação entre telas** — `Navigator` com pilha de telas
   (`Push`/`Pop`/`Replace`/`PopToRoot`) e transições animadas prontas:
   deslizar nas quatro direções e fade, com o `Pop` revertendo a transição
@@ -232,6 +240,18 @@ depuração: contornos, realce sob o ponteiro e um crachá com tipo, bounds e
 flags de cada widget.
 
 ## Exemplos
+
+- **`go run ./examples/chat`** — a demo bandeira do design system: conversas
+  num `SplitPane` com pílulas, balões de `Card` com `Label` (parágrafos que
+  quebram sozinhos), barra de menus com atalhos globais (e a paleta
+  Ctrl/Cmd+K de brinde) e a resposta chegando "digitando" pelos timers da
+  aplicação — papel e tinta de ponta a ponta.
+
+  ![Chat papel e tinta](docs/chat.png)
+
+- **Gráficos** (`juigo/chart`) na mesma identidade:
+
+  ![Gráficos temáticos](docs/graficos.png)
 
 | | |
 | --- | --- |

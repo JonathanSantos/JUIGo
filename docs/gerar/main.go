@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/JonathanSantos/JUIGo"
+	"github.com/JonathanSantos/JUIGo/chart"
 	"github.com/JonathanSantos/JUIGo/examples/7guis/cells"
 	"github.com/JonathanSantos/JUIGo/examples/contatos/contatos"
 	contatosui "github.com/JonathanSantos/JUIGo/examples/contatos/ui"
@@ -83,6 +84,23 @@ func identidade() juigo.Widget {
 		).Gap(8)),
 		juigo.NewText("Um título por tela; uma ação primária por bloco.").Caption(),
 	).Pad(16).Gap(10)
+}
+
+// graficos monta a cena do juigo/chart no papel e tinta.
+func graficos() juigo.Widget {
+	vendas := []float64{4, 6, 5, 9, 7, 11, 10, 14, 12, 16, 15, 19}
+	saldo := []float64{3, -1, 4, 2, -2, 5, 3}
+	return juigo.NewVBox(
+		juigo.NewText("Vendas do trimestre").Subtitle(),
+		juigo.Grow(chart.NewLine(vendas).Min(0), 1),
+		juigo.NewText("Saldo por semana").Subtitle(),
+		juigo.Grow(chart.NewBars(saldo), 1),
+		juigo.NewHBox(
+			juigo.Centered(juigo.NewText("Tendência da receita").Caption()),
+			juigo.NewSpacer(),
+			chart.NewSpark(vendas),
+		).Gap(8),
+	).Pad(16).Gap(8)
 }
 
 // formulario monta o quick.Form com erros revelados (validação em cena).
@@ -188,6 +206,7 @@ func main() {
 	salva("vitrine-claude-escuro.png", vitrine(), claudeEscuro, 470, 500)
 	salva("identidade-claude.png", identidade(), claude, 480, 340)
 	salva("identidade-claude-escuro.png", identidade(), claudeEscuro, 480, 340)
+	salva("graficos.png", graficos(), claude, 460, 520)
 	salva("quick-form.png", formulario(), claro, 440, 440)
 	salva("todomvc.png", todomvc(), claro, 440, 400)
 	salva("contatos.png", agenda(), claro, 720, 420)
