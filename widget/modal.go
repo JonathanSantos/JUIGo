@@ -32,14 +32,23 @@ type Modal struct {
 	onClose func()
 
 	content Widget
-	panel   image.Rectangle
-	shown   bool
-	clip    image.RGBA
+	// scroll embrulha o conteúdo: quando o painel precisa ser recortado à
+	// janela (conteúdo mais alto que ela), a rolagem entra sozinha — sem
+	// isso, botões abaixo da dobra viravam área morta. Com o conteúdo
+	// cabendo, é transparente.
+	scroll *Scroll
+	panel  image.Rectangle
+	shown  bool
+	clip   image.RGBA
 }
 
 // NewModal cria um modal com o conteúdo dado. O tema é herdado ao abrir.
 func NewModal(content Widget) *Modal {
-	return &Modal{content: content, closeOnBackdrop: true}
+	m := &Modal{content: content, closeOnBackdrop: true}
+	if content != nil {
+		m.scroll = NewScroll(content)
+	}
+	return m
 }
 
 // CloseOnBackdrop define se clicar no pano de fundo fecha o modal (padrão
@@ -56,12 +65,13 @@ func (m *Modal) OnClose(fn func()) *Modal {
 	return m
 }
 
-// Children devolve o conteúdo (roteamento, mount e foco).
+// Children devolve o conteúdo, através da rolagem interna (roteamento,
+// mount e foco).
 func (m *Modal) Children() []Widget {
-	if m.content == nil {
+	if m.scroll == nil {
 		return nil
 	}
-	return []Widget{m.content}
+	return []Widget{m.scroll}
 }
 
 // SetTheme define um tema explícito e o propaga imediatamente à subárvore.
@@ -126,7 +136,7 @@ func (m *Modal) Layout(bounds image.Rectangle) {
 	x := bounds.Min.X + (bounds.Dx()-w)/2
 	y := bounds.Min.Y + (bounds.Dy()-h)/2
 	m.panel = image.Rect(x, y, x+w, y+h)
-	m.content.Layout(m.panel.Inset(pad))
+	m.scroll.Layout(m.panel.Inset(pad))
 }
 
 // HandleEvent fecha com Escape ou clique no pano de fundo e consome os
@@ -166,8 +176,8 @@ func (m *Modal) Draw(dst *image.RGBA) {
 	radius := th.RadiusPx()
 	render.FillRoundRect(dst, m.panel, radius, th.InputBackground)
 	render.StrokeRoundRect(dst, m.panel, radius, th.BorderPx(), th.InputBorder)
-	if m.content != nil {
+	if m.scroll != nil {
 		view := render.Clip(dst, m.panel, &m.clip)
-		m.content.Draw(view)
+		m.scroll.Draw(view)
 	}
 }
