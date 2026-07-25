@@ -69,6 +69,11 @@ type Session struct {
 	// inspect liga a camada do inspector de depuração (ver inspector.go).
 	inspect bool
 
+	// commands são os comandos globais registrados (ver command.go);
+	// palette é a paleta de comandos aberta, se houver (Ctrl/Cmd+K).
+	commands []Command
+	palette  *paletteView
+
 	// damage acumula a REGIÃO suja do próximo frame; full força repintura
 	// total (primeiro frame, resize, overlay, tema...). clipScratch é a
 	// visão reutilizada do redesenho parcial.
@@ -380,6 +385,19 @@ func (s *Session) KeyPress(k event.Key, mods event.Modifiers) {
 		if top.HandleEvent(ke) {
 			s.AddDamage(top.Bounds())
 		}
+		return
+	}
+	if consumed {
+		return
+	}
+	// Atalhos GLOBAIS (ver command.go): só quando o focado não consumiu.
+	if s.runCommand(k, mods) {
+		return
+	}
+	// Ctrl/Cmd+K embutido: abre a paleta com comandos registrados (um
+	// comando seu no mesmo atalho tem prioridade, acima).
+	if k == event.KeyK && mods.Command() && len(s.commands) > 0 {
+		s.ShowCommandPalette()
 	}
 }
 
@@ -510,6 +528,13 @@ func (s *Session) closeTopOverlay() {
 // atual — que vive numa camada acima — fica intocado, e o foco guardado é
 // repassado à camada de cima, para a cadeia de restauração não apontar para
 // uma camada já fechada.
+// overlayClosed é implementado por camadas que precisam saber quando saem
+// da pilha por QUALQUER caminho (menuPane, paleta) — chamado após a
+// remoção, antes da restauração de foco.
+type overlayClosed interface {
+	overlayClosed()
+}
+
 func (s *Session) removeOverlayAt(i int) {
 	e := s.overlays[i]
 	top := i == len(s.overlays)-1
@@ -525,6 +550,9 @@ func (s *Session) removeOverlayAt(i int) {
 	copy(s.overlays[i:], s.overlays[i+1:])
 	s.overlays[n] = overlayEntry{}
 	s.overlays = s.overlays[:n]
+	if oc, ok := e.widget.(overlayClosed); ok {
+		oc.overlayClosed()
+	}
 	if top {
 		s.setFocus(e.prevFocus)
 	}

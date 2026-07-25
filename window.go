@@ -118,6 +118,12 @@ func (w *Window) SetRoot(root widget.Widget) {
 // (widgets com SetTheme explícito mantêm o próprio). Cada janela precisa do
 // PRÓPRIO *Theme — não compartilhe a mesma instância entre janelas (use
 // Theme.Clone).
+// AddCommand registra (ou substitui, pelo título) um comando global desta
+// janela (ver widget.Command).
+func (w *Window) AddCommand(c widget.Command) {
+	w.session.AddCommand(c)
+}
+
 func (w *Window) SetTheme(th *theme.Theme) error {
 	if th == nil || th == w.theme {
 		return nil

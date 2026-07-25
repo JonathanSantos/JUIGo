@@ -330,6 +330,23 @@ func (a *App) SetTheme(th *theme.Theme) error {
 	return nil
 }
 
+// AddCommand registra (ou substitui, pelo título) um comando global da
+// janela principal: atalho, item de paleta e de MenuBar (ver
+// widget.Command). Para outras janelas, use Window.AddCommand.
+func (a *App) AddCommand(c widget.Command) {
+	if w := a.primary(); w != nil {
+		w.AddCommand(c)
+	}
+}
+
+// ShowCommandPalette abre a paleta de comandos (Ctrl/Cmd+K) da janela
+// principal.
+func (a *App) ShowCommandPalette() {
+	if w := a.primary(); w != nil {
+		w.session.ShowCommandPalette()
+	}
+}
+
 // SetRoot define o widget raiz da janela principal e agenda um redesenho.
 func (a *App) SetRoot(w widget.Widget) {
 	if j := a.primary(); j != nil {
@@ -501,19 +518,15 @@ func mapKey(key glfw.Key) event.Key {
 		return event.KeyDown
 	case glfw.KeyEscape:
 		return event.KeyEscape
-	case glfw.KeyI:
-		return event.KeyI
-	case glfw.KeyA:
-		return event.KeyA
-	case glfw.KeyC:
-		return event.KeyC
-	case glfw.KeyV:
-		return event.KeyV
-	case glfw.KeyX:
-		return event.KeyX
-	case glfw.KeyZ:
-		return event.KeyZ
 	default:
+		// Letras e dígitos por faixa (contíguos no GLFW): a base dos
+		// atalhos globais (widget.Command).
+		if key >= glfw.KeyA && key <= glfw.KeyZ {
+			return event.LetterKey(rune('A' + int(key-glfw.KeyA)))
+		}
+		if key >= glfw.Key0 && key <= glfw.Key9 {
+			return event.LetterKey(rune('0' + int(key-glfw.Key0)))
+		}
 		return event.KeyUnknown
 	}
 }

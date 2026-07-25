@@ -93,7 +93,102 @@ const (
 	KeyV
 	KeyX
 	KeyZ
+	// KeyB..KeyY e Key0..Key9 completam letras e dígitos para ATALHOS
+	// GLOBAIS (widget.Command): texto comum segue chegando por CharEvent —
+	// estas teclas importam quando combinadas com modificadores.
+	KeyB
+	KeyD
+	KeyE
+	KeyF
+	KeyG
+	KeyH
+	KeyJ
+	KeyK
+	KeyL
+	KeyM
+	KeyN
+	KeyO
+	KeyP
+	KeyQ
+	KeyR
+	KeyS
+	KeyT
+	KeyU
+	KeyW
+	KeyY
+	Key0
+	Key1
+	Key2
+	Key3
+	Key4
+	Key5
+	Key6
+	Key7
+	Key8
+	Key9
 )
+
+// letterKeys mapeia A..Z na ordem do alfabeto (ver LetterKey).
+var letterKeys = [26]Key{
+	KeyA, KeyB, KeyC, KeyD, KeyE, KeyF, KeyG, KeyH, KeyI, KeyJ, KeyK, KeyL,
+	KeyM, KeyN, KeyO, KeyP, KeyQ, KeyR, KeyS, KeyT, KeyU, KeyV, KeyW, KeyX,
+	KeyY, KeyZ,
+}
+
+// LetterKey devolve a tecla da letra (a–z, A–Z) ou do dígito (0–9) dado, e
+// KeyUnknown para qualquer outra runa — a forma cômoda de declarar atalhos:
+// event.LetterKey('s').
+func LetterKey(r rune) Key {
+	switch {
+	case r >= 'a' && r <= 'z':
+		return letterKeys[r-'a']
+	case r >= 'A' && r <= 'Z':
+		return letterKeys[r-'A']
+	case r >= '0' && r <= '9':
+		return Key0 + Key(r-'0')
+	}
+	return KeyUnknown
+}
+
+// Label devolve o nome curto da tecla para exibição de atalhos em menus
+// ("S", "7", "Enter", "Esc"...); vazio para KeyUnknown.
+func (k Key) Label() string {
+	for i, lk := range letterKeys {
+		if k == lk {
+			return string(rune('A' + i))
+		}
+	}
+	if k >= Key0 && k <= Key9 {
+		return string(rune('0' + int(k-Key0)))
+	}
+	switch k {
+	case KeyEnter:
+		return "Enter"
+	case KeySpace:
+		return "Espaço"
+	case KeyTab:
+		return "Tab"
+	case KeyBackspace:
+		return "Backspace"
+	case KeyDelete:
+		return "Del"
+	case KeyLeft:
+		return "←"
+	case KeyRight:
+		return "→"
+	case KeyUp:
+		return "↑"
+	case KeyDown:
+		return "↓"
+	case KeyHome:
+		return "Home"
+	case KeyEnd:
+		return "End"
+	case KeyEscape:
+		return "Esc"
+	}
+	return ""
+}
 
 // Modifiers é o conjunto (bitmask) de teclas modificadoras ativas em um
 // KeyEvent.
@@ -120,6 +215,11 @@ func (m Modifiers) Shift() bool {
 // dois para funcionar igual em qualquer plataforma.
 func (m Modifiers) Command() bool {
 	return m&(ModControl|ModSuper) != 0
+}
+
+// Alt informa se Alt/Option está ativo (atalhos globais de widget.Command).
+func (m Modifiers) Alt() bool {
+	return m&ModAlt != 0
 }
 
 // KeyEvent é um evento de tecla pressionada (ou repetida), com os

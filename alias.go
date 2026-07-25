@@ -71,6 +71,10 @@ type (
 	Card = widget.Card
 	// Divider é o fio horizontal separador do design system.
 	Divider = widget.Divider
+	// Command é um comando global: título, atalho e ação (menus, paleta).
+	Command = widget.Command
+	// MenuBar é a barra de menus da aplicação (itens são Commands).
+	MenuBar = widget.MenuBar
 	// Transition é o efeito visual da troca de telas do Navigator.
 	Transition = widget.Transition
 	// DropTarget é implementado por widgets que aceitam soltar um arrasto
@@ -209,6 +213,36 @@ const (
 	KeyV         = event.KeyV
 	KeyX         = event.KeyX
 	KeyZ         = event.KeyZ
+	KeyB         = event.KeyB
+	KeyD         = event.KeyD
+	KeyE         = event.KeyE
+	KeyF         = event.KeyF
+	KeyG         = event.KeyG
+	KeyH         = event.KeyH
+	KeyJ         = event.KeyJ
+	KeyK         = event.KeyK
+	KeyL         = event.KeyL
+	KeyM         = event.KeyM
+	KeyN         = event.KeyN
+	KeyO         = event.KeyO
+	KeyP         = event.KeyP
+	KeyQ         = event.KeyQ
+	KeyR         = event.KeyR
+	KeyS         = event.KeyS
+	KeyT         = event.KeyT
+	KeyU         = event.KeyU
+	KeyW         = event.KeyW
+	KeyY         = event.KeyY
+	Key0         = event.Key0
+	Key1         = event.Key1
+	Key2         = event.Key2
+	Key3         = event.Key3
+	Key4         = event.Key4
+	Key5         = event.Key5
+	Key6         = event.Key6
+	Key7         = event.Key7
+	Key8         = event.Key8
+	Key9         = event.Key9
 
 	// Classes léxicas do highlight (ver SyntaxStyle).
 	SyntaxText    = widget.SyntaxText
@@ -310,6 +344,12 @@ func NewCard(child Widget) *Card { return widget.NewCard(child) }
 // widget.Divider).
 func NewDivider() *Divider { return widget.NewDivider() }
 
+// NewMenuBar cria a barra de menus da aplicação (ver widget.MenuBar).
+func NewMenuBar() *MenuBar { return widget.NewMenuBar() }
+
+// MenuSeparator devolve o item separador de grupos de um menu.
+func MenuSeparator() Command { return widget.MenuSeparator() }
+
 // NewTree cria uma árvore virtualizada sobre o modelo dado por callbacks
 // (ver widget.Tree).
 func NewTree[ID comparable, W Widget](
@@ -407,6 +447,10 @@ func ClassicTheme() (*Theme, error) { return theme.Classic() }
 
 // NewEventBus cria um barramento síncrono (ver event.NewBus).
 func NewEventBus() *EventBus { return event.NewBus() }
+
+// LetterKey devolve a tecla da letra ou dígito dado — a forma cômoda de
+// declarar atalhos: juigo.LetterKey('s') (ver event.LetterKey).
+func LetterKey(r rune) Key { return event.LetterKey(r) }
 
 // Mount injeta um tema em uma árvore de widgets sem App — útil para testes e
 // renderização offscreen (ver widget.Mount).
