@@ -29,6 +29,8 @@ type (
 	HBox = widget.HBox
 	// Text é o widget de linha de texto.
 	Text = widget.Text
+	// Label é o parágrafo: texto só-leitura com quebra de linha.
+	Label = widget.Label
 	// Button é o botão de ação.
 	Button = widget.Button
 	// Input é o campo de texto de linha única.
@@ -224,6 +226,9 @@ const (
 
 // NewText cria um Text (ver widget.NewText).
 func NewText(s string) *Text { return widget.NewText(s) }
+
+// NewLabel cria um parágrafo com quebra de linha (ver widget.Label).
+func NewLabel(s string) *Label { return widget.NewLabel(s) }
 
 // NewButton cria um Button (ver widget.NewButton).
 func NewButton(label string, onClick func()) *Button { return widget.NewButton(label, onClick) }
