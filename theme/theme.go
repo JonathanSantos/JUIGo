@@ -259,6 +259,11 @@ type Theme struct {
 	SplitterThickness int
 	// TreeIndent é o recuo por nível da Tree, em unidades lógicas.
 	TreeIndent int
+	// RowPad é o respiro de linha de List e Tree, em unidades lógicas:
+	// entra na altura de cada linha (vertical) e é a margem da PÍLULA de
+	// seleção/hover (horizontal) — as linhas respiram e o realce é uma
+	// forma arredondada com margem, não uma faixa de ponta a ponta.
+	RowPad int
 	// Backdrop é a cor translúcida do pano de fundo do Modal.
 	Backdrop color.RGBA
 	// DisabledWash é a lavagem translúcida aplicada sobre widgets
@@ -382,6 +387,7 @@ func Default() (*Theme, error) {
 		TransitionDuration: 280 * time.Millisecond,
 		SplitterThickness:  6,
 		TreeIndent:         16,
+		RowPad:             4,
 		Backdrop:           color.RGBA{A: 0x66},
 		DisabledWash:       color.RGBA{R: 0xF2, G: 0xF3, B: 0xF5, A: 0x99},
 

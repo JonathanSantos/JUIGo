@@ -58,7 +58,10 @@ type Tree[ID comparable, W Widget] struct {
 	selected   *state.State[ID]
 	onActivate func(ID)
 	focused    bool
-	dbl        doubleClick
+	// hoverRow é a linha visível sob o ponteiro (-1 = nenhuma) — realçada
+	// com a pílula de hover do design system.
+	hoverRow int
+	dbl      doubleClick
 }
 
 // treeRow é uma linha visível do achatamento: o nó, a profundidade e o que
@@ -84,6 +87,7 @@ func NewTree[ID comparable, W Widget](
 		criar:      criar,
 		vincular:   vincular,
 		expanded:   map[ID]bool{},
+		hoverRow:   -1,
 	}
 }
 
@@ -183,6 +187,12 @@ func (t *Tree[ID, W]) indentPx() int {
 	return max(t.theme.Px(t.theme.TreeIndent), 1)
 }
 
+// rowPadPx devolve o respiro de linha em pixels (Theme.RowPad): altura
+// extra de cada linha e margem da pílula de seleção/hover.
+func (t *Tree[ID, W]) rowPadPx() int {
+	return t.theme.Px(t.theme.RowPad)
+}
+
 // ensureRowSize mede uma linha de amostra para a altura uniforme.
 func (t *Tree[ID, W]) ensureRowSize() bool {
 	if t.theme == nil {
@@ -201,7 +211,9 @@ func (t *Tree[ID, W]) ensureRowSize() bool {
 	if p.Y <= 0 {
 		return false
 	}
-	t.rowW, t.rowH = p.X, p.Y
+	// As linhas respiram: o conteúdo mais o respiro do tema em cima e
+	// embaixo (o widget da linha centraliza no espaço).
+	t.rowW, t.rowH = p.X, p.Y+2*t.rowPadPx()
 	t.rowSized = true
 	t.pool = append(t.pool, sample)
 	return true
@@ -241,10 +253,20 @@ func (t *Tree[ID, W]) rowIndexAt(p image.Point) int {
 	return i
 }
 
-// contentX devolve onde começa o conteúdo (widget) da linha: depois do
-// recuo e da coluna do chevron.
+// contentX devolve onde começa o conteúdo (widget) da linha: depois da
+// margem da pílula, do recuo e da coluna do chevron.
 func (t *Tree[ID, W]) contentX(depth int) int {
-	return t.Bounds().Min.X + (depth+1)*t.indentPx()
+	return t.Bounds().Min.X + t.rowPadPx() + (depth+1)*t.indentPx()
+}
+
+// pillRect devolve o retângulo da pílula de realce da linha i: a linha com
+// a margem horizontal do design system.
+func (t *Tree[ID, W]) pillRect(i int) image.Rectangle {
+	r := t.rowRect(i)
+	pad := t.rowPadPx()
+	r.Min.X += pad
+	r.Max.X -= pad
+	return r
 }
 
 // Layout guarda os bounds e faz deles a viewport de fallback: uma Tree fora
@@ -343,6 +365,20 @@ func (t *Tree[ID, W]) selectedIndex() int {
 	return -1
 }
 
+// setHoverRow move o realce de hover, danificando só as linhas afetadas.
+func (t *Tree[ID, W]) setHoverRow(i int) {
+	if i == t.hoverRow {
+		return
+	}
+	if t.hoverRow >= 0 {
+		t.damage(t.rowRect(t.hoverRow))
+	}
+	t.hoverRow = i
+	if i >= 0 {
+		t.damage(t.rowRect(i))
+	}
+}
+
 // selectRow move a seleção para a linha visível i (com State vinculado).
 func (t *Tree[ID, W]) selectRow(i int) {
 	if t.selected == nil {
@@ -369,6 +405,14 @@ func (t *Tree[ID, W]) HandleEvent(ev event.Event) bool {
 	case event.KeyEvent:
 		return t.handleKey(e.Key)
 	case event.MouseEvent:
+		switch e.Kind {
+		case event.MouseMove, event.MouseEnter:
+			t.setHoverRow(t.rowIndexAt(e.Pos))
+			return false
+		case event.MouseLeave:
+			t.setHoverRow(-1)
+			return false
+		}
 		if e.Kind != event.MouseDown || e.Button != event.MouseButtonLeft {
 			return false
 		}
@@ -482,12 +526,21 @@ func (t *Tree[ID, W]) Draw(dst *image.RGBA) {
 	}
 	t.ensure(region)
 	th := t.theme
+	radius := th.RadiusPx()
 
-	if sel := t.selectedIndex(); sel >= 0 {
-		if r := t.rowRect(sel); r.Overlaps(dst.Bounds()) {
-			render.FillRect(dst, r, th.Selection)
+	// Realces como PÍLULAS com margem (design system): hover por baixo,
+	// seleção por cima.
+	sel := t.selectedIndex()
+	if t.hoverRow >= 0 && t.hoverRow < len(t.rows) && t.hoverRow != sel {
+		if r := t.pillRect(t.hoverRow); r.Overlaps(dst.Bounds()) {
+			render.FillRoundRect(dst, r, radius, th.HoverBackground)
+		}
+	}
+	if sel >= 0 {
+		if r := t.pillRect(sel); r.Overlaps(dst.Bounds()) {
+			render.FillRoundRect(dst, r, radius, th.Selection)
 			if t.focused {
-				render.StrokeRoundRect(dst, r, th.RadiusPx(), th.BorderPx(), th.FocusOutline)
+				render.StrokeRoundRect(dst, r, radius, th.BorderPx(), th.FocusOutline)
 			}
 		}
 	}
@@ -519,7 +572,7 @@ func (t *Tree[ID, W]) drawChevron(dst *image.RGBA, row image.Rectangle, r treeRo
 	th := t.theme
 	size := th.Px(8)
 	indent := t.indentPx()
-	x := row.Min.X + r.depth*indent + (indent-size)/2
+	x := row.Min.X + t.rowPadPx() + r.depth*indent + (indent-size)/2
 	y := row.Min.Y + (row.Dy()-size/2)/2
 	if r.open {
 		// ▼: faixas horizontais de largura decrescente.

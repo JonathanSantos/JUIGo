@@ -47,6 +47,9 @@ type List[W Widget] struct {
 	viewport image.Rectangle
 	// selected habilita a seleção de linha (ver BindSelected).
 	selected *state.State[int]
+	// hoverRow é a linha sob o ponteiro (-1 = nenhuma), realçada com a
+	// pílula de hover quando a lista é selecionável.
+	hoverRow int
 	// reorderLabel/onReorder habilitam a reordenação por arrasto (ver
 	// OnReorder); arm é o estado do gesto entre o MouseDown e o limiar.
 	reorderLabel func(index int) string
@@ -57,7 +60,7 @@ type List[W Widget] struct {
 // NewList cria uma lista virtualizada com count linhas. O tema é herdado no
 // mount.
 func NewList[W Widget](count int, criar func() W, vincular func(row W, index int)) *List[W] {
-	return &List[W]{criar: criar, vincular: vincular, count: count}
+	return &List[W]{criar: criar, vincular: vincular, count: count, hoverRow: -1}
 }
 
 // Count devolve o total de linhas lógicas.
@@ -105,20 +108,47 @@ func (l *List[W]) HandleEvent(ev event.Event) bool {
 			l.Invalidate()
 		}
 		return true
-	case event.MouseMove:
-		if i, fired := l.arm.fire(e.Pos, dragThreshold(l.theme)); fired {
-			label := ""
-			if l.reorderLabel != nil {
-				label = l.reorderLabel(i)
+	case event.MouseMove, event.MouseEnter:
+		if e.Kind == event.MouseMove {
+			if i, fired := l.arm.fire(e.Pos, dragThreshold(l.theme)); fired {
+				label := ""
+				if l.reorderLabel != nil {
+					label = l.reorderLabel(i)
+				}
+				StartDrag(reorderPayload{owner: l, from: i}, label)
 			}
-			StartDrag(reorderPayload{owner: l, from: i}, label)
+		}
+		if l.selected != nil && l.rowSized && l.rowH > 0 {
+			i := (e.Pos.Y - l.Bounds().Min.Y) / l.rowH
+			if i < 0 || i >= l.count {
+				i = -1
+			}
+			l.setHoverRow(i)
 		}
 		return false
-	case event.MouseUp, event.MouseLeave:
+	case event.MouseUp:
 		l.arm.disarm()
+		return false
+	case event.MouseLeave:
+		l.arm.disarm()
+		l.setHoverRow(-1)
 		return false
 	}
 	return false
+}
+
+// setHoverRow move o realce de hover, danificando só as linhas afetadas.
+func (l *List[W]) setHoverRow(i int) {
+	if i == l.hoverRow {
+		return
+	}
+	if l.hoverRow >= 0 {
+		l.damage(l.rowRect(l.hoverRow))
+	}
+	l.hoverRow = i
+	if i >= 0 {
+		l.damage(l.rowRect(i))
+	}
 }
 
 // SetCount muda o total de linhas e agenda revinculação e redesenho.
@@ -175,7 +205,9 @@ func (l *List[W]) ensureRowSize() bool {
 	if p.Y <= 0 {
 		return false
 	}
-	l.rowW, l.rowH = p.X, p.Y
+	// As linhas respiram: conteúdo mais o respiro do tema (Theme.RowPad)
+	// em cima e embaixo; o widget da linha centraliza no espaço.
+	l.rowW, l.rowH = p.X, p.Y+2*l.theme.Px(l.theme.RowPad)
 	l.rowSized = true
 	// A amostra vira a primeira linha do pool (nada é jogado fora).
 	l.pool = append(l.pool, sample)
@@ -196,6 +228,16 @@ func (l *List[W]) rowRect(i int) image.Rectangle {
 	b := l.Bounds()
 	top := b.Min.Y + i*l.rowH
 	return image.Rect(b.Min.X, top, b.Max.X, top+l.rowH)
+}
+
+// pillRect devolve o retângulo da pílula de realce da linha i: a linha com
+// a margem horizontal do design system (Theme.RowPad).
+func (l *List[W]) pillRect(i int) image.Rectangle {
+	r := l.rowRect(i)
+	pad := l.theme.Px(l.theme.RowPad)
+	r.Min.X += pad
+	r.Max.X -= pad
+	return r
 }
 
 // ensure vincula e posiciona o pool para cobrir a região visível dada.
@@ -248,11 +290,19 @@ func (l *List[W]) Draw(dst *image.RGBA) {
 		region = dst.Bounds()
 	}
 	l.ensure(region)
-	// Realce da linha selecionada, por baixo do conteúdo dela.
-	if l.selected != nil && l.theme != nil {
-		if i := l.selected.Get(); i >= 0 && i < l.count && l.rowH > 0 {
-			if r := l.rowRect(i); r.Overlaps(dst.Bounds()) {
-				render.FillRect(dst, r, l.theme.Selection)
+	// Realces como PÍLULAS com margem (design system), por baixo do
+	// conteúdo: hover primeiro, seleção por cima.
+	if l.selected != nil && l.theme != nil && l.rowH > 0 {
+		radius := l.theme.RadiusPx()
+		sel := l.selected.Get()
+		if l.hoverRow >= 0 && l.hoverRow < l.count && l.hoverRow != sel {
+			if r := l.pillRect(l.hoverRow); r.Overlaps(dst.Bounds()) {
+				render.FillRoundRect(dst, r, radius, l.theme.HoverBackground)
+			}
+		}
+		if sel >= 0 && sel < l.count {
+			if r := l.pillRect(sel); r.Overlaps(dst.Bounds()) {
+				render.FillRoundRect(dst, r, radius, l.theme.Selection)
 			}
 		}
 	}

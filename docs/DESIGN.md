@@ -64,6 +64,7 @@ um campo público; derive e sobrescreva à vontade.
 | `Danger` | erros e ações destrutivas | `#BF4D43` | `#E5756A` |
 | `CurrentLine` | faixa da linha do cursor (CodeEditor) | `#F2EFE7` | `#2E2E2B` |
 | `Radius` / `Padding` / `Spacing` | forma e respiro | 10 / 10 / 10 | 10 / 10 / 10 |
+| `RowPad` | respiro de linha e margem da pílula (List/Tree) | 4 | 4 |
 
 Sintaxe (CodeEditor), na mesma família térrea:
 
@@ -107,6 +108,23 @@ o tema (HiDPI) e troca em runtime.
 - **Divider** separa regiões DENTRO de uma superfície (o fio
   `SurfaceBorder` com o respiro embutido); entre widgets comuns, prefira
   espaço (`Gap`) a fios.
+
+## Listas e árvores
+
+Coleções seguem o layout do sistema, não só as cores:
+
+- **Linhas respiram** — a altura de linha de `List` e `Tree` é o conteúdo
+  mais `RowPad` em cima e embaixo; densidade vem do tema, não de cada
+  tela.
+- **Realce é pílula, não faixa** — seleção e hover são formas arredondadas
+  (`Radius`) com margem `RowPad` dos dois lados, como itens de uma
+  sidebar; o hover usa `HoverBackground` e aparece em qualquer lista
+  selecionável.
+- **Conteúdo com recuo** — o texto da linha nasce dentro da pílula (na
+  `Tree`, depois da coluna do chevron), nunca colado na borda.
+- **Coleção flutuante vive num poço** — uma lista dentro de um diálogo
+  fica num `Card` (superfície + fio), não solta sobre o fundo do modal; o
+  seletor de arquivos do `quick` é o exemplo canônico.
 
 ## Espaçamento e forma
 

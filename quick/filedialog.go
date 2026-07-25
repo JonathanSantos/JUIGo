@@ -55,7 +55,7 @@ type fileDialog struct {
 	// o botão de confirmação do OpenFile.
 	selArq *state.State[string]
 	selIdx *state.State[int]
-	lista  *widget.List[*widget.Text]
+	lista  *widget.List[*widget.HBox]
 	rolar  *widget.Scroll
 	// aoEscolherArquivo avisa o SaveFile para copiar o nome ao campo.
 	aoEscolherArquivo func(nome string)
@@ -72,9 +72,12 @@ func novoDialogo(inicio string) *fileDialog {
 		selArq:  state.New(""),
 		selIdx:  state.New(-1),
 	}
+	// Cada linha é o texto com recuo interno (a pílula de seleção/hover da
+	// List ganha respiro dos dois lados — layout do design system).
 	d.lista = widget.NewList(0,
-		func() *widget.Text { return widget.NewText("") },
-		func(t *widget.Text, i int) {
+		func() *widget.HBox { return widget.NewHBox(widget.NewText("")).Pad(6) },
+		func(row *widget.HBox, i int) {
+			t := row.Children()[0].(*widget.Text)
 			if i < 0 || i >= len(d.itens) {
 				t.SetText("")
 				return
@@ -143,22 +146,25 @@ func (d *fileDialog) sobe() {
 	d.navega(filepath.Dir(d.dir))
 }
 
-// vista monta o corpo do diálogo: título, cabeçalho de navegação, a lista
-// dimensionada, a linha de erro e a barra de ações.
+// vista monta o corpo do diálogo na linguagem do design system: título em
+// Subtitle, navegação com "↑" discreto (Ghost) e o caminho em legenda, a
+// lista num POÇO de superfície (Card), a linha de erro, e a barra de ações
+// separada por um Divider.
 func (d *fileDialog) vista(title string, extra widget.Widget, acoes *widget.HBox) *widget.VBox {
 	cab := widget.NewHBox(
-		widget.Tooltip(widget.NewButton("↑", d.sobe), "Pasta acima"),
-		widget.NewText("").BindText(d.caminho),
+		widget.Tooltip(widget.NewButton("↑", d.sobe).Ghost(), "Pasta acima"),
+		widget.Centered(widget.NewText("").BindText(d.caminho).Caption()),
 	).Gap(8)
 	v := widget.NewVBox(
 		widget.NewText(title).Subtitle(),
 		cab,
-		widget.NewSized(d.rolar, 380, 240),
-		widget.NewText("").BindText(d.erro).Danger(),
+		widget.NewCard(widget.NewSized(d.rolar, 380, 236)).Pad(4),
+		widget.NewText("").BindText(d.erro).Danger().Caption(),
 	).Gap(8)
 	if extra != nil {
 		v.Add(extra)
 	}
+	v.Add(widget.NewDivider())
 	v.Add(acoes)
 	return v
 }

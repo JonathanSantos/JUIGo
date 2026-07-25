@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/JonathanSantos/JUIGo"
 	"github.com/JonathanSantos/JUIGo/offscreen"
 	"github.com/JonathanSantos/JUIGo/uitest"
 )
@@ -87,7 +88,11 @@ func TestCapturaVisual(t *testing.T) {
 		}
 	}
 	t.Chdir(base)
-	h := uitest.New(t, ui("Documentos"), 820, 560)
+	th, err := juigo.ClaudeTheme()
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := uitest.NewWithTheme(t, ui("Documentos"), th, 820, 560)
 	h.Click(uitest.Text("projetos"))
 	h.Click(uitest.Text("Abrir…"))
 	h.Layout()

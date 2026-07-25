@@ -22,7 +22,18 @@ func main() {
 	if err != nil || raiz == "" {
 		raiz = "."
 	}
-	if err := juigo.Run("Arquivos — JUIGo", 820, 520, ui(raiz)); err != nil {
+	app, err := juigo.New("Arquivos — JUIGo", 820, 520)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// O exemplo roda no design system "papel e tinta" (docs/DESIGN.md).
+	if th, err := juigo.ClaudeTheme(); err == nil {
+		if err := app.SetTheme(th); err != nil {
+			log.Fatal(err)
+		}
+	}
+	app.SetRoot(ui(raiz))
+	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -124,10 +135,12 @@ func ui(raiz string) juigo.Widget {
 	})
 
 	direita := juigo.NewVBox(
-		juigo.NewText("").BindText(caminho),
-		juigo.Grow(juigo.NewScroll(lista), 1),
-		juigo.NewText("").BindText(resultado),
-		juigo.NewHBox(juigo.NewSpacer(), abrir, salvar).Gap(8),
+		juigo.NewText("Arquivos").Subtitle(),
+		juigo.NewText("").BindText(caminho).Caption(),
+		juigo.Grow(juigo.NewCard(juigo.NewScroll(lista)).Pad(4), 1),
+		juigo.NewText("").BindText(resultado).Caption(),
+		juigo.NewDivider(),
+		juigo.NewHBox(juigo.NewSpacer(), salvar.Secondary(), abrir).Gap(8),
 	).Pad(12).Gap(8)
 
 	return juigo.NewSplitPane(
