@@ -75,6 +75,8 @@ type (
 	Command = widget.Command
 	// MenuBar é a barra de menus da aplicação (itens são Commands).
 	MenuBar = widget.MenuBar
+	// Calendar é o seletor visual de data (mês em grade, ‹ › navegam).
+	Calendar = widget.Calendar
 	// Transition é o efeito visual da troca de telas do Navigator.
 	Transition = widget.Transition
 	// DropTarget é implementado por widgets que aceitam soltar um arrasto
@@ -349,6 +351,10 @@ func NewMenuBar() *MenuBar { return widget.NewMenuBar() }
 
 // MenuSeparator devolve o item separador de grupos de um menu.
 func MenuSeparator() Command { return widget.MenuSeparator() }
+
+// NewCalendar cria um seletor visual de data exibindo o mês atual (ver
+// widget.Calendar).
+func NewCalendar() *Calendar { return widget.NewCalendar() }
 
 // NewTree cria uma árvore virtualizada sobre o modelo dado por callbacks
 // (ver widget.Tree).

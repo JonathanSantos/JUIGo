@@ -1,6 +1,7 @@
 package quick
 
 import (
+	"image"
 	"strconv"
 	"strings"
 	"time"
@@ -538,7 +539,24 @@ func (f *DateField) addTo(a *assembly) {
 			OnBlur(func() { m.Touch(str) })
 		v.inputs = append(v.inputs, in)
 		f.finish(in, m, str, hasErr)
-		a.addRow(f.label, in, m, str, hasErr)
+		// Botão do calendário: abre um Popup com o Calendar vinculado ao
+		// MESMO State de time.Time — escolher um dia preenche o texto (pela
+		// sincronização acima) e fecha.
+		var pop *widget.Popup
+		cal := widget.NewCalendar().BindValue(f.st).OnPick(func(time.Time) {
+			if pop != nil {
+				pop.Close()
+			}
+			m.Touch(str)
+		})
+		pop = widget.NewPopup(cal)
+		btn := widget.NewButton("↓", nil).Ghost()
+		btn.OnClick(func() {
+			b := btn.Bounds()
+			pop.ShowAt(image.Pt(in.Bounds().Min.X, b.Max.Y+2))
+		})
+		controle := widget.NewHBox(widget.Grow(in, 1), widget.Tooltip(btn, "Calendário")).Gap(4)
+		a.addRow(f.label, controle, m, str, hasErr)
 	})
 }
 
