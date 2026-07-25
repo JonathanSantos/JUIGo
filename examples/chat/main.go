@@ -62,12 +62,12 @@ type vista struct {
 	atual     int
 	respIdx   int
 
-	titulo   *juigo.State[string]
-	selecao  *juigo.State[int]
-	lado     *juigo.List[*juigo.Text]
-	feed     *juigo.VBox
-	rolagem  *juigo.Scroll
-	campo    *juigo.Input
+	titulo    *juigo.State[string]
+	selecao   *juigo.State[int]
+	lado      *juigo.List[*juigo.Text]
+	feed      *juigo.VBox
+	rolagem   *juigo.Scroll
+	campo     *juigo.Input
 	digitando bool
 	// fluxo é o texto da resposta em curso ("digitando"), ligado ao Label
 	// da última mensagem.
@@ -248,4 +248,3 @@ func (v *vista) reprojeta() {
 	}
 	v.rolagem.ScrollTo(1 << 30)
 }
-
