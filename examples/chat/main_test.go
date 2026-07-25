@@ -88,12 +88,16 @@ func TestCapturaVisual(t *testing.T) {
 	if caminho == "" {
 		t.Skip("defina CHAT_CAPTURA para salvar o frame")
 	}
+	// Captura em ESCALA 2 (retina): o PNG sai nítido como o App real.
 	th, err := juigo.ClaudeTheme()
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := th.SetScale(2); err != nil {
+		t.Fatal(err)
+	}
 	v := nova()
-	h := uitest.NewLazy(t, func() juigo.Widget { return v.Raiz }, 900, 560)
+	h := uitest.NewLazy(t, func() juigo.Widget { return v.Raiz }, 1800, 1120)
 	h.Session().SetTheme(th)
 
 	h.Click(uitest.Placeholder("Escreva para a Tinta…"))

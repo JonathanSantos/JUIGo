@@ -6,6 +6,7 @@ import (
 
 	"github.com/JonathanSantos/JUIGo/examples/proxy/proxy"
 	"github.com/JonathanSantos/JUIGo/offscreen"
+	"github.com/JonathanSantos/JUIGo/theme"
 	"github.com/JonathanSantos/JUIGo/uitest"
 )
 
@@ -40,7 +41,15 @@ func TestCapturaVisual(t *testing.T) {
 		Status: 418, RespType: "application/json", Size: 14, Mocked: true,
 		ResponseText: "HTTP/1.1 418 I'm a teapot\n\n{\"mock\": true}", RespBody: "{\"mock\": true}",
 	})
-	h := uitest.New(t, v.Raiz, 900, 520)
+	// Captura em ESCALA 2 (retina): o PNG sai nítido como o App real.
+	th, err := theme.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := th.SetScale(2); err != nil {
+		t.Fatal(err)
+	}
+	h := uitest.NewWithTheme(t, v.Raiz, th, 1800, 1040)
 	v.SelectFirst()
 	v.ShowResponse()
 	h.Layout()

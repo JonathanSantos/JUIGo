@@ -88,11 +88,15 @@ func TestCapturaVisual(t *testing.T) {
 		}
 	}
 	t.Chdir(base)
+	// Captura em ESCALA 2 (retina): o PNG sai nítido como o App real.
 	th, err := juigo.ClaudeTheme()
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := uitest.NewWithTheme(t, ui("Documentos"), th, 820, 560)
+	if err := th.SetScale(2); err != nil {
+		t.Fatal(err)
+	}
+	h := uitest.NewWithTheme(t, ui("Documentos"), th, 1640, 1120)
 	h.Click(uitest.Text("projetos"))
 	h.Click(uitest.Text("Abrir…"))
 	h.Layout()

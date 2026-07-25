@@ -62,8 +62,16 @@ func TestCapturaVisual(t *testing.T) {
 	if caminho == "" {
 		t.Skip("defina NAVEGACAO_CAPTURA para salvar o frame")
 	}
+	// Captura em ESCALA 2 (retina): o PNG sai nítido como o App real.
+	th, err := juigo.DefaultTheme()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := th.SetScale(2); err != nil {
+		t.Fatal(err)
+	}
 	nav := ui()
-	h := uitest.New(t, nav, 640, 400)
+	h := uitest.NewWithTheme(t, nav, th, 1280, 800)
 	h.Click(uitest.Text("Ver perfil →"))
 	h.Advance(144 * time.Millisecond) // ~metade dos 280ms padrão do tema
 	if err := offscreen.SavePNG(caminho, h.Screenshot()); err != nil {

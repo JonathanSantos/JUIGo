@@ -18,7 +18,15 @@ func TestCapturaVisual(t *testing.T) {
 		t.Skip("defina KANBAN_CAPTURA para salvar o frame")
 	}
 	v := nova(exemplo())
-	h := uitest.New(t, v.Raiz, 640, 360)
+	// Captura em ESCALA 2 (retina): o PNG sai nítido como o App real.
+	th, err := juigo.DefaultTheme()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := th.SetScale(2); err != nil {
+		t.Fatal(err)
+	}
+	h := uitest.NewWithTheme(t, v.Raiz, th, 1280, 720)
 	alvo := cartaoPorTitulo(t, h, "Revisar o texto")
 	h.MoveTo(centro(alvo))
 	h.Session().PointerDown(centro(alvo), juigo.MouseButtonLeft)

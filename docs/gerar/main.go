@@ -170,12 +170,22 @@ func planilha() juigo.Widget {
 	return a.Raiz
 }
 
+// salva renderiza a cena em ESCALA 2 (retina): w e h são LÓGICOS, o PNG
+// sai com o dobro de pixels — no README, <img width> devolve o tamanho
+// lógico e displays retina mostram a nitidez que o App real tem.
 func salva(nome string, raiz juigo.Widget, th *juigo.Theme, w, h int) {
+	th2, err := th.Clone()
+	if err != nil {
+		log.Fatalf("gerar %s: %v", nome, err)
+	}
+	if err := th2.SetScale(2); err != nil {
+		log.Fatalf("gerar %s: %v", nome, err)
+	}
 	caminho := filepath.Join("docs", nome)
-	if err := offscreen.SavePNG(caminho, offscreen.Render(raiz, th, w, h)); err != nil {
+	if err := offscreen.SavePNG(caminho, offscreen.Render(raiz, th2, 2*w, 2*h)); err != nil {
 		log.Fatalf("gerar %s: %v", caminho, err)
 	}
-	log.Printf("gerado %s", caminho)
+	log.Printf("gerado %s (%d×%d @2x)", caminho, w, h)
 }
 
 func main() {

@@ -172,7 +172,7 @@ estão em [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Formulários com `quick`
 
-![quick.Form com validação](docs/quick-form.png)
+<img src="docs/quick-form.png" alt="quick.Form com validação" width="440">
 
 ```go
 nome  := quick.Text("Nome:").Required("Informe o nome").Min(3, "Mínimo de 3")
@@ -195,7 +195,7 @@ tela.
 
 ## Navegação entre telas
 
-![Navegação em pleno deslize](docs/navegacao.png)
+<img src="docs/navegacao.png" alt="Navegação em pleno deslize" width="640">
 
 ```go
 nav := juigo.NewNavigator()
@@ -247,17 +247,17 @@ flags de cada widget.
   Ctrl/Cmd+K de brinde) e a resposta chegando "digitando" pelos timers da
   aplicação — papel e tinta de ponta a ponta.
 
-  ![Chat papel e tinta](docs/chat.png)
+  <img src="docs/chat.png" alt="Chat papel e tinta" width="900">
 
 - **Gráficos** (`juigo/chart`) na mesma identidade:
 
-  ![Gráficos temáticos](docs/graficos.png)
+  <img src="docs/graficos.png" alt="Gráficos temáticos" width="460">
 
 | | |
 | --- | --- |
 | ![TodoMVC](docs/todomvc.png) | ![Cells, a mini-planilha do 7GUIs](docs/cells.png) |
 
-![Contatos, o exemplo mestre-detalhe](docs/contatos.png)
+<img src="docs/contatos.png" alt="Contatos, o exemplo mestre-detalhe" width="720">
 
 - **`go run ./examples/basic`** — a demo reativa: bindings, formulário
   validado num modal, tema escuro ao vivo, lista virtualizada de 500 itens,
@@ -283,7 +283,7 @@ flags de cada widget.
   demanda, expansão por teclado) e o seletor de arquivos
   `quick.OpenFile`/`SaveFile`.
 
-  ![Arquivos: split, árvore e o seletor de arquivos](docs/arquivos.png)
+  <img src="docs/arquivos.png" alt="Arquivos: split, árvore e o seletor de arquivos" width="820">
 
 - **`go run ./examples/kanban`** — drag-and-drop: cartões arrastados entre
   colunas com fantasma e realce do alvo, cancelamento no Escape e a UI
@@ -310,7 +310,7 @@ flags de cada widget.
   É um proxy **explícito**: captura o que for apontado para ele, não o
   tráfego inteiro da máquina.
 
-  ![Mini-proxy: captura HTTP/HTTPS, visor ReadOnly e mocks](docs/proxy.png)
+  <img src="docs/proxy.png" alt="Mini-proxy: captura HTTP/HTTPS, visor ReadOnly e mocks" width="900">
 
 - **`go run ./examples/editor [arquivo]`** — o CodeEditor: highlight de
   sintaxe incremental (Go/JSON pela extensão; abrir um `/*` re-lexa só até
@@ -323,9 +323,9 @@ flags de cada widget.
   (`Theme.UseMonoFont`), além de "ir à linha" por composição com
   `quick.Prompt`.
 
-![CodeEditor](docs/editor.png)
+<img src="docs/editor.png" alt="CodeEditor" width="520">
 
-![Kanban em pleno arrasto](docs/kanban.png)
+<img src="docs/kanban.png" alt="Kanban em pleno arrasto" width="640">
 
 Testes de tudo (rodam sem janela):
 
