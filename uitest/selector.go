@@ -22,6 +22,8 @@ func Text(s string) Selector {
 			switch t := w.(type) {
 			case *widget.Text:
 				return t.Text() == s
+			case *widget.Label:
+				return t.Text() == s
 			case *widget.Button:
 				return t.Label == s
 			case *widget.Checkbox:
