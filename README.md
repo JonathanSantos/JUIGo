@@ -241,6 +241,14 @@ flags de cada widget.
 
 ## Exemplos
 
+- **`go run ./examples/galeria`** — o **storybook** do JUIGo, feito com o
+  próprio JUIGo: a árvore lateral navega pelos componentes, cada página
+  mostra instâncias vivas em cartões, e a barra do topo troca **tema,
+  fonte dos títulos, fonte mono e tamanho de texto em pleno voo**. As
+  páginas viram comandos globais — Ctrl/Cmd+K é a busca de componentes.
+
+  <img src="docs/galeria.png" alt="Galeria de componentes" width="1020">
+
 - **`go run ./examples/chat`** — a demo bandeira do design system: conversas
   num `SplitPane` com pílulas, balões de `Card` com `Label` (parágrafos que
   quebram sozinhos), barra de menus com atalhos globais (e a paleta

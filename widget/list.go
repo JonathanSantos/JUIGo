@@ -3,6 +3,8 @@ package widget
 import (
 	"image"
 
+	"golang.org/x/image/font"
+
 	"github.com/JonathanSantos/JUIGo/event"
 	"github.com/JonathanSantos/JUIGo/render"
 	"github.com/JonathanSantos/JUIGo/state"
@@ -33,9 +35,12 @@ type List[W Widget] struct {
 	vincular func(row W, index int)
 	count    int
 
-	rowH      int
-	rowW      int
-	rowSized  bool
+	rowH     int
+	rowW     int
+	rowSized bool
+	// rowFace é a face vigente quando a linha foi medida: muda em troca de
+	// tema, de escala ou de tamanho de fonte — e a altura re-mede.
+	rowFace   font.Face
 	pool      []W
 	children  []Widget
 	poolStart int
@@ -193,10 +198,18 @@ func (l *List[W]) ensureRowSize() bool {
 	if l.theme == nil {
 		return false
 	}
-	if l.rowSized {
+	if l.rowSized && l.rowFace == l.theme.Face {
 		return true
 	}
-	sample := l.criar()
+	// Primeira medição OU o tema mudou de métrica (escala, tamanho de
+	// fonte, troca de tema): re-mede com uma amostra e invalida o pool.
+	nova := len(l.pool) == 0
+	var sample W
+	if nova {
+		sample = l.criar()
+	} else {
+		sample = l.pool[0]
+	}
 	Mount(sample, l.theme)
 	if l.count > 0 {
 		l.vincular(sample, 0)
@@ -209,8 +222,12 @@ func (l *List[W]) ensureRowSize() bool {
 	// em cima e embaixo; o widget da linha centraliza no espaço.
 	l.rowW, l.rowH = p.X, p.Y+2*l.theme.Px(l.theme.RowPad)
 	l.rowSized = true
-	// A amostra vira a primeira linha do pool (nada é jogado fora).
-	l.pool = append(l.pool, sample)
+	l.rowFace = l.theme.Face
+	l.poolValid = false
+	if nova {
+		// A amostra vira a primeira linha do pool (nada é jogado fora).
+		l.pool = append(l.pool, sample)
+	}
 	return true
 }
 

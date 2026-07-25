@@ -3,6 +3,8 @@ package widget
 import (
 	"image"
 
+	"golang.org/x/image/font"
+
 	"github.com/JonathanSantos/JUIGo/event"
 	"github.com/JonathanSantos/JUIGo/render"
 	"github.com/JonathanSantos/JUIGo/state"
@@ -47,13 +49,16 @@ type Tree[ID comparable, W Widget] struct {
 
 	rowH, rowW int
 	rowSized   bool
-	pool       []W
-	kids       []Widget
-	poolStart  int
-	poolLen    int
-	poolTop    int
-	poolValid  bool
-	viewport   image.Rectangle
+	// rowFace é a face vigente quando a linha foi medida — muda em troca
+	// de tema, de escala ou de tamanho de fonte, e a altura re-mede.
+	rowFace   font.Face
+	pool      []W
+	kids      []Widget
+	poolStart int
+	poolLen   int
+	poolTop   int
+	poolValid bool
+	viewport  image.Rectangle
 
 	selected   *state.State[ID]
 	onActivate func(ID)
@@ -198,11 +203,19 @@ func (t *Tree[ID, W]) ensureRowSize() bool {
 	if t.theme == nil {
 		return false
 	}
-	if t.rowSized {
+	if t.rowSized && t.rowFace == t.theme.Face {
 		return true
 	}
+	// Primeira medição OU o tema mudou de métrica: re-mede e invalida o
+	// pool.
 	t.ensureRows()
-	sample := t.criar()
+	nova := len(t.pool) == 0
+	var sample W
+	if nova {
+		sample = t.criar()
+	} else {
+		sample = t.pool[0]
+	}
 	Mount(sample, t.theme)
 	if len(t.rows) > 0 {
 		t.vincular(sample, t.rows[0].id)
@@ -215,7 +228,11 @@ func (t *Tree[ID, W]) ensureRowSize() bool {
 	// embaixo (o widget da linha centraliza no espaço).
 	t.rowW, t.rowH = p.X, p.Y+2*t.rowPadPx()
 	t.rowSized = true
-	t.pool = append(t.pool, sample)
+	t.rowFace = t.theme.Face
+	t.poolValid = false
+	if nova {
+		t.pool = append(t.pool, sample)
+	}
 	return true
 }
 

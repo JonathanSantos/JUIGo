@@ -156,7 +156,10 @@ func (c *Checkbox) Draw(dst *image.RGBA) {
 	boxTop := bounds.Min.Y + (bounds.Dy()-side)/2
 	box := image.Rect(bounds.Min.X, boxTop, bounds.Min.X+side, boxTop+side)
 
-	radius := th.RadiusPx()
+	// O raio segue o tema mas é PRESO a 1/4 do lado: um tema de cantos
+	// generosos (papel e tinta, raio 10) não pode fazer a caixa virar
+	// círculo — checkbox circular é indistinguível de Radio.
+	radius := min(th.RadiusPx(), side/4)
 	render.FillRoundRect(dst, box, radius, th.InputBackground)
 	border := th.InputBorder
 	if c.hover || c.pressed {

@@ -177,3 +177,37 @@ func TestIncrementalPaineisArvore(t *testing.T) {
 	h.Hover(uitest.Text("Detalhe"))
 	verifica("hover fora da faixa")
 }
+
+// TestColecoesRemedemComTemaNovo é a regressão do bug pego pela galeria:
+// List e Tree mediam a altura de linha UMA vez — trocar escala/tamanho de
+// fonte em runtime deixava o texto maior que a linha. A altura deve
+// re-medir quando a face do tema muda.
+func TestColecoesRemedemComTemaNovo(t *testing.T) {
+	tree, _ := arvoreDemo()
+	sel := juigo.NewState(-1)
+	lista := juigo.NewList(50,
+		func() *juigo.Text { return juigo.NewText("") },
+		func(tx *juigo.Text, i int) { tx.SetText("linha") },
+	).BindSelected(sel)
+	h := uitest.New(t, juigo.NewVBox(juigo.Grow(juigo.NewScroll(tree), 1), juigo.Grow(juigo.NewScroll(lista), 1)), 300, 400)
+
+	antesTree := tree.PreferredSize().Y
+	antesLista := lista.PreferredSize().Y
+
+	th2, err := juigo.DefaultTheme()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := th2.SetScale(2); err != nil {
+		t.Fatal(err)
+	}
+	h.Session().SetTheme(th2)
+	h.Layout()
+
+	if got := tree.PreferredSize().Y; got <= antesTree {
+		t.Fatalf("a Tree deveria re-medir as linhas na escala 2: %d ≤ %d", got, antesTree)
+	}
+	if got := lista.PreferredSize().Y; got <= antesLista {
+		t.Fatalf("a List deveria re-medir as linhas na escala 2: %d ≤ %d", got, antesLista)
+	}
+}
