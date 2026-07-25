@@ -333,6 +333,82 @@ Testes de tudo (rodam sem janela):
 go test ./...
 ```
 
+## Por dentro: performance, filosofia e curiosidades
+
+### Os números que importam
+
+| | |
+| --- | ---: |
+| Frame completo numa retina 13" inteira (2560×1600) | **0,55 ms** de CPU (3% do orçamento de 60 Hz) |
+| Frame incremental (dirty regions) | **15 µs** |
+| Rolagem numa List de 10.000 linhas | **40 µs** |
+| Alocações no caminho quente de desenho | **zero** — provado por `AllocsPerRun` |
+| Binário completo, `-s -w` | **3,7 MB** (1,1 MB são as cinco fontes embutidas) |
+
+Medições, metodologia e a análise honesta de viabilidade — incluindo o
+que a lib ainda **não** faz — estão em [docs/BENCHMARK.md](docs/BENCHMARK.md).
+
+### A filosofia
+
+- **Desenho 100% por software.** Cada pixel nasce num `*image.RGBA`; o
+  OpenGL só apresenta o buffer. Isso compra determinismo (o mesmo código
+  produz os mesmos bytes — a base dos golden tests e das screenshots
+  desta página, geradas pela própria lib), renderização offscreen sem
+  janela e uma fronteira de plataforma minúscula: se o macOS aposentar o
+  OpenGL de vez, troca-se só o blitter.
+- **Zero alocação no caminho quente é regra com polícia**, não aspiração:
+  benchmarks de allocs fazem parte da suíte. O relatório de benchmark
+  flagrou o widget mais novo alocando 2× por frame (method values virando
+  closures) — a correção saiu no mesmo commit do relatório.
+- **Single-threaded por contrato.** Uma thread, um loop dirigido a
+  eventos, `App.Post` como única porta de entrada para goroutines. Sem
+  mutex em widget, sem corrida para debugar.
+- **Três dependências, e nada mais.** GLFW, GL e `x/image`. Até as fontes
+  vêm embutidas — um `go build` produz um binário que não pede nada ao
+  sistema.
+- **Erros sem pânico, godoc em português, um commit por incremento
+  compilável.** Convenções pequenas que aguentaram a lib triplicar de
+  tamanho sem apodrecer.
+
+### A obsessão com DX
+
+Quase toda API nasceu de uma dor concreta, não de um plano: o tema
+ambiente existe porque passar `theme` em todo construtor doía; os handles
+tipados do `quick.Form` existem porque `Get("nome")` por string é bug
+esperando hora; **a variável é a chave** virou princípio — o compilador
+confere o que, em outras libs, é convenção de string. E a regra da rampa
+atravessa tudo: as camadas altas (`quick`) aceitam e devolvem widgets
+comuns, então quando o pronto não serve, desce-se UM degrau naquele ponto
+— nunca reescrever a tela.
+
+### uitest, a aposta que mais pagou
+
+O núcleo de interação inteiro (roteamento, foco, overlay, captura,
+relógio) vive numa `Session` sem janela; o App real é uma casca GLFW por
+cima, e o [uitest](uitest) dirige a MESMA Session nos testes — cliques,
+digitação, timers virtuais, screenshots determinísticos. O retorno
+composto disso: o golden test "frame incremental == frame completo" pegou
+bugs reais de dano em três widgets diferentes antes de qualquer usuário;
+e quando a altura de TODAS as linhas de TODAS as listas mudou (design
+system), **nenhum teste quebrou** — eles testam comportamento, não pixels
+decorados.
+
+### Curiosidades
+
+- **19.585 linhas de biblioteca**, cobertas por **7.893 linhas de testes**
+  (234 testes, ~10 s de suíte) e demonstradas por **6.071 linhas de
+  exemplos** — 11 apps, incluindo o 7GUIs completo, um mini-proxy que
+  inspeciona HTTPS e um chat.
+- Do primeiro commit à `v0.17.0` foram **três dias** (22–24/jul/2026) e
+  116 commits — nenhum deles quebrando a suíte.
+- Dos ~101 MB de RSS de um app rodando, **88 MB são a stack OpenGL da
+  Apple**; a interface em si vive em dígitos únicos de MB.
+- A fonte Go Regular não cobre ★ nem ◀, mas cobre ♥ ← ↑ ‹ › — o exemplo
+  de contatos usa ♥ nos favoritos por isso, e foi um teste de
+  `GlyphAdvance` que decidiu.
+- O bug mais sutil até hoje: `draw.Over` exige cor pré-multiplicada — os
+  contornos verdes do inspector é que denunciaram.
+
 ## Arquitetura
 
 Renderização 100% por software sobre um `*image.RGBA` (GLFW para
