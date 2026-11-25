@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>JUIGo — interfaces desktop em Go, desenhadas pixel a pixel</title>
 <meta name="description" content="Biblioteca de GUI desktop para Go escrita do zero: renderização por software, estado reativo tipado, formulários validados e testes de UI determinísticos.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23D97757'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='20' text-anchor='middle' fill='%23FAF9F5'%3EJ%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="marca/logo.svg" type="image/svg+xml">
 <link rel="preload" href="site/fonts/Inter-Regular.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="site/fonts/Inter-SemiBold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="site/estilo.css">
@@ -23,7 +23,8 @@
 <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 
 <header class="barra">
-  <a class="marca" href="#topo">JUIGo</a>
+  <a class="marca" href="#topo"><img class="marca-palavra" alt="juigo" width="94" height="50"
+    data-claro="marca/palavra-claro.svg" data-escuro="marca/palavra-escuro.svg" src="marca/palavra-claro.svg"></a>
   <span class="versao">v0.19</span>
   <nav class="barra-links" aria-label="Links do projeto">
     <a href="https://github.com/JonathanSantos/JUIGo">GitHub</a>
@@ -52,6 +53,7 @@
   <div id="indice-componentes"></div>
   <p class="indice-grupo">Mais</p>
   <a href="#exemplos">Exemplos</a>
+  <a href="#por-dentro">Por dentro</a>
   <a href="#desempenho">Desempenho</a>
 </nav>
 
@@ -69,7 +71,7 @@
     </div>
     <ul class="fatos">
       <li><strong>25+</strong> widgets</li>
-      <li><strong>15 µs</strong> por frame incremental</li>
+      <li><strong>17 µs</strong> por frame incremental</li>
       <li><strong>0</strong> alocações no desenho</li>
       <li><strong>3</strong> dependências</li>
     </ul>
@@ -292,17 +294,83 @@ go func() {
     janelas com o mesmo State) e <code>editor</code> (o CodeEditor).</p>
 </section>
 
+<section id="por-dentro">
+  <h2>Por dentro</h2>
+  <p>Como a lib funciona por baixo. Contratos completos em
+    <a href="https://github.com/JonathanSantos/JUIGo/blob/main/docs/ARQUITETURA.md">ARQUITETURA.md</a>.</p>
+  <figure class="ilustracao">
+    <h3>Um import, camadas acíclicas</h3>
+    <img loading="lazy" width="880" alt="Um import, camadas acíclicas"
+      data-claro="ilustracoes/pacotes-claro.svg" data-escuro="ilustracoes/pacotes-escuro.svg" src="ilustracoes/pacotes-claro.svg">
+    <figcaption>A raiz <code>juigo</code> é uma fachada: tem o <code>App</code> e reexporta tudo por alias. Abaixo dela, cada camada conhece só as de baixo; <code>internal/hooks</code> é a única ponte de volta ao App (repintura e clipboard), fora da API pública.</figcaption>
+  </figure>
+  <figure class="ilustracao">
+    <h3>O laço de um frame</h3>
+    <img loading="lazy" width="880" alt="O laço de um frame"
+      data-claro="ilustracoes/frame-claro.svg" data-escuro="ilustracoes/frame-escuro.svg" src="ilustracoes/frame-claro.svg">
+    <figcaption>O loop dorme em <code>WaitEvents</code> e só acorda por evento ou timer. Tudo roda numa thread, sem mutex; <code>App.Post</code> é a única porta para goroutines.</figcaption>
+  </figure>
+  <figure class="ilustracao">
+    <h3>Dirty regions</h3>
+    <img loading="lazy" width="880" alt="Dirty regions"
+      data-claro="ilustracoes/dirty-claro.svg" data-escuro="ilustracoes/dirty-escuro.svg" src="ilustracoes/dirty-claro.svg">
+    <figcaption>Setters invalidam os próprios bounds e a Session soma os danos. O frame desenha numa visão recortada do buffer e sobe à GPU só esse pedaço. Um golden test garante que o incremental é byte a byte igual ao completo.</figcaption>
+  </figure>
+  <figure class="ilustracao">
+    <h3>Roteamento de eventos</h3>
+    <img loading="lazy" width="880" alt="Roteamento de eventos"
+      data-claro="ilustracoes/eventos-claro.svg" data-escuro="ilustracoes/eventos-escuro.svg" src="ilustracoes/eventos-claro.svg">
+    <figcaption>O mouse desce da raiz ao widget mais profundo que contém o ponto e sobe se ninguém consumir; quem consome um <code>MouseDown</code> captura o mouse até o <code>MouseUp</code>. O teclado vai direto ao focado.</figcaption>
+  </figure>
+  <figure class="ilustracao">
+    <h3>Reatividade sem vazamento</h3>
+    <img loading="lazy" width="880" alt="Reatividade sem vazamento"
+      data-claro="ilustracoes/reatividade-claro.svg" data-escuro="ilustracoes/reatividade-escuro.svg" src="ilustracoes/reatividade-claro.svg">
+    <figcaption>Todo <code>Bind*</code> assina o State com referência fraca: widget coletado, watcher some. O <code>Set</code> chama os watchers em ordem e cada setter invalida só o próprio widget.</figcaption>
+  </figure>
+  <figure class="ilustracao">
+    <h3>Overlays em pilha</h3>
+    <img loading="lazy" width="880" alt="Overlays em pilha"
+      data-claro="ilustracoes/overlay-claro.svg" data-escuro="ilustracoes/overlay-escuro.svg" src="ilustracoes/overlay-claro.svg">
+    <figcaption>Popup, Modal e paleta são camadas de uma pilha. Só o topo recebe eventos, clique fora fecha só ele, e cada camada devolve o foco de quando abriu.</figcaption>
+  </figure>
+  <figure class="ilustracao">
+    <h3>List virtualizada</h3>
+    <img loading="lazy" width="880" alt="List virtualizada"
+      data-claro="ilustracoes/lista-claro.svg" data-escuro="ilustracoes/lista-escuro.svg" src="ilustracoes/lista-claro.svg">
+    <figcaption>Um widget por linha que toca a viewport, não por linha de dados: rolar só revincula com <code>bind(row, i)</code>. 44 µs por passo com 10.000 linhas.</figcaption>
+  </figure>
+  <figure class="ilustracao">
+    <h3>Cache de glyphs</h3>
+    <img loading="lazy" width="880" alt="Cache de glyphs"
+      data-claro="ilustracoes/glyphs-claro.svg" data-escuro="ilustracoes/glyphs-escuro.svg" src="ilustracoes/glyphs-claro.svg">
+    <figcaption>Cada rune é rasterizada uma única vez numa máscara alfa; depois, desenhar é copiar a máscara com a cor do tema. Pixel a pixel igual ao <code>font.Drawer</code>, com zero alocações.</figcaption>
+  </figure>
+  <figure class="ilustracao">
+    <h3>Temas por sementes</h3>
+    <img loading="lazy" width="880" alt="Temas por sementes"
+      data-claro="ilustracoes/temas-claro.svg" data-escuro="ilustracoes/temas-escuro.svg" src="ilustracoes/temas-claro.svg">
+    <figcaption><code>NewTheme(Palette{…})</code> deriva os tokens em OKLCh e ajusta cada par à régua WCAG. Um teste varre o cubo RGB como semente: qualquer cor dá um tema aprovado.</figcaption>
+  </figure>
+  <figure class="ilustracao">
+    <h3>uitest: a mesma Session, sem janela</h3>
+    <img loading="lazy" width="880" alt="uitest: a mesma Session, sem janela"
+      data-claro="ilustracoes/uitest-claro.svg" data-escuro="ilustracoes/uitest-escuro.svg" src="ilustracoes/uitest-claro.svg">
+    <figcaption>O App real é uma casca GLFW sobre a <code>Session</code>; o uitest dirige a mesma Session com eventos sintéticos e relógio virtual. Mesma entrada, mesmos bytes: screenshots viram golden tests.</figcaption>
+  </figure>
+</section>
+
 <section id="desempenho">
   <h2>Desempenho</h2>
   <p>Medido numa retina 13" (2560×1600). Metodologia e limites em
     <a href="https://github.com/JonathanSantos/JUIGo/blob/main/docs/BENCHMARK.md">BENCHMARK.md</a>.</p>
   <table class="numeros">
     <tbody>
-      <tr><th scope="row">Frame completo, tela inteira</th><td>0,55 ms de CPU</td></tr>
-      <tr><th scope="row">Frame incremental (dirty regions)</th><td>15 µs</td></tr>
-      <tr><th scope="row">Rolagem numa List de 10.000 linhas</th><td>40 µs</td></tr>
+      <tr><th scope="row">Frame completo, tela inteira</th><td>0,76 ms de CPU</td></tr>
+      <tr><th scope="row">Frame incremental (dirty regions)</th><td>17 µs</td></tr>
+      <tr><th scope="row">Rolagem numa List de 10.000 linhas</th><td>44 µs</td></tr>
       <tr><th scope="row">Alocações no caminho quente de desenho</th><td>zero</td></tr>
-      <tr><th scope="row">Binário completo, <code>-s -w</code></th><td>3,7 MB</td></tr>
+      <tr><th scope="row">Binário completo, <code>-s -w</code></th><td>4,3 MiB</td></tr>
     </tbody>
   </table>
 </section>

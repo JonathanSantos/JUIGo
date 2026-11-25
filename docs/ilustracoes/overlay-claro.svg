@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 400" width="880" height="400" role="img" aria-labelledby="t d"><title id="t">Pilha de overlays</title><desc id="d">Camadas desenhadas por cima da árvore: popup do Dropdown, Modal e, acima de tudo, as camadas passivas de tooltip e fantasma de arrasto. Só o topo recebe eventos; clique fora fecha só o topo.</desc>
+<style>
+svg{--bg:#FAFAFA;--surf:#FFFFFF;--line:#E3E3E3;--border:#D3D3D3;--ink:#121212;--mut:#737373;
+--act:#111111;--acttext:#FFFFFF;--sig:#B27A00;--sel:#FEE7A0;--hover:#F0F0F0;--head:#F4F4F4;
+--ok:#148446;--bad:#D92D20}
+
+text{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--ink)}
+.mono{font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace}
+.mut{fill:var(--mut)}.sigt{fill:var(--sig)}.actt{fill:var(--acttext)}.okt{fill:var(--ok)}.badt{fill:var(--bad)}
+.bg{fill:var(--bg);stroke:var(--line)}
+.box{fill:var(--surf);stroke:var(--border);stroke-width:1.5}
+.soft{fill:var(--head);stroke:var(--line);stroke-width:1}
+.hov{fill:var(--hover)}
+.act{fill:var(--act)}
+.sel{fill:var(--sel)}
+.sig{fill:none;stroke:var(--sig);stroke-width:2}
+.sigf{fill:var(--sig)}
+.dash{fill:none;stroke:var(--sig);stroke-width:2;stroke-dasharray:6 5}
+.ln{fill:none;stroke:var(--mut);stroke-width:1.5}
+.lnd{fill:none;stroke:var(--mut);stroke-width:1.5;stroke-dasharray:5 5}
+.lnl{fill:none;stroke:var(--border);stroke-width:1}
+.arrowhead{fill:var(--mut)}
+.sigarrow{fill:var(--sig)}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrowhead" d="M0,0 L10,5 L0,10 z"/></marker>
+<marker id="s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sigarrow" d="M0,0 L10,5 L0,10 z"/></marker>
+</defs>
+<rect x="0.5" y="0.5" width="879" height="399" rx="12" class="bg"/><text x="32" y="44" font-size="19" font-weight="600" text-anchor="start" >Overlays: uma pilha, e só o topo manda</text>
+<text x="32" y="68" font-size="13" font-weight="400" text-anchor="start" class="mut" >Clique fora fecha só a camada do topo; cada camada devolve o foco de quando abriu.</text>
+<path d="M 60 318 l 260 0 l 70 -56 l -260 0 z" class="box" stroke-linejoin="round"/>
+<line x1="360" y1="290" x2="536" y2="290" class="lnl"/>
+<text x="548" y="287" font-size="14" font-weight="400" text-anchor="start" >árvore de widgets</text>
+<text x="548" y="305" font-size="12" font-weight="400" text-anchor="start" class="mut" >sempre embaixo</text>
+<path d="M 100 260 l 260 0 l 70 -56 l -260 0 z" class="box" stroke-linejoin="round"/>
+<line x1="400" y1="232" x2="536" y2="232" class="lnl"/>
+<text x="548" y="229" font-size="14" font-weight="400" text-anchor="start" >Modal</text>
+<text x="548" y="247" font-size="12" font-weight="400" text-anchor="start" class="mut" >SpansWindow: cobre a janela</text>
+<path d="M 140 202 l 260 0 l 70 -56 l -260 0 z" class="box" stroke-linejoin="round"/>
+<path d="M 140 202 l 260 0 l 70 -56 l -260 0 z" class="sig" stroke-linejoin="round"/>
+<line x1="440" y1="174" x2="536" y2="174" class="lnl"/>
+<text x="548" y="171" font-size="14" font-weight="600" text-anchor="start" >Popup do Dropdown</text>
+<text x="548" y="189" font-size="12" font-weight="400" text-anchor="start" class="sigt" >TOPO: recebe os eventos</text>
+<path d="M 180 144 l 260 0 l 70 -56 l -260 0 z" class="lnd" style="fill:var(--surf)" stroke-linejoin="round"/>
+<line x1="480" y1="116" x2="536" y2="116" class="lnl"/>
+<text x="548" y="113" font-size="14" font-weight="400" text-anchor="start" >tooltip · fantasma de arrasto</text>
+<text x="548" y="131" font-size="12" font-weight="400" text-anchor="start" class="mut" >passivos, fora do hit-test</text>
+<rect x="32" y="344" width="282" height="26" rx="13.0" class="box" />
+<text x="173.0" y="359" font-size="12" font-weight="400" text-anchor="middle" class="mono" >Escape / clique fora → fecha o topo</text>
+<rect x="330" y="344" width="252" height="26" rx="13.0" class="box" />
+<text x="456.0" y="359" font-size="12" font-weight="400" text-anchor="middle" class="mono" >foco restaurado camada a camada</text>
+<rect x="590" y="344" width="230" height="26" rx="13.0" class="box" />
+<text x="705.0" y="359" font-size="12" font-weight="400" text-anchor="middle" class="mono" >resize fecha só as ancoradas</text></svg>

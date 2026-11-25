@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="t d"><title id="t">JUIGo</title><desc id="d">A letra j em traço geométrico num ladrilho de tinta; o pingo é um pixel âmbar.</desc>
+<style>
+svg{--bg:#FAFAFA;--surf:#FFFFFF;--line:#E3E3E3;--border:#D3D3D3;--ink:#121212;--mut:#737373;
+--act:#111111;--acttext:#FFFFFF;--sig:#B27A00;--sel:#FEE7A0;--hover:#F0F0F0;--head:#F4F4F4;
+--ok:#148446;--bad:#D92D20}
+
+text{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--ink)}
+.mono{font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace}
+.mut{fill:var(--mut)}.sigt{fill:var(--sig)}.actt{fill:var(--acttext)}.okt{fill:var(--ok)}.badt{fill:var(--bad)}
+.bg{fill:var(--bg);stroke:var(--line)}
+.box{fill:var(--surf);stroke:var(--border);stroke-width:1.5}
+.soft{fill:var(--head);stroke:var(--line);stroke-width:1}
+.hov{fill:var(--hover)}
+.act{fill:var(--act)}
+.sel{fill:var(--sel)}
+.sig{fill:none;stroke:var(--sig);stroke-width:2}
+.sigf{fill:var(--sig)}
+.dash{fill:none;stroke:var(--sig);stroke-width:2;stroke-dasharray:6 5}
+.ln{fill:none;stroke:var(--mut);stroke-width:1.5}
+.lnd{fill:none;stroke:var(--mut);stroke-width:1.5;stroke-dasharray:5 5}
+.lnl{fill:none;stroke:var(--border);stroke-width:1}
+.arrowhead{fill:var(--mut)}
+.sigarrow{fill:var(--sig)}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrowhead" d="M0,0 L10,5 L0,10 z"/></marker>
+<marker id="s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sigarrow" d="M0,0 L10,5 L0,10 z"/></marker>
+</defs>
+<style>.ink{fill:var(--ink)}.inks{fill:none;stroke:var(--ink);stroke-linecap:round;stroke-linejoin:round}.amb{fill:#F0A500}</style>
+<style>.tile{fill:var(--act)}.on{fill:none;stroke:var(--acttext);stroke-linecap:round;stroke-linejoin:round}</style>
+<rect width="256" height="256" rx="44" class="tile"/>
+<path d="M 146 98 L 146 178 Q 146 214 110 212" class="on" style="stroke-width:30"/>
+<rect x="130" y="44" width="32" height="32" rx="3" class="amb"/></svg>

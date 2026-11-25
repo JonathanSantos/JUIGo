@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 596" width="880" height="596" role="img" aria-labelledby="t d"><title id="t">Pacotes do JUIGo e suas dependências</title><desc id="d">A aplicação importa só a fachada juigo; abaixo dela ficam as camadas de conveniência, o núcleo widget e a fundação theme, state, event e render. As dependências são acíclicas.</desc>
+<style>
+svg{--bg:#FAFAFA;--surf:#FFFFFF;--line:#E3E3E3;--border:#D3D3D3;--ink:#121212;--mut:#737373;
+--act:#111111;--acttext:#FFFFFF;--sig:#B27A00;--sel:#FEE7A0;--hover:#F0F0F0;--head:#F4F4F4;
+--ok:#148446;--bad:#D92D20}
+@media (prefers-color-scheme:dark){svg{--bg:#0F0F0F;--surf:#171717;--line:#282828;--border:#313131;
+--ink:#EDEDED;--mut:#949494;--act:#EDEDED;--acttext:#121212;--sig:#F1B044;--sel:#584500;
+--hover:#202020;--head:#1C1C1C;--ok:#2C9355;--bad:#EB4232}}
+text{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--ink)}
+.mono{font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace}
+.mut{fill:var(--mut)}.sigt{fill:var(--sig)}.actt{fill:var(--acttext)}.okt{fill:var(--ok)}.badt{fill:var(--bad)}
+.bg{fill:var(--bg);stroke:var(--line)}
+.box{fill:var(--surf);stroke:var(--border);stroke-width:1.5}
+.soft{fill:var(--head);stroke:var(--line);stroke-width:1}
+.hov{fill:var(--hover)}
+.act{fill:var(--act)}
+.sel{fill:var(--sel)}
+.sig{fill:none;stroke:var(--sig);stroke-width:2}
+.sigf{fill:var(--sig)}
+.dash{fill:none;stroke:var(--sig);stroke-width:2;stroke-dasharray:6 5}
+.ln{fill:none;stroke:var(--mut);stroke-width:1.5}
+.lnd{fill:none;stroke:var(--mut);stroke-width:1.5;stroke-dasharray:5 5}
+.lnl{fill:none;stroke:var(--border);stroke-width:1}
+.arrowhead{fill:var(--mut)}
+.sigarrow{fill:var(--sig)}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrowhead" d="M0,0 L10,5 L0,10 z"/></marker>
+<marker id="s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sigarrow" d="M0,0 L10,5 L0,10 z"/></marker>
+</defs>
+<rect x="0.5" y="0.5" width="879" height="595" rx="12" class="bg"/><text x="32" y="44" font-size="19" font-weight="600" text-anchor="start" >Pacotes: um import só, dependências sempre para baixo</text>
+<text x="32" y="68" font-size="13" font-weight="400" text-anchor="start" class="mut" >Camadas de cima conhecem as de baixo; nunca o contrário. internal/hooks é a única ponte de volta ao App.</text>
+<text x="32" y="126.0" font-size="12" font-weight="600" text-anchor="start" class="mut" >SUA APP</text>
+<rect x="150" y="96" width="698" height="46" rx="8" class="lnd" style="fill:none"/>
+<text x="170" y="125" font-size="14" font-weight="400" text-anchor="start" class="mono" >import &quot;github.com/JonathanSantos/JUIGo&quot;</text>
+<line x1="499" y1="142" x2="499" y2="164" class="ln" marker-end="url(#a)"/>
+<text x="32" y="200.0" font-size="12" font-weight="600" text-anchor="start" class="mut" >FACHADA</text>
+<rect x="150" y="166" width="698" height="58" rx="8" class="act" />
+<text x="164" y="191" font-size="15" font-weight="600" text-anchor="start" class="actt mono" >juigo</text>
+<text x="164" y="211" font-size="12" font-weight="400" text-anchor="start" class="actt" >App · janelas · loop · timers · Post — e reexporta tudo por alias</text>
+<text x="32" y="286.0" font-size="12" font-weight="600" text-anchor="start" class="mut" >CAMADAS</text>
+<rect x="150" y="252" width="130" height="58" rx="8" class="box" />
+<text x="164" y="277" font-size="15" font-weight="600" text-anchor="start" class="mono" >quick</text>
+<text x="164" y="297" font-size="12" font-weight="400" text-anchor="start" class="mut" >Form, diálogos</text>
+<rect x="292" y="252" width="130" height="58" rx="8" class="box" />
+<text x="306" y="277" font-size="15" font-weight="600" text-anchor="start" class="mono" >form</text>
+<text x="306" y="297" font-size="12" font-weight="400" text-anchor="start" class="mut" >validação</text>
+<rect x="434" y="252" width="130" height="58" rx="8" class="box" />
+<text x="448" y="277" font-size="15" font-weight="600" text-anchor="start" class="mono" >chart</text>
+<text x="448" y="297" font-size="12" font-weight="400" text-anchor="start" class="mut" >gráficos</text>
+<rect x="576" y="252" width="130" height="58" rx="8" class="box" />
+<text x="590" y="277" font-size="15" font-weight="600" text-anchor="start" class="mono" >uitest</text>
+<text x="590" y="297" font-size="12" font-weight="400" text-anchor="start" class="mut" >harness</text>
+<rect x="718" y="252" width="130" height="58" rx="8" class="box" />
+<text x="732" y="277" font-size="15" font-weight="600" text-anchor="start" class="mono" >offscreen</text>
+<text x="732" y="297" font-size="12" font-weight="400" text-anchor="start" class="mut" >→ PNG</text>
+<line x1="499" y1="224" x2="499" y2="250" class="ln" marker-end="url(#a)"/>
+<text x="32" y="374.0" font-size="12" font-weight="600" text-anchor="start" class="mut" >NÚCLEO</text>
+<rect x="150" y="340" width="698" height="58" rx="8" class="box" />
+<text x="164" y="365" font-size="15" font-weight="600" text-anchor="start" class="mono" >widget</text>
+<text x="164" y="385" font-size="12" font-weight="400" text-anchor="start" class="mut" >contrato Widget · roteamento · foco · overlay · Session · 40+ widgets</text>
+<line x1="215" y1="310" x2="215" y2="338" class="ln" marker-end="url(#a)"/>
+<line x1="357" y1="310" x2="357" y2="338" class="ln" marker-end="url(#a)"/>
+<line x1="499" y1="310" x2="499" y2="338" class="ln" marker-end="url(#a)"/>
+<line x1="641" y1="310" x2="641" y2="338" class="ln" marker-end="url(#a)"/>
+<line x1="783" y1="310" x2="783" y2="338" class="ln" marker-end="url(#a)"/>
+<text x="32" y="462.0" font-size="12" font-weight="600" text-anchor="start" class="mut" >FUNDAÇÃO</text>
+<rect x="150" y="428" width="164" height="58" rx="8" class="box" />
+<text x="164" y="453" font-size="15" font-weight="600" text-anchor="start" class="mono" >theme</text>
+<text x="164" y="473" font-size="12" font-weight="400" text-anchor="start" class="mut" >cores, fontes, HiDPI</text>
+<rect x="328" y="428" width="164" height="58" rx="8" class="box" />
+<text x="342" y="453" font-size="15" font-weight="600" text-anchor="start" class="mono" >state</text>
+<text x="342" y="473" font-size="12" font-weight="400" text-anchor="start" class="mut" >State[T], Map</text>
+<rect x="506" y="428" width="164" height="58" rx="8" class="box" />
+<text x="520" y="453" font-size="15" font-weight="600" text-anchor="start" class="mono" >event</text>
+<text x="520" y="473" font-size="12" font-weight="400" text-anchor="start" class="mut" >tipos, Bus</text>
+<rect x="684" y="428" width="164" height="58" rx="8" class="box" />
+<text x="698" y="453" font-size="15" font-weight="600" text-anchor="start" class="mono" >render</text>
+<text x="698" y="473" font-size="12" font-weight="400" text-anchor="start" class="mut" >pixels, glyphs, GL</text>
+<line x1="232" y1="398" x2="232" y2="426" class="ln" marker-end="url(#a)"/>
+<line x1="410" y1="398" x2="410" y2="426" class="ln" marker-end="url(#a)"/>
+<line x1="588" y1="398" x2="588" y2="426" class="ln" marker-end="url(#a)"/>
+<line x1="766" y1="398" x2="766" y2="426" class="ln" marker-end="url(#a)"/>
+<path d="M 232 486 L 232 504 L 766 504 L 766 490" class="ln" marker-end="url(#a)"/>
+<text x="499" y="498" font-size="11" font-weight="400" text-anchor="middle" class="mut mono" >theme → render</text>
+<rect x="150" y="526" width="698" height="46" rx="8" class="soft" />
+<text x="168" y="554" font-size="13" font-weight="600" text-anchor="start" class="mono" >internal/hooks</text>
+<text x="292" y="554" font-size="12" font-weight="400" text-anchor="start" class="mut" >repaint e clipboard: a única ponte de state/widget de volta ao App</text>
+<path d="M 150 549 L 138 549 L 138 195 L 146 195" class="lnd" marker-end="url(#a)"/></svg>

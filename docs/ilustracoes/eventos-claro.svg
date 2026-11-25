@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 430" width="880" height="430" role="img" aria-labelledby="t d"><title id="t">Roteamento de eventos</title><desc id="d">O mouse desce da raiz ao widget mais profundo que contém o ponto e sobe se ninguém consumir; quem consome um MouseDown captura o mouse. O teclado vai direto ao widget focado.</desc>
+<style>
+svg{--bg:#FAFAFA;--surf:#FFFFFF;--line:#E3E3E3;--border:#D3D3D3;--ink:#121212;--mut:#737373;
+--act:#111111;--acttext:#FFFFFF;--sig:#B27A00;--sel:#FEE7A0;--hover:#F0F0F0;--head:#F4F4F4;
+--ok:#148446;--bad:#D92D20}
+
+text{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--ink)}
+.mono{font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace}
+.mut{fill:var(--mut)}.sigt{fill:var(--sig)}.actt{fill:var(--acttext)}.okt{fill:var(--ok)}.badt{fill:var(--bad)}
+.bg{fill:var(--bg);stroke:var(--line)}
+.box{fill:var(--surf);stroke:var(--border);stroke-width:1.5}
+.soft{fill:var(--head);stroke:var(--line);stroke-width:1}
+.hov{fill:var(--hover)}
+.act{fill:var(--act)}
+.sel{fill:var(--sel)}
+.sig{fill:none;stroke:var(--sig);stroke-width:2}
+.sigf{fill:var(--sig)}
+.dash{fill:none;stroke:var(--sig);stroke-width:2;stroke-dasharray:6 5}
+.ln{fill:none;stroke:var(--mut);stroke-width:1.5}
+.lnd{fill:none;stroke:var(--mut);stroke-width:1.5;stroke-dasharray:5 5}
+.lnl{fill:none;stroke:var(--border);stroke-width:1}
+.arrowhead{fill:var(--mut)}
+.sigarrow{fill:var(--sig)}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrowhead" d="M0,0 L10,5 L0,10 z"/></marker>
+<marker id="s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sigarrow" d="M0,0 L10,5 L0,10 z"/></marker>
+</defs>
+<rect x="0.5" y="0.5" width="879" height="429" rx="12" class="bg"/><text x="32" y="44" font-size="19" font-weight="600" text-anchor="start" >Roteamento: o mouse procura pela geometria, o teclado vai ao foco</text>
+<rect x="40" y="90" width="150" height="36" rx="8" class="box" />
+<text x="115" y="113" font-size="13" font-weight="400" text-anchor="middle" class="mono" >VBox (raiz)</text>
+<rect x="40" y="160" width="150" height="36" rx="8" class="box" />
+<text x="115" y="183" font-size="13" font-weight="400" text-anchor="middle" class="mono" >HBox</text>
+<rect x="220" y="160" width="150" height="36" rx="8" class="box" />
+<text x="295" y="183" font-size="13" font-weight="400" text-anchor="middle" class="mono" >Input</text>
+<rect x="40" y="230" width="150" height="36" rx="8" class="box" />
+<text x="115" y="253" font-size="13" font-weight="400" text-anchor="middle" class="mono" >Text</text>
+<rect x="220" y="230" width="150" height="36" rx="8" class="act" />
+<text x="295" y="253" font-size="13" font-weight="400" text-anchor="middle" class="actt mono" >Button</text>
+<path d="M 115 126 L 115 156" class="ln" marker-end="url(#s)"/>
+<path d="M 160 126 C 220 140, 280 140, 295 156" class="ln" marker-end="url(#a)"/>
+<path d="M 115 196 L 115 226" class="ln" marker-end="url(#a)"/>
+<path d="M 150 196 C 200 210, 280 210, 295 226" class="ln" marker-end="url(#s)"/>
+<rect x="40" y="90" width="150" height="36" rx="8" class="sig"/>
+<rect x="40" y="160" width="150" height="36" rx="8" class="sig"/>
+<text x="40" y="300" font-size="12" font-weight="600" text-anchor="start" class="sigt" >hit-test: da raiz ao mais profundo</text>
+<text x="40" y="318" font-size="12" font-weight="600" text-anchor="start" class="sigt" >que contém o ponto</text>
+<text x="40" y="346" font-size="12" font-weight="400" text-anchor="start" class="mut" >não consumiu? sobe ao pai</text>
+<text x="40" y="364" font-size="12" font-weight="400" text-anchor="start" class="mut" >(um Scroll no limite deixa o ancestral rolar)</text>
+<rect x="420" y="90" width="428" height="250" rx="10" class="box" />
+<rect x="440" y="110" width="388" height="210" rx="6" class="lnd" style="fill:none"/>
+<text x="448" y="128" font-size="11" font-weight="400" text-anchor="start" class="mut mono" >VBox</text>
+<rect x="460" y="140" width="348" height="70" rx="6" class="lnd" style="fill:none"/>
+<text x="468" y="156" font-size="11" font-weight="400" text-anchor="start" class="mut mono" >HBox</text>
+<text x="480" y="188" font-size="15" font-weight="400" text-anchor="start" >Olá</text>
+<rect x="660" y="162" width="130" height="36" rx="4" class="act" />
+<text x="725" y="185" font-size="14" font-weight="400" text-anchor="middle" class="actt" >Enviar</text>
+<rect x="656" y="158" width="138" height="44" rx="6" class="sig" />
+<rect x="460" y="240" width="348" height="36" rx="4" class="box" />
+<text x="472" y="263" font-size="14" font-weight="400" text-anchor="start" class="mut" >E-mail</text>
+<path d="M738 186 l0 18 l5 -5 l4 9 l3 -1.5 l-4 -9 l7 0 z" style="fill:var(--surf);stroke:var(--ink);stroke-width:1.3"/>
+<rect x="420" y="356" width="341" height="26" rx="13.0" class="box" />
+<text x="590.5" y="371" font-size="12" font-weight="400" text-anchor="middle" class="mono" >MouseDown consumido = captura até o MouseUp</text>
+<rect x="420" y="390" width="401" height="26" rx="13.0" class="box" />
+<text x="620.5" y="405" font-size="12" font-weight="400" text-anchor="middle" class="mono" >KeyEvent → direto ao focado · Tab percorre a árvore</text></svg>

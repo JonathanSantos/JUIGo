@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 430" width="880" height="430" role="img" aria-labelledby="t d"><title id="t">O laço de um frame</title><desc id="d">Seis passos: o loop dorme em WaitEvents, a Session roteia o evento, o widget muda um State, os watchers invalidam bounds, só a região suja é desenhada e só ela sobe à GPU.</desc>
+<style>
+svg{--bg:#FAFAFA;--surf:#FFFFFF;--line:#E3E3E3;--border:#D3D3D3;--ink:#121212;--mut:#737373;
+--act:#111111;--acttext:#FFFFFF;--sig:#B27A00;--sel:#FEE7A0;--hover:#F0F0F0;--head:#F4F4F4;
+--ok:#148446;--bad:#D92D20}
+@media (prefers-color-scheme:dark){svg{--bg:#0F0F0F;--surf:#171717;--line:#282828;--border:#313131;
+--ink:#EDEDED;--mut:#949494;--act:#EDEDED;--acttext:#121212;--sig:#F1B044;--sel:#584500;
+--hover:#202020;--head:#1C1C1C;--ok:#2C9355;--bad:#EB4232}}
+text{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--ink)}
+.mono{font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace}
+.mut{fill:var(--mut)}.sigt{fill:var(--sig)}.actt{fill:var(--acttext)}.okt{fill:var(--ok)}.badt{fill:var(--bad)}
+.bg{fill:var(--bg);stroke:var(--line)}
+.box{fill:var(--surf);stroke:var(--border);stroke-width:1.5}
+.soft{fill:var(--head);stroke:var(--line);stroke-width:1}
+.hov{fill:var(--hover)}
+.act{fill:var(--act)}
+.sel{fill:var(--sel)}
+.sig{fill:none;stroke:var(--sig);stroke-width:2}
+.sigf{fill:var(--sig)}
+.dash{fill:none;stroke:var(--sig);stroke-width:2;stroke-dasharray:6 5}
+.ln{fill:none;stroke:var(--mut);stroke-width:1.5}
+.lnd{fill:none;stroke:var(--mut);stroke-width:1.5;stroke-dasharray:5 5}
+.lnl{fill:none;stroke:var(--border);stroke-width:1}
+.arrowhead{fill:var(--mut)}
+.sigarrow{fill:var(--sig)}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrowhead" d="M0,0 L10,5 L0,10 z"/></marker>
+<marker id="s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sigarrow" d="M0,0 L10,5 L0,10 z"/></marker>
+</defs>
+<rect x="0.5" y="0.5" width="879" height="429" rx="12" class="bg"/><text x="32" y="44" font-size="19" font-weight="600" text-anchor="start" >O laço de um frame: dormir, reagir, pintar só o que mudou</text>
+<text x="32" y="68" font-size="13" font-weight="400" text-anchor="start" class="mut" >Uma thread, sem mutex. Se nada mudou, nada é desenhado nem enviado à GPU.</text>
+<rect x="32" y="100" width="236" height="108" rx="10" class="box" />
+<circle cx="58" cy="128" r="11.0" class="act"/>
+<text x="58" y="132.5" font-size="13" font-weight="600" text-anchor="middle" class="actt" >1</text>
+<text x="78" y="133" font-size="14" font-weight="600" text-anchor="start" class="mono" >glfw.WaitEvents</text>
+<text x="52" y="166" font-size="13" font-weight="400" text-anchor="start" class="mut" >dorme até um evento</text>
+<text x="52" y="185" font-size="13" font-weight="400" text-anchor="start" class="mut" >ou o próximo timer</text>
+<rect x="322" y="100" width="236" height="108" rx="10" class="box" />
+<circle cx="348" cy="128" r="11.0" class="act"/>
+<text x="348" y="132.5" font-size="13" font-weight="600" text-anchor="middle" class="actt" >2</text>
+<text x="368" y="133" font-size="14" font-weight="600" text-anchor="start" class="mono" >Session roteia</text>
+<text x="342" y="166" font-size="13" font-weight="400" text-anchor="start" class="mut" >mouse por geometria,</text>
+<text x="342" y="185" font-size="13" font-weight="400" text-anchor="start" class="mut" >teclado pelo foco</text>
+<rect x="612" y="100" width="236" height="108" rx="10" class="box" />
+<circle cx="638" cy="128" r="11.0" class="act"/>
+<text x="638" y="132.5" font-size="13" font-weight="600" text-anchor="middle" class="actt" >3</text>
+<text x="658" y="133" font-size="14" font-weight="600" text-anchor="start" class="mono" >HandleEvent</text>
+<text x="632" y="166" font-size="13" font-weight="400" text-anchor="start" class="mut" >o widget reage e</text>
+<text x="632" y="185" font-size="13" font-weight="400" text-anchor="start" class="mut" >chama State.Set</text>
+<rect x="612" y="270" width="236" height="108" rx="10" class="box" />
+<rect x="612" y="270" width="236" height="108" rx="10" class="sig" />
+<circle cx="638" cy="298" r="11.0" class="act"/>
+<text x="638" y="302.5" font-size="13" font-weight="600" text-anchor="middle" class="actt" >4</text>
+<text x="658" y="303" font-size="14" font-weight="600" text-anchor="start" class="mono" >Invalidate(bounds)</text>
+<text x="632" y="336" font-size="13" font-weight="400" text-anchor="start" class="mut" >watchers → setters;</text>
+<text x="632" y="355" font-size="13" font-weight="400" text-anchor="start" class="mut" >o dano vira uma união</text>
+<rect x="322" y="270" width="236" height="108" rx="10" class="box" />
+<rect x="322" y="270" width="236" height="108" rx="10" class="sig" />
+<circle cx="348" cy="298" r="11.0" class="act"/>
+<text x="348" y="302.5" font-size="13" font-weight="600" text-anchor="middle" class="actt" >5</text>
+<text x="368" y="303" font-size="14" font-weight="600" text-anchor="start" class="mono" >Layout + Draw</text>
+<text x="342" y="336" font-size="13" font-weight="400" text-anchor="start" class="mut" >diff de bounds; desenho</text>
+<text x="342" y="355" font-size="13" font-weight="400" text-anchor="start" class="mut" >recortado ao dano</text>
+<rect x="32" y="270" width="236" height="108" rx="10" class="box" />
+<circle cx="58" cy="298" r="11.0" class="act"/>
+<text x="58" y="302.5" font-size="13" font-weight="600" text-anchor="middle" class="actt" >6</text>
+<text x="78" y="303" font-size="14" font-weight="600" text-anchor="start" class="mono" >TexSubImage2D</text>
+<text x="52" y="336" font-size="13" font-weight="400" text-anchor="start" class="mut" >sobe só o retângulo</text>
+<text x="52" y="355" font-size="13" font-weight="400" text-anchor="start" class="mut" >sujo · SwapBuffers</text>
+<line x1="268" y1="154" x2="318" y2="154" class="ln" marker-end="url(#a)"/>
+<line x1="558" y1="154" x2="608" y2="154" class="ln" marker-end="url(#a)"/>
+<path d="M 730 208 L 730 266" class="ln" marker-end="url(#a)"/>
+<line x1="612" y1="324" x2="562" y2="324" class="ln" marker-end="url(#a)"/>
+<line x1="322" y1="324" x2="272" y2="324" class="ln" marker-end="url(#a)"/>
+<path d="M 150 270 L 150 212" class="ln" marker-end="url(#a)"/>
+<rect x="32" y="392" width="431" height="26" rx="13.0" class="box" />
+<text x="247.5" y="407" font-size="12" font-weight="400" text-anchor="middle" class="mono" >App.Post(fn): a única porta de goroutines → main thread</text>
+<text x="848" y="410" font-size="12" font-weight="600" text-anchor="end" class="sigt" >dirty regions: passos 4 e 5</text></svg>

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 250" width="470" height="250" role="img" aria-labelledby="t d"><title id="t">juigo</title><desc id="d">A palavra juigo com os pingos em pixel; o do i é âmbar.</desc>
+<style>
+svg{--bg:#FAFAFA;--surf:#FFFFFF;--line:#E3E3E3;--border:#D3D3D3;--ink:#121212;--mut:#737373;
+--act:#111111;--acttext:#FFFFFF;--sig:#B27A00;--sel:#FEE7A0;--hover:#F0F0F0;--head:#F4F4F4;
+--ok:#148446;--bad:#D92D20}
+@media (prefers-color-scheme:dark){svg{--bg:#0F0F0F;--surf:#171717;--line:#282828;--border:#313131;
+--ink:#EDEDED;--mut:#949494;--act:#EDEDED;--acttext:#121212;--sig:#F1B044;--sel:#584500;
+--hover:#202020;--head:#1C1C1C;--ok:#2C9355;--bad:#EB4232}}
+text{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--ink)}
+.mono{font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace}
+.mut{fill:var(--mut)}.sigt{fill:var(--sig)}.actt{fill:var(--acttext)}.okt{fill:var(--ok)}.badt{fill:var(--bad)}
+.bg{fill:var(--bg);stroke:var(--line)}
+.box{fill:var(--surf);stroke:var(--border);stroke-width:1.5}
+.soft{fill:var(--head);stroke:var(--line);stroke-width:1}
+.hov{fill:var(--hover)}
+.act{fill:var(--act)}
+.sel{fill:var(--sel)}
+.sig{fill:none;stroke:var(--sig);stroke-width:2}
+.sigf{fill:var(--sig)}
+.dash{fill:none;stroke:var(--sig);stroke-width:2;stroke-dasharray:6 5}
+.ln{fill:none;stroke:var(--mut);stroke-width:1.5}
+.lnd{fill:none;stroke:var(--mut);stroke-width:1.5;stroke-dasharray:5 5}
+.lnl{fill:none;stroke:var(--border);stroke-width:1}
+.arrowhead{fill:var(--mut)}
+.sigarrow{fill:var(--sig)}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrowhead" d="M0,0 L10,5 L0,10 z"/></marker>
+<marker id="s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sigarrow" d="M0,0 L10,5 L0,10 z"/></marker>
+</defs>
+<style>.ink{fill:var(--ink)}.inks{fill:none;stroke:var(--ink);stroke-linecap:round;stroke-linejoin:round}.amb{fill:#F0A500}</style>
+<g class="inks" style="stroke-width:22.0">
+<path d="M 54.0 78.0 L 54.0 190.0 Q 54.0 220.0 26.0 218.0"/>
+<path d="M 100.0 78.0 L 100.0 120.0 Q 100.0 150.0 130.0 150.0 Q 160.0 150.0 160.0 120.0 L 160.0 78.0 M 160.0 120.0 L 160.0 150.0"/>
+<path d="M 206.0 78.0 L 206.0 150.0"/>
+<circle cx="282.0" cy="114.0" r="36.0"/>
+<path d="M 318.0 78.0 L 318.0 184.0 Q 318.0 220.0 282.0 220.0 Q 260.0 220.0 248.0 208.0"/>
+<circle cx="400.0" cy="114.0" r="36.0"/>
+</g>
+<rect x="42.0" y="22.0" width="24.0" height="24.0" rx="2.0" class="ink"/>
+<rect x="194.0" y="22.0" width="24.0" height="24.0" rx="2.0" class="amb"/></svg>

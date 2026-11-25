@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 420" width="880" height="420" role="img" aria-labelledby="t d"><title id="t">Lista virtualizada</title><desc id="d">Dez mil linhas lógicas, mas só uma dezena de widgets: ao rolar, o pool é revinculado às linhas visíveis em vez de criar widgets.</desc>
+<style>
+svg{--bg:#FAFAFA;--surf:#FFFFFF;--line:#E3E3E3;--border:#D3D3D3;--ink:#121212;--mut:#737373;
+--act:#111111;--acttext:#FFFFFF;--sig:#B27A00;--sel:#FEE7A0;--hover:#F0F0F0;--head:#F4F4F4;
+--ok:#148446;--bad:#D92D20}
+@media (prefers-color-scheme:dark){svg{--bg:#0F0F0F;--surf:#171717;--line:#282828;--border:#313131;
+--ink:#EDEDED;--mut:#949494;--act:#EDEDED;--acttext:#121212;--sig:#F1B044;--sel:#584500;
+--hover:#202020;--head:#1C1C1C;--ok:#2C9355;--bad:#EB4232}}
+text{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--ink)}
+.mono{font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace}
+.mut{fill:var(--mut)}.sigt{fill:var(--sig)}.actt{fill:var(--acttext)}.okt{fill:var(--ok)}.badt{fill:var(--bad)}
+.bg{fill:var(--bg);stroke:var(--line)}
+.box{fill:var(--surf);stroke:var(--border);stroke-width:1.5}
+.soft{fill:var(--head);stroke:var(--line);stroke-width:1}
+.hov{fill:var(--hover)}
+.act{fill:var(--act)}
+.sel{fill:var(--sel)}
+.sig{fill:none;stroke:var(--sig);stroke-width:2}
+.sigf{fill:var(--sig)}
+.dash{fill:none;stroke:var(--sig);stroke-width:2;stroke-dasharray:6 5}
+.ln{fill:none;stroke:var(--mut);stroke-width:1.5}
+.lnd{fill:none;stroke:var(--mut);stroke-width:1.5;stroke-dasharray:5 5}
+.lnl{fill:none;stroke:var(--border);stroke-width:1}
+.arrowhead{fill:var(--mut)}
+.sigarrow{fill:var(--sig)}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrowhead" d="M0,0 L10,5 L0,10 z"/></marker>
+<marker id="s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sigarrow" d="M0,0 L10,5 L0,10 z"/></marker>
+</defs>
+<rect x="0.5" y="0.5" width="879" height="419" rx="12" class="bg"/><text x="32" y="44" font-size="19" font-weight="600" text-anchor="start" >List virtualizada: 10.000 linhas, uma dezena de widgets</text>
+<text x="32" y="68" font-size="13" font-weight="400" text-anchor="start" class="mut" >Rolar é revincular (bind(row, i)), não criar. Medido: 44 µs por passo de rolagem com 10.000 linhas.</text>
+<text x="32" y="106" font-size="12" font-weight="600" text-anchor="start" class="mut" >dados (lógicos)</text>
+<rect x="32" y="118" width="150" height="8" rx="2" class="hov"/>
+<rect x="32" y="129" width="150" height="8" rx="2" class="hov"/>
+<rect x="32" y="140" width="150" height="8" rx="2" class="hov"/>
+<rect x="32" y="151" width="150" height="8" rx="2" class="hov"/>
+<rect x="32" y="162" width="150" height="8" rx="2" class="hov"/>
+<rect x="32" y="173" width="150" height="8" rx="2" class="hov"/>
+<rect x="32" y="184" width="150" height="8" rx="2" class="hov"/>
+<rect x="32" y="195" width="150" height="8" rx="2" class="hov"/>
+<rect x="32" y="206" width="150" height="8" rx="2" class="hov"/>
+<rect x="32" y="217" width="150" height="8" rx="2" class="sel"/>
+<rect x="32" y="228" width="150" height="8" rx="2" class="sel"/>
+<rect x="32" y="239" width="150" height="8" rx="2" class="sel"/>
+<rect x="32" y="250" width="150" height="8" rx="2" class="sel"/>
+<rect x="32" y="261" width="150" height="8" rx="2" class="sel"/>
+<rect x="32" y="272" width="150" height="8" rx="2" class="sel"/>
+<rect x="32" y="283" width="150" height="8" rx="2" class="sel"/>
+<rect x="32" y="294" width="150" height="8" rx="2" class="sel"/>
+<rect x="32" y="305" width="150" height="8" rx="2" class="hov"/>
+<rect x="32" y="316" width="150" height="8" rx="2" class="hov"/>
+<rect x="32" y="327" width="150" height="8" rx="2" class="hov"/>
+<rect x="32" y="338" width="150" height="8" rx="2" class="hov"/>
+<rect x="32" y="349" width="150" height="8" rx="2" class="hov"/>
+<rect x="32" y="360" width="150" height="8" rx="2" class="hov"/>
+<rect x="32" y="371" width="150" height="8" rx="2" class="hov"/>
+<text x="190" y="124" font-size="11" font-weight="400" text-anchor="start" class="mut mono" >#0001</text>
+<text x="190" y="230" font-size="11" font-weight="600" text-anchor="start" class="sigt mono" >#4.213</text>
+<text x="190" y="380" font-size="11" font-weight="400" text-anchor="start" class="mut mono" >#10.000</text>
+<text x="96" y="398" font-size="16" text-anchor="middle" class="mut">⋮</text>
+<rect x="26" y="213" width="162" height="92" rx="6" class="sig" />
+<path d="M 260 260 C 290 260, 300 200, 330 200" class="ln" marker-end="url(#a)"/>
+<rect x="338" y="104" width="250" height="270" rx="10" class="box" />
+<text x="354" y="128" font-size="12" font-weight="600" text-anchor="start" class="mut" >viewport (Scroll)</text>
+<rect x="350" y="140" width="226" height="24" rx="4" class="box" />
+<text x="362" y="157" font-size="13" font-weight="400" text-anchor="start" >Pedido #4.210</text>
+<rect x="350" y="168" width="226" height="24" rx="4" class="box" />
+<text x="362" y="185" font-size="13" font-weight="400" text-anchor="start" >Pedido #4.211</text>
+<rect x="350" y="196" width="226" height="24" rx="4" class="box" />
+<text x="362" y="213" font-size="13" font-weight="400" text-anchor="start" >Pedido #4.212</text>
+<rect x="350" y="224" width="226" height="24" rx="4" class="sel" style="stroke:none"/>
+<text x="362" y="241" font-size="13" font-weight="400" text-anchor="start" >Pedido #4.213</text>
+<rect x="350" y="252" width="226" height="24" rx="4" class="box" />
+<text x="362" y="269" font-size="13" font-weight="400" text-anchor="start" >Pedido #4.214</text>
+<rect x="350" y="280" width="226" height="24" rx="4" class="box" />
+<text x="362" y="297" font-size="13" font-weight="400" text-anchor="start" >Pedido #4.215</text>
+<rect x="350" y="308" width="226" height="24" rx="4" class="box" />
+<text x="362" y="325" font-size="13" font-weight="400" text-anchor="start" >Pedido #4.216</text>
+<rect x="350" y="336" width="226" height="24" rx="4" class="box" />
+<text x="362" y="353" font-size="13" font-weight="400" text-anchor="start" >Pedido #4.217</text>
+<text x="626" y="128" font-size="12" font-weight="600" text-anchor="start" class="mut" >pool de widgets</text>
+<rect x="626" y="140" width="96" height="20" rx="4" class="act" />
+<text x="674" y="154" font-size="11" font-weight="400" text-anchor="middle" class="actt mono" >*Text #1</text>
+<rect x="626" y="168" width="96" height="20" rx="4" class="act" />
+<text x="674" y="182" font-size="11" font-weight="400" text-anchor="middle" class="actt mono" >*Text #2</text>
+<rect x="626" y="196" width="96" height="20" rx="4" class="act" />
+<text x="674" y="210" font-size="11" font-weight="400" text-anchor="middle" class="actt mono" >*Text #3</text>
+<rect x="626" y="224" width="96" height="20" rx="4" class="act" />
+<text x="674" y="238" font-size="11" font-weight="400" text-anchor="middle" class="actt mono" >*Text #4</text>
+<rect x="626" y="252" width="96" height="20" rx="4" class="act" />
+<text x="674" y="266" font-size="11" font-weight="400" text-anchor="middle" class="actt mono" >*Text #5</text>
+<rect x="626" y="280" width="96" height="20" rx="4" class="act" />
+<text x="674" y="294" font-size="11" font-weight="400" text-anchor="middle" class="actt mono" >*Text #6</text>
+<rect x="626" y="308" width="96" height="20" rx="4" class="act" />
+<text x="674" y="322" font-size="11" font-weight="400" text-anchor="middle" class="actt mono" >*Text #7</text>
+<rect x="626" y="336" width="96" height="20" rx="4" class="act" />
+<text x="674" y="350" font-size="11" font-weight="400" text-anchor="middle" class="actt mono" >*Text #8</text>
+<path d="M 622 238 L 592 238" class="ln" marker-end="url(#a)"/>
+<text x="738" y="160" font-size="12" font-weight="400" text-anchor="start" class="mut" >bind(row, i)</text>
+<text x="738" y="178" font-size="12" font-weight="400" text-anchor="start" class="mut" >troca o texto</text>
+<text x="738" y="196" font-size="12" font-weight="400" text-anchor="start" class="mut" >do widget que</text>
+<text x="738" y="214" font-size="12" font-weight="400" text-anchor="start" class="mut" >saiu de vista</text>
+<text x="738" y="256" font-size="12" font-weight="600" text-anchor="start" >um widget por linha</text>
+<text x="738" y="274" font-size="12" font-weight="600" text-anchor="start" >que toca a viewport</text></svg>

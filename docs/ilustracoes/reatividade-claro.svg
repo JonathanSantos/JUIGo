@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 400" width="880" height="400" role="img" aria-labelledby="t d"><title id="t">Reatividade com State</title><desc id="d">Um State de string no centro. O Input liga em duas vias com BindValue; um Map deriva a saudação que o Text exibe com BindText. Os watchers são referências fracas.</desc>
+<style>
+svg{--bg:#FAFAFA;--surf:#FFFFFF;--line:#E3E3E3;--border:#D3D3D3;--ink:#121212;--mut:#737373;
+--act:#111111;--acttext:#FFFFFF;--sig:#B27A00;--sel:#FEE7A0;--hover:#F0F0F0;--head:#F4F4F4;
+--ok:#148446;--bad:#D92D20}
+
+text{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--ink)}
+.mono{font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace}
+.mut{fill:var(--mut)}.sigt{fill:var(--sig)}.actt{fill:var(--acttext)}.okt{fill:var(--ok)}.badt{fill:var(--bad)}
+.bg{fill:var(--bg);stroke:var(--line)}
+.box{fill:var(--surf);stroke:var(--border);stroke-width:1.5}
+.soft{fill:var(--head);stroke:var(--line);stroke-width:1}
+.hov{fill:var(--hover)}
+.act{fill:var(--act)}
+.sel{fill:var(--sel)}
+.sig{fill:none;stroke:var(--sig);stroke-width:2}
+.sigf{fill:var(--sig)}
+.dash{fill:none;stroke:var(--sig);stroke-width:2;stroke-dasharray:6 5}
+.ln{fill:none;stroke:var(--mut);stroke-width:1.5}
+.lnd{fill:none;stroke:var(--mut);stroke-width:1.5;stroke-dasharray:5 5}
+.lnl{fill:none;stroke:var(--border);stroke-width:1}
+.arrowhead{fill:var(--mut)}
+.sigarrow{fill:var(--sig)}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrowhead" d="M0,0 L10,5 L0,10 z"/></marker>
+<marker id="s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sigarrow" d="M0,0 L10,5 L0,10 z"/></marker>
+</defs>
+<rect x="0.5" y="0.5" width="879" height="399" rx="12" class="bg"/><text x="32" y="44" font-size="19" font-weight="600" text-anchor="start" >Reatividade: o State é a fonte, a interface é a projeção</text>
+<text x="32" y="68" font-size="13" font-weight="400" text-anchor="start" class="mut" >Bindings assinam com referência fraca (state.WatchWeak): widget coletado, watcher some. Nada vaza.</text>
+<rect x="32" y="130" width="230" height="92" rx="10" class="box" />
+<text x="50" y="156" font-size="14" font-weight="600" text-anchor="start" >Input</text>
+<rect x="50" y="168" width="194" height="34" rx="4" class="box" />
+<text x="62" y="190" font-size="14" font-weight="400" text-anchor="start" >mundo</text>
+<rect x="108" y="176" width="1.6" height="18" class="act"/>
+<rect x="330" y="120" width="220" height="112" rx="12" class="act" />
+<text x="440" y="158" font-size="13" font-weight="400" text-anchor="middle" class="actt mono" >nome</text>
+<text x="440" y="184" font-size="17" font-weight="600" text-anchor="middle" class="actt mono" >State[string]</text>
+<text x="440" y="210" font-size="13" font-weight="400" text-anchor="middle" class="actt mono" >&quot;mundo&quot;</text>
+<path d="M 266 160 L 326 160" class="ln" marker-end="url(#s)"/>
+<path d="M 326 196 L 266 196" class="lnd" marker-end="url(#a)"/>
+<text x="296" y="150" font-size="11" font-weight="400" text-anchor="middle" class="sigt mono" >Set</text>
+<text x="296" y="214" font-size="11" font-weight="400" text-anchor="middle" class="mut mono" >Watch</text>
+<text x="147" y="246" font-size="12" font-weight="400" text-anchor="middle" class="mut mono" >BindValue — duas vias</text>
+<rect x="618" y="120" width="230" height="112" rx="12" class="box" />
+<text x="633" y="148" font-size="13" font-weight="600" text-anchor="start" class="mono" >Map(nome, saudação)</text>
+<text x="633" y="172" font-size="12" font-weight="400" text-anchor="start" class="mut" >State[string] derivado</text>
+<text x="633" y="204" font-size="14" font-weight="400" text-anchor="start" class="mono" >&quot;Olá, mundo!&quot;</text>
+<path d="M 554 176 L 614 176" class="lnd" marker-end="url(#a)"/>
+<rect x="618" y="278" width="230" height="70" rx="10" class="box" />
+<text x="633" y="302" font-size="12" font-weight="400" text-anchor="start" class="mut mono" >Text · BindText</text>
+<text x="633" y="332" font-size="18" font-weight="600" text-anchor="start" >Olá, mundo!</text>
+<path d="M 733 236 L 733 274" class="lnd" marker-end="url(#a)"/>
+<rect x="32" y="300" width="44" height="26" rx="13.0" class="soft" />
+<text x="54.0" y="315" font-size="12" font-weight="400" text-anchor="middle" class="mono" >Set</text>
+<line x1="80" y1="313" x2="98" y2="313" class="ln" marker-end="url(#a)"/>
+<rect x="102" y="300" width="81" height="26" rx="13.0" class="soft" />
+<text x="142.5" y="315" font-size="12" font-weight="400" text-anchor="middle" class="mono" >watchers</text>
+<line x1="187" y1="313" x2="205" y2="313" class="ln" marker-end="url(#a)"/>
+<rect x="209" y="300" width="66" height="26" rx="13.0" class="soft" />
+<text x="242.0" y="315" font-size="12" font-weight="400" text-anchor="middle" class="mono" >setter</text>
+<line x1="279" y1="313" x2="297" y2="313" class="ln" marker-end="url(#a)"/>
+<rect x="301" y="300" width="96" height="26" rx="13.0" class="soft" />
+<text x="349.0" y="315" font-size="12" font-weight="400" text-anchor="middle" class="mono" >Invalidate</text>
+<line x1="401" y1="313" x2="419" y2="313" class="ln" marker-end="url(#a)"/>
+<rect x="423" y="300" width="118" height="26" rx="13.0" class="soft" />
+<text x="482.0" y="315" font-size="12" font-weight="400" text-anchor="middle" class="mono" >próximo frame</text>
+<text x="32" y="372" font-size="12" font-weight="400" text-anchor="start" class="mut" >Map e Combine derivam; quem lê usa Get, quem escreve usa Set — e o State decide quem redesenha.</text></svg>

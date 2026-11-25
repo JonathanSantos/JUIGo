@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 420" width="880" height="420" role="img" aria-labelledby="t d"><title id="t">Dirty regions</title><desc id="d">Uma janela onde só o campo digitado foi danificado: apenas esse retângulo é repintado e enviado. O frame incremental custa 17 microssegundos contra 53 do frame completo.</desc>
+<style>
+svg{--bg:#0F0F0F;--surf:#171717;--line:#282828;--border:#313131;
+--ink:#EDEDED;--mut:#949494;--act:#EDEDED;--acttext:#121212;--sig:#F1B044;--sel:#584500;
+--hover:#202020;--head:#1C1C1C;--ok:#2C9355;--bad:#EB4232}
+
+text{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--ink)}
+.mono{font-family:"SF Mono",SFMono-Regular,ui-monospace,Menlo,Consolas,monospace}
+.mut{fill:var(--mut)}.sigt{fill:var(--sig)}.actt{fill:var(--acttext)}.okt{fill:var(--ok)}.badt{fill:var(--bad)}
+.bg{fill:var(--bg);stroke:var(--line)}
+.box{fill:var(--surf);stroke:var(--border);stroke-width:1.5}
+.soft{fill:var(--head);stroke:var(--line);stroke-width:1}
+.hov{fill:var(--hover)}
+.act{fill:var(--act)}
+.sel{fill:var(--sel)}
+.sig{fill:none;stroke:var(--sig);stroke-width:2}
+.sigf{fill:var(--sig)}
+.dash{fill:none;stroke:var(--sig);stroke-width:2;stroke-dasharray:6 5}
+.ln{fill:none;stroke:var(--mut);stroke-width:1.5}
+.lnd{fill:none;stroke:var(--mut);stroke-width:1.5;stroke-dasharray:5 5}
+.lnl{fill:none;stroke:var(--border);stroke-width:1}
+.arrowhead{fill:var(--mut)}
+.sigarrow{fill:var(--sig)}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrowhead" d="M0,0 L10,5 L0,10 z"/></marker>
+<marker id="s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sigarrow" d="M0,0 L10,5 L0,10 z"/></marker>
+</defs>
+<rect x="0.5" y="0.5" width="879" height="419" rx="12" class="bg"/><text x="32" y="44" font-size="19" font-weight="600" text-anchor="start" >Dirty regions: repintar o campo, não a janela</text>
+<text x="32" y="68" font-size="13" font-weight="400" text-anchor="start" class="mut" >Setters invalidam os próprios bounds; a Session soma os danos e desenha numa visão recortada (render.Clip).</text>
+<rect x="32" y="96" width="470" height="290" rx="10" class="box" />
+<rect x="32" y="96" width="470" height="30" rx="10" class="soft" />
+<circle cx="50" cy="111" r="5" class="lnl" style="fill:var(--border)"/>
+<circle cx="66" cy="111" r="5" class="lnl" style="fill:var(--border)"/>
+<circle cx="82" cy="111" r="5" class="lnl" style="fill:var(--border)"/>
+<text x="267.0" y="116" font-size="12" font-weight="400" text-anchor="middle" class="mut" >Contatos</text>
+<text x="56" y="160" font-size="18" font-weight="600" text-anchor="start" >Novo contato</text>
+<rect x="56" y="178" width="300" height="34" rx="4" class="box" />
+<text x="68" y="200" font-size="14" font-weight="400" text-anchor="start" >Ana Li</text>
+<rect x="111" y="186" width="1.6" height="18" class="act"/>
+<rect x="368" y="178" width="110" height="34" rx="4" class="act" />
+<text x="423" y="200" font-size="14" font-weight="400" text-anchor="middle" class="actt" >Salvar</text>
+<rect x="56" y="232" width="422" height="28" rx="4" class="box" style="stroke:none"/>
+<text x="68" y="251" font-size="13" font-weight="400" text-anchor="start" >Bruno Reis</text>
+<rect x="56" y="266" width="422" height="28" rx="4" class="hov" style="stroke:none"/>
+<text x="68" y="285" font-size="13" font-weight="400" text-anchor="start" >Carla Dias</text>
+<rect x="56" y="300" width="422" height="28" rx="4" class="box" style="stroke:none"/>
+<text x="68" y="319" font-size="13" font-weight="400" text-anchor="start" >Davi Rocha</text>
+<rect x="56" y="334" width="422" height="28" rx="4" class="box" style="stroke:none"/>
+<text x="68" y="353" font-size="13" font-weight="400" text-anchor="start" >Elisa Prado</text>
+<rect x="50" y="172" width="312" height="46" rx="6" class="dash" />
+<text x="56" y="376" font-size="12" font-weight="600" text-anchor="start" class="sigt" >só o tracejado é repintado e enviado</text>
+<text x="540" y="130" font-size="14" font-weight="600" text-anchor="start" >Custo de CPU por frame (480×320)</text>
+<text x="540" y="168" font-size="13" font-weight="400" text-anchor="start" class="mut" >frame completo</text>
+<rect x="540" y="178" width="250" height="26" rx="4" class="act" />
+<text x="798" y="197" font-size="14" font-weight="600" text-anchor="start" >53 µs</text>
+<text x="540" y="236" font-size="13" font-weight="400" text-anchor="start" class="mut" >incremental</text>
+<rect x="540" y="246" width="80.18867924528301" height="26" rx="4" class="sigf" />
+<text x="628.188679245283" y="265" font-size="14" font-weight="600" text-anchor="start" >17 µs</text>
+<text x="540" y="312" font-size="13" font-weight="400" text-anchor="start" class="mut" >Golden test: após dezenas de interações,</text>
+<text x="540" y="331" font-size="13" font-weight="400" text-anchor="start" class="mut" >o frame incremental é byte a byte igual</text>
+<text x="540" y="350" font-size="13" font-weight="400" text-anchor="start" class="mut" >a uma repintura completa.</text></svg>

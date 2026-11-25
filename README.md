@@ -1,7 +1,8 @@
-<h1 align="center">JUIGo</h1>
+<p align="center">
+  <img alt="juigo — interfaces desktop em Go, desenhadas pixel a pixel" src="docs/marca/card.svg" width="100%">
+</p>
 
 <p align="center">
-  <strong>Interfaces desktop em Go, desenhadas pixel a pixel.</strong><br>
   Renderização por software, estado reativo tipado, formulários validados numa expressão<br>
   e testes de UI determinísticos — tudo atrás de um único <code>import</code>.
 </p>
@@ -17,6 +18,7 @@
   <a href="#começando">Começando</a> ·
   <a href="#componentes">Componentes</a> ·
   <a href="#exemplos">Exemplos</a> ·
+  <a href="#por-dentro">Por dentro</a> ·
   <a href="docs/API.md">Convenções da API</a>
 </p>
 
@@ -38,7 +40,7 @@ você vê as renderizações escuras.</sub></p>
 
 ## Em números
 
-| 25+ widgets | 15 µs | 0 | 3 |
+| 25+ widgets | 17 µs | 0 | 3 |
 | :---: | :---: | :---: | :---: |
 | de Button a CodeEditor, Tree e Table | por frame incremental | alocações no caminho quente | dependências (GLFW, GL, `x/image`) |
 
@@ -193,7 +195,14 @@ escuro, _ := juigo.NewTheme(marca)
   </tr>
 </table>
 
-Tokens, regras e como a derivação funciona em [docs/DESIGN.md](docs/DESIGN.md).
+<p align="center"><img alt="Como quatro sementes viram os tokens do tema, com o contraste conferido" src="docs/ilustracoes/temas.svg" width="100%"></p>
+
+As cores são trabalhadas em **OKLCh**, não em RGB: "um pouco mais claro"
+parece igualmente mais claro em qualquer matiz. Os neutros seguem uma
+escala fixa de luminosidade; a ação, o sinal e os estados só mudam de
+luminosidade (`ensureContrast`) até o par passar na régua — e um teste
+varre o cubo RGB como semente para provar que **qualquer** cor dá um tema
+aprovado. Tokens, regras e o passo a passo em [docs/DESIGN.md](docs/DESIGN.md).
 O visual anterior segue disponível em `ClassicTheme()`/`ClassicDarkTheme()`.
 
 ## Como se usa
@@ -370,18 +379,124 @@ go test ./...
 
 ## Por dentro
 
+Como a lib funciona por baixo — cada ilustração abaixo é um SVG que segue o
+modo claro/escuro do seu sistema. O detalhe completo dos contratos está em
+[docs/ARQUITETURA.md](docs/ARQUITETURA.md).
+
+### Um import, camadas acíclicas
+
+<p align="center"><img alt="Pacotes do JUIGo em camadas" src="docs/ilustracoes/pacotes.svg" width="100%"></p>
+
+A raiz `juigo` é uma **fachada**: tem o `App` e reexporta, por alias, tudo
+o que uma aplicação usa — você importa um pacote só. Abaixo dela, as
+camadas conhecem apenas as de baixo: `quick` compõe `widget` e `form`;
+`widget` depende de `theme`, `state`, `event` e `render`. A única ponte de
+volta ao App é `internal/hooks` (pedir repintura, usar o clipboard), fora
+da API pública — é ela que permite a um `State` de `state` acordar o loop
+sem ciclo de import.
+
+### O laço de um frame
+
+<p align="center"><img alt="O laço de um frame em seis passos" src="docs/ilustracoes/frame.svg" width="100%"></p>
+
+O loop dorme em `glfw.WaitEvents` — nada de busy loop. Com timers
+pendentes (cursor piscando, atraso do tooltip) ele usa `WaitEventsTimeout`
+para acordar no vencimento, sem goroutines. Tudo roda na main thread:
+callbacks mutam estado diretamente, sem mutex. Para trabalho em paralelo,
+`App.Post(fn)` é a única porta: a goroutine trabalha, o `Post` entrega o
+resultado ao loop.
+
+### Dirty regions: pintar só o que mudou
+
+<p align="center"><img alt="Só o campo digitado é repintado" src="docs/ilustracoes/dirty.svg" width="100%"></p>
+
+O dano nasce nos widgets: todo setter invalida os próprios bounds, e o
+diff de bounds no `Layout` cobre as cascatas de geometria sozinho. A
+`Session` soma os danos num retângulo; o frame desenha numa **visão
+recortada** do buffer (`render.Clip`, sem cópia) e sobe à GPU só esse
+pedaço (`TexSubImage2D` parcial). Um golden test interage dezenas de
+vezes e confere que o frame incremental é **byte a byte** igual a uma
+repintura completa — foi ele que pegou bugs de dano em três widgets antes
+de qualquer usuário.
+
+### Roteamento de eventos
+
+<p align="center"><img alt="Mouse por geometria, teclado pelo foco" src="docs/ilustracoes/eventos.svg" width="100%"></p>
+
+O mouse desce da raiz até o widget **mais profundo** que contém o ponto;
+se ele não consumir o evento, o evento sobe ao pai — é assim que um
+`Scroll` no limite deixa o ancestral rolar. Quem consome um `MouseDown`
+**captura** o mouse até o `MouseUp`, mesmo fora dos próprios bounds: é o
+que deixa arrastar o Slider ou selecionar texto com fluidez. O teclado não
+procura nada: vai direto ao focado, e `Tab` percorre a árvore.
+
+### Reatividade sem vazamento
+
+<p align="center"><img alt="State no centro, Input em duas vias, Map e Text derivados" src="docs/ilustracoes/reatividade.svg" width="100%"></p>
+
+`State[T]` guarda o valor e a lista de quem observa. `Map` e `Combine`
+derivam novos States; `BindValue` liga um campo nos dois sentidos. Todo
+`Bind*` assina com **referência fraca** (`state.WatchWeak`): se o widget
+sai da árvore e é coletado, o watcher some junto — um State global nunca
+prende uma tela fechada na memória. O `Set` chama os watchers em ordem, o
+setter do widget invalida os próprios bounds, e o próximo frame mostra.
+
+### Overlays em pilha
+
+<p align="center"><img alt="Pilha de overlays: árvore, Modal, Popup e camadas passivas" src="docs/ilustracoes/overlay.svg" width="100%"></p>
+
+Popup, Modal e paleta de comandos são camadas de uma **pilha** desenhada
+por cima da árvore. Só o topo recebe eventos: clique fora ou Escape fecham
+**só** ele, e cada camada devolve o foco de quando abriu — um Dropdown
+aberto dentro de um Modal fecha e devolve o foco ao Modal, que segue
+aberto. Tooltip e o fantasma do drag-and-drop ficam acima de tudo, fora do
+hit-test.
+
+### List virtualizada
+
+<p align="center"><img alt="Dez mil linhas, um widget por linha visível" src="docs/ilustracoes/lista.svg" width="100%"></p>
+
+`NewList(count, create, bind)` cria um widget por linha que **toca a
+viewport** — não por linha de dados. Rolar só revincula: `bind(row, i)`
+troca o conteúdo do widget que saiu de vista. Com 10.000 linhas, um passo
+de rolagem custa **44 µs** (evento + revinculação + frame). `Table` e
+`Tree` seguem a mesma ideia.
+
+### Cache de glyphs
+
+<p align="center"><img alt="Cada rune é rasterizada uma vez e copiada depois" src="docs/ilustracoes/glyphs.svg" width="100%"></p>
+
+Texto é o que mais se desenha numa interface. O `render.GlyphCache` guarda
+a máscara alfa de cada rune na primeira vez que ela aparece; dali em
+diante, desenhar é copiar a máscara com a cor do tema. Um teste garante que
+o resultado é pixel a pixel igual ao `font.Drawer` do `x/image`. As
+larguras também são memorizadas por string (`render.Measurer`): medir o
+mesmo rótulo a cada layout custa uma consulta de mapa.
+
+### uitest: a mesma Session, sem janela
+
+<p align="center"><img alt="App e uitest dirigem a mesma Session" src="docs/ilustracoes/uitest.svg" width="100%"></p>
+
+Roteamento, foco, overlay, captura e timers vivem na `Session`; o App real
+é só uma casca GLFW por cima. O [uitest](uitest) dirige a **mesma** Session
+com cliques e teclas sintéticos e um relógio virtual (`Advance` atravessa
+animações quadro a quadro). Como o desenho é por software, a mesma entrada
+produz os mesmos bytes: screenshots viram golden tests, e as imagens desta
+página saem de `go run ./docs/gerar`.
+
+### Em números
+
 | | |
 | --- | ---: |
-| Frame completo numa retina 13" inteira (2560×1600) | **0,55 ms** de CPU (3% do orçamento de 60 Hz) |
-| Frame incremental (dirty regions) | **15 µs** |
-| Rolagem numa List de 10.000 linhas | **40 µs** |
+| Frame completo 480×320 | **53 µs** de CPU |
+| Frame completo numa retina 13" inteira (2560×1600) | **0,76 ms** (4,6% do orçamento de 60 Hz) |
+| Frame incremental (dirty regions) | **17 µs** |
+| Rolagem numa List de 10.000 linhas | **44 µs** |
 | Alocações no caminho quente de desenho | **zero** — provado por `AllocsPerRun` |
-| Binário completo, `-s -w` | **3,7 MB** (1,1 MB são as cinco fontes embutidas) |
+| Binário completo (exemplo chat), `-s -w` | **4,3 MiB**, com as fontes embutidas |
 
 Medições, metodologia e a análise honesta de viabilidade — incluindo o que
-a lib ainda **não** faz — em [docs/BENCHMARK.md](docs/BENCHMARK.md). A
-organização de pacotes e os contratos (Widget, roteamento, overlay, tema)
-em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
+a lib ainda **não** faz — em [docs/BENCHMARK.md](docs/BENCHMARK.md).
 
 <details>
 <summary><b>A filosofia</b></summary>
@@ -422,26 +537,12 @@ tela.
 </details>
 
 <details>
-<summary><b>uitest, a aposta que mais pagou</b></summary>
-<br>
-
-O núcleo de interação inteiro (roteamento, foco, overlay, captura, relógio)
-vive numa `Session` sem janela; o App real é uma casca GLFW por cima, e o
-[uitest](uitest) dirige a MESMA Session nos testes. O retorno composto
-disso: o golden test "frame incremental == frame completo" pegou bugs reais
-de dano em três widgets diferentes antes de qualquer usuário; e quando a
-altura de TODAS as linhas de TODAS as listas mudou (design system),
-**nenhum teste quebrou** — eles testam comportamento, não pixels decorados.
-</details>
-
-<details>
 <summary><b>Curiosidades</b></summary>
 <br>
 
-- **19.585 linhas de biblioteca**, cobertas por **7.893 linhas de testes**
-  (234 testes, ~10 s de suíte) e demonstradas por **6.071 linhas de
-  exemplos** — 11 apps, incluindo o 7GUIs completo, um mini-proxy que
-  inspeciona HTTPS e um chat.
+- **21.422 linhas de biblioteca**, cobertas por **9.284 linhas de testes**
+  (287 testes) e demonstradas por **6.779 linhas de exemplos** — incluindo
+  o 7GUIs completo, um mini-proxy que inspeciona HTTPS e um chat.
 - Do primeiro commit à `v0.17.0` foram **três dias** (22–24/jul/2026) e
   116 commits — nenhum deles quebrando a suíte.
 - Dos ~101 MB de RSS de um app rodando, **88 MB são a stack OpenGL da
@@ -449,8 +550,13 @@ altura de TODAS as linhas de TODAS as listas mudou (design system),
 - A fonte Go Regular (a de antes do Inter) não cobria ★ nem ◀, mas cobria
   ♥ ← ↑ ‹ › — o exemplo de contatos usa ♥ nos favoritos por isso, e foi um
   teste de `GlyphAdvance` que decidiu.
+- A auditoria visual do rebrand achou um bug antigo que nenhum teste
+  via: sem `Scroll`, num redesenho parcial a `Table` pintava o cabeçalho
+  "fixo" no topo da área danificada. O hover novo da tabela o expôs.
 - O bug mais sutil até hoje: `draw.Over` exige cor pré-multiplicada — os
   contornos verdes do inspector é que denunciaram.
+- A marca: os pingos do **j** e do **i** de "juigo" são pixels — e o do i é
+  o único âmbar da identidade.
 </details>
 
 ## Status
