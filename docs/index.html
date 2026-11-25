@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JUIGo — interfaces desktop em Go, desenhadas pixel a pixel</title>
+<meta name="description" content="Biblioteca de GUI desktop para Go escrita do zero: renderização por software, estado reativo tipado, formulários validados e testes de UI determinísticos.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23D97757'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='20' text-anchor='middle' fill='%23FAF9F5'%3EJ%3C/text%3E%3C/svg%3E">
+<link rel="preload" href="site/fonts/GoRegular.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="site/fonts/Lora-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="site/estilo.css">
+<script>
+  // Aplica o tema antes da primeira pintura (evita o clarão).
+  (function () {
+    var t = localStorage.getItem("juigo-tema");
+    if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "escuro" : "claro";
+    document.documentElement.dataset.tema = t;
+  })();
+</script>
+</head>
+<body>
+
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
+
+<header class="barra">
+  <a class="marca" href="#topo">JUIGo</a>
+  <span class="versao">v0.19</span>
+  <nav class="barra-links" aria-label="Links do projeto">
+    <a href="https://github.com/JonathanSantos/JUIGo">GitHub</a>
+    <a href="https://pkg.go.dev/github.com/JonathanSantos/JUIGo">Referência</a>
+  </nav>
+  <button class="tema" type="button" aria-pressed="false" title="Alternar tema claro/escuro">
+    <span class="tema-trilho"><span class="tema-botao"></span></span>
+    <span class="tema-rotulo">Escuro</span>
+  </button>
+  <button class="menu" type="button" aria-expanded="false" aria-controls="indice">Índice</button>
+</header>
+
+<div class="pagina">
+
+<nav class="indice" id="indice" aria-label="Índice">
+  <p class="indice-grupo">Começar</p>
+  <a href="#instalar">Instalação</a>
+  <a href="#primeiro-app">Primeiro app</a>
+  <p class="indice-grupo">Conceitos</p>
+  <a href="#estado">Estado reativo</a>
+  <a href="#layout">Layout e tema</a>
+  <a href="#formularios">Formulários</a>
+  <a href="#navegacao">Navegação</a>
+  <a href="#assincrono">Trabalho assíncrono</a>
+  <a href="#testes">Testes de UI</a>
+  <div id="indice-componentes"></div>
+  <p class="indice-grupo">Mais</p>
+  <a href="#exemplos">Exemplos</a>
+  <a href="#desempenho">Desempenho</a>
+</nav>
+
+<main id="conteudo">
+
+<section class="topo" id="topo">
+  <h1>Interfaces desktop em Go, desenhadas pixel&nbsp;a&nbsp;pixel.</h1>
+  <div class="topo-texto">
+    <p class="lide">JUIGo é uma biblioteca de GUI escrita do zero: renderização por software num
+      <code>*image.RGBA</code>, estado reativo tipado com generics, formulários validados numa
+      expressão e testes de UI determinísticos. Tudo atrás de um único <code>import</code>.</p>
+    <div class="comando" data-copiar="go get github.com/JonathanSantos/JUIGo">
+      <code>go get github.com/JonathanSantos/JUIGo</code>
+      <button type="button" class="copiar">Copiar</button>
+    </div>
+    <ul class="fatos">
+      <li><strong>25+</strong> widgets</li>
+      <li><strong>15 µs</strong> por frame incremental</li>
+      <li><strong>0</strong> alocações no desenho</li>
+      <li><strong>3</strong> dependências</li>
+    </ul>
+  </div>
+  <figure class="topo-captura">
+    <img class="captura" width="470" height="500" alt="Vitrine de widgets do JUIGo no tema papel e tinta"
+      data-claro="vitrine-claude.png" data-escuro="vitrine-claude-escuro.png" src="vitrine-claude.png">
+    <figcaption>Não é um mockup. Cada imagem desta página foi renderizada pela própria JUIGo,
+      offscreen, a partir do código ao lado dela. Troque o tema no alto e todas são trocadas pelas
+      renderizações escuras.</figcaption>
+  </figure>
+</section>
+
+<section id="instalar">
+  <h2>Instalação</h2>
+  <ol class="passos">
+    <li>
+      <h3>Tenha Go 1.26+ e um compilador C</h3>
+      <p>O GLFW compila via cgo. No macOS bastam as Command Line Tools
+        (<code>xcode-select --install</code>). No Linux, os headers de janela e GL:</p>
+      <pre><code class="sh">sudo apt-get install libgl1-mesa-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev</code></pre>
+      <p>No Windows, um gcc do MSYS2 ou do TDM-GCC. Desenvolvido e verificado no macOS;
+        Linux e Windows têm as dependências mapeadas, mas ainda não foram testados.</p>
+    </li>
+    <li>
+      <h3>Adicione o módulo</h3>
+      <pre><code class="sh">go get github.com/JonathanSantos/JUIGo</code></pre>
+      <p>As fontes vêm embutidas via <code>go:embed</code>: o binário não depende de nada
+        instalado no sistema.</p>
+    </li>
+  </ol>
+</section>
+
+<section id="primeiro-app">
+  <h2>Primeiro app</h2>
+  <p>Um campo e um título que reage a cada tecla. O <code>State</code> é a única fonte de
+    verdade; a interface é uma projeção dele.</p>
+  <pre><code class="go">package main
+
+import (
+	"log"
+
+	juigo "github.com/JonathanSantos/JUIGo"
+)
+
+func main() {
+	nome := juigo.NewState("mundo")
+	ui := juigo.NewVBox(
+		juigo.NewText("").BindText(juigo.Map(nome, func(s string) string {
+			return "Olá, " + s + "!"
+		})).Center(),
+		juigo.NewInput("Seu nome…").BindValue(nome),
+	).Pad(16)
+
+	if err := juigo.Run("Olá, JUIGo", 360, 140, ui); err != nil {
+		log.Fatal(err)
+	}
+}</code></pre>
+  <div class="comando" data-copiar="go run .">
+    <code>go run .</code>
+    <button type="button" class="copiar">Copiar</button>
+  </div>
+</section>
+
+<section id="estado">
+  <h2>Estado reativo</h2>
+  <p><code>State[T]</code> guarda um valor; <code>Map</code> e <code>Combine</code> derivam
+    outros. Todo <code>Bind*</code> liga um widget a um State nos dois sentidos, e
+    <code>Set</code> redesenha só o que mudou. Eventos continuam callbacks: estado é para dados.</p>
+  <pre><code class="go">cliques := juigo.NewState(0)
+rotulo := juigo.Map(cliques, func(n int) string {
+	return fmt.Sprintf("%d cliques", n)
+})
+ui := juigo.NewHBox(
+	juigo.NewText("").BindText(rotulo).Centered(),
+	juigo.NewButton("+1", func() { cliques.Set(cliques.Get() + 1) }),
+).Gap(8)</code></pre>
+  <p>Os vínculos assinam o State com referência fraca: reconstruir uma lista com
+    <code>Clear</code> + <code>Add</code> não acumula observadores.</p>
+</section>
+
+<section id="layout">
+  <h2>Layout e tema</h2>
+  <p>Tudo é declarável numa expressão: opções e callbacks são métodos encadeáveis que devolvem
+    o tipo concreto. <code>VBox</code>/<code>HBox</code> com <code>Grow(peso)</code>,
+    <code>Spacer</code> e <code>Gap</code>; <code>Grid</code> para formulários alinhados;
+    <code>Scroll</code>, <code>List</code> e <code>Table</code> virtualizadas para milhares de
+    linhas.</p>
+  <p>Construtores não pedem tema: o App o injeta na árvore. Há <code>DefaultTheme</code>,
+    <code>DarkTheme</code> e o design system papel e tinta (<code>ClaudeTheme</code> e
+    <code>ClaudeDarkTheme</code>, o desta página), trocáveis em tempo de execução. Métricas são
+    unidades lógicas, então HiDPI é transparente.</p>
+  <pre><code class="go">app, err := juigo.New("Notas", 800, 600)
+if err != nil {
+	log.Fatal(err)
+}
+escuro, _ := juigo.ClaudeDarkTheme()
+app.SetTheme(escuro)
+app.SetRoot(ui)
+app.Run()</code></pre>
+</section>
+
+<section id="formularios">
+  <h2>Formulários</h2>
+  <p>A camada <code>quick</code> monta um formulário validado numa expressão. Cada campo é um
+    handle tipado dono do próprio State: a variável é a chave do formulário, verificada pelo
+    compilador.</p>
+  <pre><code class="go">nome := quick.Text("Nome:").Required("Informe o nome").Min(3, "Mínimo de 3")
+email := quick.Text("E-mail:").Email("E-mail inválido")
+idade := quick.Number("Idade:", 18).Max(120, "Confere a idade?")
+
+quick.Form(nome, email, idade).Submit("Salvar", func() {
+	salvar(nome.Value(), email.Value(), idade.Value()) // string, string, int
+})</code></pre>
+  <p>Também em uma chamada: <code>quick.Confirm</code>, <code>Alert</code>, <code>Prompt</code>,
+    <code>Menu</code>, <code>Toast</code> e o seletor de arquivos <code>OpenFile</code>/<code>SaveFile</code>.
+    Tudo aceita e devolve widgets comuns; quando o pronto não serve, desça um nível só naquele ponto.</p>
+</section>
+
+<section id="navegacao">
+  <h2>Navegação</h2>
+  <p><code>Navigator</code> empilha telas com transições animadas. As telas de baixo dormem
+    com o estado intacto.</p>
+  <pre><code class="go">nav := juigo.NewNavigator()
+nav.Push(telaInicial(nav))
+juigo.Run("App", 800, 600, nav)
+
+// nos botões das telas:
+nav.Push(telaDetalhes(nav))                       // desliza da direita
+nav.Push(telaAjuda(nav), juigo.TransitionSlideUp) // sobe como uma folha
+nav.Pop()                                         // reverte a transição de entrada</code></pre>
+  <img class="captura larga" width="640" alt="Navigator no meio de uma transição" src="navegacao.png">
+</section>
+
+<section id="assincrono">
+  <h2>Trabalho assíncrono</h2>
+  <p>A interface vive numa só thread. <code>App.Post</code> é a única porta de entrada para
+    goroutines: o trabalho pesado roda fora, o resultado volta para a main thread.</p>
+  <pre><code class="go">pedidos := juigo.NewState([]string{})
+go func() {
+	lista := buscarPedidos() // fora da main thread
+	app.Post(func() { pedidos.Set(lista) })
+}()</code></pre>
+</section>
+
+<section id="testes">
+  <h2>Testes de UI</h2>
+  <p><code>uitest</code> dirige o mesmo núcleo de interação do App real, sem janela e sem
+    sleeps: relógio virtual, seletores por texto e screenshots determinísticos para golden tests.</p>
+  <pre><code class="go">func TestFormulario(t *testing.T) {
+	h := uitest.New(t, ui, 480, 240)
+	h.Click(uitest.Placeholder("Digite…")) // foca de verdade
+	h.Type("olá, ação")                    // runes, com acentos
+	h.Hover(uitest.Text("Enviar"))
+	h.Advance(600 * time.Millisecond)      // relógio virtual: o tooltip aparece
+	img := h.Screenshot()                  // determinístico
+}</code></pre>
+  <p>Em qualquer app, <kbd>Ctrl/Cmd</kbd>+<kbd>I</kbd> abre o inspector de depuração.</p>
+</section>
+
+<section id="componentes" class="componentes">
+  <h2>Componentes</h2>
+  <p>O código de cada exemplo é o corpo exato da função que renderizou a imagem
+    (<a href="https://github.com/JonathanSantos/JUIGo/blob/main/docs/gerar/componentes.go">docs/gerar/componentes.go</a>).
+    Para ver todos vivos, rode a galeria:</p>
+  <div class="comando" data-copiar="go run ./examples/galeria">
+    <code>go run ./examples/galeria</code>
+    <button type="button" class="copiar">Copiar</button>
+  </div>
+  <div id="lista-componentes"></div>
+</section>
+
+<section id="exemplos">
+  <h2>Exemplos</h2>
+  <p>Onze apps no repositório, cada um com testes. Clone e rode qualquer um.</p>
+  <div class="exemplos">
+    <figure class="exemplo amplo">
+      <img class="captura" alt="Galeria de componentes" src="galeria.png" loading="lazy">
+      <figcaption><code>examples/galeria</code> O storybook do JUIGo, feito com o próprio JUIGo:
+        troque tema, fontes e tamanho de texto em pleno voo.</figcaption>
+    </figure>
+    <figure class="exemplo amplo">
+      <img class="captura" alt="Chat papel e tinta" src="chat.png" loading="lazy">
+      <figcaption><code>examples/chat</code> Conversas num SplitPane, balões com Label, barra de
+        menus e paleta de comandos.</figcaption>
+    </figure>
+    <figure class="exemplo">
+      <img class="captura" alt="Contatos, mestre-detalhe" src="contatos.png" loading="lazy">
+      <figcaption><code>examples/contatos</code> Mestre-detalhe com busca, abas, menu de
+        contexto e toasts.</figcaption>
+    </figure>
+    <figure class="exemplo">
+      <img class="captura" alt="Arquivos: árvore e seletor" src="arquivos.png" loading="lazy">
+      <figcaption><code>examples/arquivos</code> Árvore de pastas lida sob demanda e o seletor de
+        arquivos.</figcaption>
+    </figure>
+    <figure class="exemplo">
+      <img class="captura" alt="Kanban em pleno arrasto" src="kanban.png" loading="lazy">
+      <figcaption><code>examples/kanban</code> Drag-and-drop entre colunas, com fantasma e
+        realce do alvo.</figcaption>
+    </figure>
+    <figure class="exemplo">
+      <img class="captura" alt="Proxy HTTP de depuração" src="proxy.png" loading="lazy">
+      <figcaption><code>examples/proxy</code> Proxy de depuração HTTP/HTTPS local, com mocks de
+        respostas.</figcaption>
+    </figure>
+    <figure class="exemplo">
+      <img class="captura" alt="TodoMVC" src="todomvc.png" loading="lazy">
+      <figcaption><code>examples/todo</code> TodoMVC em três camadas, com persistência.</figcaption>
+    </figure>
+    <figure class="exemplo">
+      <img class="captura" alt="Cells, a planilha do 7GUIs" src="cells.png" loading="lazy">
+      <figcaption><code>examples/7guis</code> O benchmark 7GUIs completo, incluindo a
+        mini-planilha.</figcaption>
+    </figure>
+  </div>
+  <p>E ainda <code>basic</code>, <code>navegacao</code>, <code>janelas</code> (múltiplas
+    janelas com o mesmo State) e <code>editor</code> (o CodeEditor).</p>
+</section>
+
+<section id="desempenho">
+  <h2>Desempenho</h2>
+  <p>Medido numa retina 13" (2560×1600). Metodologia e limites em
+    <a href="https://github.com/JonathanSantos/JUIGo/blob/main/docs/BENCHMARK.md">BENCHMARK.md</a>.</p>
+  <table class="numeros">
+    <tbody>
+      <tr><th scope="row">Frame completo, tela inteira</th><td>0,55 ms de CPU</td></tr>
+      <tr><th scope="row">Frame incremental (dirty regions)</th><td>15 µs</td></tr>
+      <tr><th scope="row">Rolagem numa List de 10.000 linhas</th><td>40 µs</td></tr>
+      <tr><th scope="row">Alocações no caminho quente de desenho</th><td>zero</td></tr>
+      <tr><th scope="row">Binário completo, <code>-s -w</code></th><td>3,7 MB</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<footer class="rodape">
+  <p>JUIGo é um projeto de estudo, sob licença
+    <a href="https://github.com/JonathanSantos/JUIGo/blob/main/LICENSE">MIT</a>. Na série 0.x a API
+    ainda muda entre versões.</p>
+  <p>Fontes desta página, as mesmas embutidas na lib: Go Regular
+    (<a href="https://go.dev/LICENSE">BSD</a>), Lora e Fira Code
+    (<a href="site/fonts/Lora-OFL.txt">OFL</a>, <a href="site/fonts/FiraCode-OFL.txt">OFL</a>).</p>
+</footer>
+
+</main>
+</div>
+
+<script src="site/cenas.js"></script>
+<script src="site/app.js"></script>
+</body>
+</html>
