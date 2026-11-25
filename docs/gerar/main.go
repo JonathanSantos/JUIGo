@@ -225,4 +225,7 @@ func main() {
 	salva("contatos.png", agenda(), claro, 720, 420)
 	salva("editor.png", editor(), claro, 520, 300)
 	salva("cells.png", planilha(), claro, 620, 400)
+
+	// As cenas por componente do site (docs/index.html).
+	geraComponentes(claude, claudeEscuro)
 }
