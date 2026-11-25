@@ -25,11 +25,11 @@ func Text(s string) Selector {
 			case *widget.Label:
 				return t.Text() == s
 			case *widget.Button:
-				return t.Label == s
+				return t.Label() == s
 			case *widget.Checkbox:
-				return t.Label == s
+				return t.Label() == s
 			case *widget.Radio:
-				return t.Label == s
+				return t.Label() == s
 			case *widget.Dropdown:
 				return t.Value() == s
 			}
@@ -45,9 +45,9 @@ func Placeholder(s string) Selector {
 		Match: func(w widget.Widget) bool {
 			switch t := w.(type) {
 			case *widget.Input:
-				return t.Placeholder == s
+				return t.Placeholder() == s
 			case *widget.TextArea:
-				return t.Placeholder == s
+				return t.Placeholder() == s
 			}
 			return false
 		},

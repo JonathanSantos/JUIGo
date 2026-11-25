@@ -105,7 +105,9 @@ func TestSliderMouseTecladoEBinding(t *testing.T) {
 func TestInputOnSubmit(t *testing.T) {
 	th := newTestTheme(t)
 	enviado := 0
-	in := NewInput("x").OnSubmit(func() { enviado++ })
+	recebido := ""
+	in := NewInput("x").OnSubmit(func(text string) { enviado++; recebido = text })
+	in.SetText("olá")
 	in.SetTheme(th)
 	in.HandleEvent(event.FocusEvent{Gained: true})
 	if !in.HandleEvent(event.KeyEvent{Key: event.KeyEnter}) {
@@ -113,6 +115,9 @@ func TestInputOnSubmit(t *testing.T) {
 	}
 	if enviado != 1 {
 		t.Fatalf("OnSubmit deveria disparar 1 vez; disparou %d", enviado)
+	}
+	if recebido != "olá" {
+		t.Fatalf("OnSubmit deveria receber o texto do campo; recebeu %q", recebido)
 	}
 
 	// Sem OnSubmit, Enter não é consumido (sobe para quem interessar).

@@ -14,8 +14,8 @@ import (
 // aplicação, consultado por callbacks: roots devolve os nós de primeiro
 // nível, children os filhos de um nó (vazio = folha) — ambos por um ID
 // COMPARÁVEL seu (caminho, chave, ponteiro). Como na List, só as linhas
-// visíveis existem como widgets: um pool criado por criar() é reciclado
-// conforme a rolagem, com vincular(linha, id) preenchendo cada uma.
+// visíveis existem como widgets: um pool criado por create() é reciclado
+// conforme a rolagem, com bind(row, id) preenchendo cada uma.
 //
 //	tree := juigo.NewTree(
 //	    func() []string { return []string{"/"} },
@@ -37,8 +37,8 @@ type Tree[ID comparable, W Widget] struct {
 
 	roots      func() []ID
 	childrenOf func(ID) []ID
-	criar      func() W
-	vincular   func(row W, id ID)
+	create     func() W
+	bind       func(row W, id ID)
 
 	expanded map[ID]bool
 	// rows é o achatamento dos nós VISÍVEIS (expandidos), reconstruído sob
@@ -61,6 +61,7 @@ type Tree[ID comparable, W Widget] struct {
 	viewport  image.Rectangle
 
 	selected   *state.State[ID]
+	onChange   func(ID)
 	onActivate func(ID)
 	focused    bool
 	// hoverRow é a linha visível sob o ponteiro (-1 = nenhuma) — realçada
@@ -83,14 +84,14 @@ type treeRow[ID comparable] struct {
 func NewTree[ID comparable, W Widget](
 	roots func() []ID,
 	children func(ID) []ID,
-	criar func() W,
-	vincular func(row W, id ID),
+	create func() W,
+	bind func(row W, id ID),
 ) *Tree[ID, W] {
 	return &Tree[ID, W]{
 		roots:      roots,
 		childrenOf: children,
-		criar:      criar,
-		vincular:   vincular,
+		create:     create,
+		bind:       bind,
 		expanded:   map[ID]bool{},
 		hoverRow:   -1,
 	}
@@ -102,7 +103,46 @@ func NewTree[ID comparable, W Widget](
 // Encadeável.
 func (t *Tree[ID, W]) BindSelected(s *state.State[ID]) *Tree[ID, W] {
 	t.selected = s
-	s.Watch(func(ID) { t.Invalidate() })
+	state.WatchWeak(s, t, func(t *Tree[ID, W], _ ID) { t.Invalidate() })
+	return t
+}
+
+// Selectable habilita a seleção de nó SEM State externo: a Tree guarda o
+// ID selecionado por conta própria (leia com Selected, reaja com
+// OnChange). BindSelected, Select e OnChange já a habilitam. Encadeável.
+func (t *Tree[ID, W]) Selectable() *Tree[ID, W] {
+	if t.selected == nil {
+		var zero ID
+		t.BindSelected(state.New(zero))
+	}
+	return t
+}
+
+// Selected devolve o ID do nó selecionado (o valor zero de ID = nenhum, ou
+// seleção não habilitada).
+func (t *Tree[ID, W]) Selected() ID {
+	if t.selected == nil {
+		var zero ID
+		return zero
+	}
+	return t.selected.Get()
+}
+
+// Select seleciona o nó de ID dado (o valor zero limpa), habilitando a
+// seleção se preciso. Como todo setter programático, não dispara OnChange.
+func (t *Tree[ID, W]) Select(id ID) {
+	t.Selectable()
+	if t.selected.Get() != id {
+		t.selected.Set(id)
+	}
+}
+
+// OnChange define o callback chamado, com o ID, quando o USUÁRIO seleciona
+// um nó (clique ou teclado; depois do Set do State vinculado) e habilita a
+// seleção. Encadeável.
+func (t *Tree[ID, W]) OnChange(fn func(id ID)) *Tree[ID, W] {
+	t.Selectable()
+	t.onChange = fn
 	return t
 }
 
@@ -209,16 +249,16 @@ func (t *Tree[ID, W]) ensureRowSize() bool {
 	// Primeira medição OU o tema mudou de métrica: re-mede e invalida o
 	// pool.
 	t.ensureRows()
-	nova := len(t.pool) == 0
+	fresh := len(t.pool) == 0
 	var sample W
-	if nova {
-		sample = t.criar()
+	if fresh {
+		sample = t.create()
 	} else {
 		sample = t.pool[0]
 	}
 	Mount(sample, t.theme)
 	if len(t.rows) > 0 {
-		t.vincular(sample, t.rows[0].id)
+		t.bind(sample, t.rows[0].id)
 	}
 	p := sample.PreferredSize()
 	if p.Y <= 0 {
@@ -230,7 +270,7 @@ func (t *Tree[ID, W]) ensureRowSize() bool {
 	t.rowSized = true
 	t.rowFace = t.theme.Face
 	t.poolValid = false
-	if nova {
+	if fresh {
 		t.pool = append(t.pool, sample)
 	}
 	return true
@@ -346,15 +386,15 @@ func (t *Tree[ID, W]) ensure(visible image.Rectangle) {
 		return
 	}
 	for len(t.pool) < n {
-		row := t.criar()
+		row := t.create()
 		Mount(row, t.theme)
 		t.pool = append(t.pool, row)
 	}
 	t.kids = t.kids[:0]
-	for k := 0; k < n; k++ {
+	for k := range n {
 		row := t.pool[k]
 		r := t.rows[first+k]
-		t.vincular(row, r.id)
+		t.bind(row, r.id)
 		rect := t.rowRect(first + k)
 		rect.Min.X = t.contentX(r.depth)
 		row.Layout(rect)
@@ -405,8 +445,11 @@ func (t *Tree[ID, W]) selectRow(i int) {
 	if i < 0 || i >= len(t.rows) {
 		return
 	}
-	if t.selected.Get() != t.rows[i].id {
-		t.selected.Set(t.rows[i].id)
+	if id := t.rows[i].id; t.selected.Get() != id {
+		t.selected.Set(id)
+		if t.onChange != nil {
+			t.onChange(id)
+		}
 	}
 	t.Invalidate()
 }
@@ -417,6 +460,7 @@ func (t *Tree[ID, W]) HandleEvent(ev event.Event) bool {
 	switch e := ev.(type) {
 	case event.FocusEvent:
 		t.focused = e.Gained
+		t.notifyFocus(e.Gained)
 		t.Invalidate()
 		return true
 	case event.KeyEvent:

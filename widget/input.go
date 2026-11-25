@@ -24,14 +24,12 @@ import (
 // seleção; Backspace/Delete a apagam.
 type Input struct {
 	BaseWidget
-	// Placeholder é exibido quando o campo está vazio e sem foco.
-	Placeholder string
+	// placeholder é exibido quando o campo está vazio e sem foco.
+	placeholder string
 
 	// Callbacks definidos pelos métodos encadeáveis de mesmo nome.
 	onChange func(string)
-	onFocus  func()
-	onBlur   func()
-	onSubmit func()
+	onSubmit func(string)
 	// filter restringe os caracteres aceitos (ver Filter).
 	filter func(rune) bool
 	// invalid liga o realce de erro (ver SetInvalid/BindInvalid).
@@ -68,6 +66,15 @@ type Input struct {
 	// edição ou movimento a reinicia com o cursor visível.
 	caretOn     bool
 	blinkCancel func()
+	// blinkFn é blinkTick guardado como valor: passar o método direto ao
+	// agendador criaria uma closure nova a cada piscada e a cada tecla.
+	blinkFn func()
+
+	// xs é a tabela de larguras de prefixo do texto (render.PrefixWidths):
+	// xs[i] é o X, relativo ao início do texto, da fronteira antes da rune
+	// i. Recalculada no sync, numa passada; dela saem cursorX, anchorX,
+	// textW e o clique→índice (busca binária).
+	xs []int
 
 	// Composição de IME (event.PreeditEvent): o texto de pré-edição é
 	// desenhado inline no cursor, sublinhado, SEM entrar em runes — o texto
@@ -75,14 +82,14 @@ type Input struct {
 	// por frame (ver preeditState); preAntes/preDepois são os segmentos do
 	// texto confirmado ao redor da composição.
 	pre       preeditState
-	preAntes  string
-	preDepois string
+	preBefore string
+	preAfter  string
 }
 
 // NewInput cria um campo de texto vazio com o placeholder dado. O tema é
 // herdado no mount.
 func NewInput(placeholder string) *Input {
-	return &Input{Placeholder: placeholder, caretOn: true}
+	return &Input{placeholder: placeholder, caretOn: true}
 }
 
 // OnChange define o callback chamado após qualquer alteração no texto.
@@ -92,22 +99,10 @@ func (in *Input) OnChange(fn func(string)) *Input {
 	return in
 }
 
-// OnFocus define o callback chamado ao ganhar o foco de teclado. Encadeável.
-func (in *Input) OnFocus(fn func()) *Input {
-	in.onFocus = fn
-	return in
-}
-
-// OnBlur define o callback chamado ao perder o foco de teclado — útil para
-// validação "touched" (ver juigo/form). Encadeável.
-func (in *Input) OnBlur(fn func()) *Input {
-	in.onBlur = fn
-	return in
-}
-
-// OnSubmit define o callback chamado quando Enter é pressionado com o campo
-// focado (envio de formulários). Encadeável.
-func (in *Input) OnSubmit(fn func()) *Input {
+// OnSubmit define o callback chamado, com o texto atual, quando Enter é
+// pressionado com o campo focado (envio de formulários, campos de busca e
+// de chat). Encadeável.
+func (in *Input) OnSubmit(fn func(text string)) *Input {
 	in.onSubmit = fn
 	return in
 }
@@ -121,20 +116,36 @@ func (in *Input) Filter(allowed func(rune) bool) *Input {
 }
 
 // SetInvalid liga/desliga o realce de erro do campo (borda na cor
-// Theme.Danger) e agenda um redesenho.
-func (in *Input) SetInvalid(v bool) {
+// Theme.Danger) e agenda um redesenho. Encadeável.
+func (in *Input) SetInvalid(v bool) *Input {
 	if in.invalid == v {
-		return
+		return in
 	}
 	in.invalid = v
 	in.Invalidate()
+	return in
 }
 
 // BindInvalid vincula o realce de erro ao State (true = borda Danger) — o
 // par visual de form.ErrorOf. Encadeável.
 func (in *Input) BindInvalid(s *state.State[bool]) *Input {
 	in.SetInvalid(s.Get())
-	s.Watch(func(v bool) { in.SetInvalid(v) })
+	state.WatchWeak(s, in, func(in *Input, v bool) { in.SetInvalid(v) })
+	return in
+}
+
+// Placeholder devolve o texto exibido enquanto o campo está vazio.
+func (in *Input) Placeholder() string {
+	return in.placeholder
+}
+
+// SetPlaceholder troca o texto exibido enquanto o campo está vazio e agenda
+// um redesenho. Encadeável.
+func (in *Input) SetPlaceholder(s string) *Input {
+	if in.placeholder != s {
+		in.placeholder = s
+		in.Invalidate()
+	}
 	return in
 }
 
@@ -144,13 +155,18 @@ func (in *Input) Text() string {
 }
 
 // SetText substitui o conteúdo do campo, move o cursor para o fim (limpando
-// a seleção) e agenda um redesenho. Não dispara OnChange.
-func (in *Input) SetText(s string) {
+// a seleção), sincroniza o State vinculado (se houver) e agenda um
+// redesenho. Não dispara OnChange. Encadeável.
+func (in *Input) SetText(s string) *Input {
 	in.runes = []rune(s)
 	in.cursor = len(in.runes)
 	in.anchor = in.cursor
 	in.sync()
 	in.Invalidate()
+	if in.bound != nil && in.bound.Get() != in.text {
+		in.bound.Set(in.text)
+	}
+	return in
 }
 
 // BindValue vincula o conteúdo do campo ao State em DUAS vias: edições do
@@ -159,7 +175,7 @@ func (in *Input) SetText(s string) {
 func (in *Input) BindValue(s *state.State[string]) *Input {
 	in.bound = s
 	in.SetText(s.Get())
-	s.Watch(func(v string) {
+	state.WatchWeak(s, in, func(in *Input, v string) {
 		// Guarda contra eco: quando o Set veio de uma edição deste próprio
 		// campo, o texto já está atualizado e nada precisa ser feito.
 		if in.text != v {
@@ -207,17 +223,13 @@ func (in *Input) HandleEvent(ev event.Event) bool {
 		in.focused = e.Gained
 		if e.Gained {
 			in.restartBlink()
-			if in.onFocus != nil {
-				in.onFocus()
-			}
+			in.notifyFocus(true)
 		} else {
 			in.stopBlink()
 			// Perder o foco descarta a composição em andamento (o IME do
 			// sistema a cancela de qualquer forma).
 			in.clearPreedit()
-			if in.onBlur != nil {
-				in.onBlur()
-			}
+			in.notifyFocus(false)
 		}
 		return true
 	case event.MouseEvent:
@@ -275,7 +287,7 @@ func (in *Input) handleKey(e event.KeyEvent) bool {
 		if in.onSubmit == nil {
 			return false
 		}
-		in.onSubmit()
+		in.onSubmit(in.text)
 		return true
 	case event.KeyBackspace:
 		if in.deleteSelection() {
@@ -462,7 +474,10 @@ func (in *Input) restartBlink() {
 	if !in.focused || in.theme == nil || in.theme.CaretBlink <= 0 {
 		return
 	}
-	in.blinkCancel = hooks.ScheduleAfter(in.theme.CaretBlink, in.blinkTick)
+	if in.blinkFn == nil {
+		in.blinkFn = in.blinkTick
+	}
+	in.blinkCancel = hooks.ScheduleAfter(in.theme.CaretBlink, in.blinkFn)
 }
 
 // blinkTick alterna a visibilidade do cursor e agenda a próxima piscada.
@@ -472,7 +487,7 @@ func (in *Input) blinkTick() {
 	}
 	in.caretOn = !in.caretOn
 	in.Invalidate()
-	in.blinkCancel = hooks.ScheduleAfter(in.theme.CaretBlink, in.blinkTick)
+	in.blinkCancel = hooks.ScheduleAfter(in.theme.CaretBlink, in.blinkFn)
 }
 
 // stopBlink cancela a piscada pendente e deixa o cursor visível.
@@ -484,9 +499,10 @@ func (in *Input) stopBlink() {
 	in.caretOn = true
 }
 
-// sync atualiza os caches derivados (string do texto e X do cursor) após
-// qualquer mudança. Alocar aqui é aceitável: acontece por evento de edição
-// (ou uma única vez após mudança de escala), nunca por frame desenhado.
+// sync atualiza os caches derivados (string do texto, tabela de larguras e
+// X do cursor) após qualquer mudança. Roda por evento de edição (ou uma
+// única vez após mudança de escala), nunca por frame desenhado; a única
+// alocação é a string do texto.
 func (in *Input) sync() {
 	in.restartBlink()
 	in.text = string(in.runes)
@@ -496,9 +512,10 @@ func (in *Input) sync() {
 		in.cursorX, in.anchorX, in.syncFace = 0, 0, nil
 		return
 	}
-	in.cursorX = in.theme.MeasureString(string(in.runes[:in.cursor]))
-	in.anchorX = in.theme.MeasureString(string(in.runes[:in.anchor]))
-	in.textW = in.theme.MeasureString(in.text)
+	in.xs = render.PrefixWidths(in.theme.Face, in.runes, in.xs)
+	in.cursorX = in.xs[in.cursor]
+	in.anchorX = in.xs[in.anchor]
+	in.textW = in.xs[len(in.runes)]
 	in.syncFace = in.theme.Face
 	in.syncPreedit()
 }
@@ -536,11 +553,11 @@ func (in *Input) clearPreedit() {
 func (in *Input) syncPreedit() {
 	in.pre.measure(in.theme)
 	if !in.composing() {
-		in.preAntes, in.preDepois = "", ""
+		in.preBefore, in.preAfter = "", ""
 		return
 	}
-	in.preAntes = string(in.runes[:in.cursor])
-	in.preDepois = string(in.runes[in.cursor:])
+	in.preBefore = string(in.runes[:in.cursor])
+	in.preAfter = string(in.runes[in.cursor:])
 }
 
 // CaretRect devolve o retângulo do cursor de texto em coordenadas absolutas
@@ -579,21 +596,10 @@ func (in *Input) runeIndexAt(x int) int {
 	if rel <= 0 {
 		return 0
 	}
-	best, bestDist := 0, rel
-	for i := 1; i <= len(in.runes); i++ {
-		w := in.theme.MeasureString(string(in.runes[:i]))
-		d := w - rel
-		if d < 0 {
-			d = -d
-		}
-		if d < bestDist {
-			best, bestDist = i, d
-		}
-		if w >= rel {
-			break
-		}
+	if in.syncFace != in.theme.Face {
+		in.sync() // tabela defasada (tema ou escala trocados desde o último sync)
 	}
-	return best
+	return render.IndexAtX(in.xs, rel)
 }
 
 // Draw desenha o fundo, a borda (realçada com foco), o texto ou o
@@ -671,8 +677,8 @@ func (in *Input) Draw(dst *image.RGBA) {
 		in.drawComposition(view, textX, baseline)
 	case len(in.runes) > 0:
 		th.DrawText(view, in.text, image.Pt(textX, baseline), th.Text)
-	case !in.focused && in.Placeholder != "":
-		th.DrawText(view, in.Placeholder, image.Pt(textX, baseline), th.Placeholder)
+	case !in.focused && in.placeholder != "":
+		th.DrawText(view, in.placeholder, image.Pt(textX, baseline), th.Placeholder)
 	}
 
 	if in.focused && in.caretOn {
@@ -689,13 +695,13 @@ func (in *Input) Draw(dst *image.RGBA) {
 // os segmentos e as fronteiras vêm dos caches por evento.
 func (in *Input) drawComposition(view *image.RGBA, textX, baseline int) {
 	th := in.theme
-	if in.preAntes != "" {
-		th.DrawText(view, in.preAntes, image.Pt(textX, baseline), th.Text)
+	if in.preBefore != "" {
+		th.DrawText(view, in.preBefore, image.Pt(textX, baseline), th.Text)
 	}
 	compX := textX + in.cursorX
 	th.DrawText(view, in.pre.text, image.Pt(compX, baseline), th.Text)
-	if in.preDepois != "" {
-		th.DrawText(view, in.preDepois, image.Pt(compX+in.pre.w, baseline), th.Text)
+	if in.preAfter != "" {
+		th.DrawText(view, in.preAfter, image.Pt(compX+in.pre.w, baseline), th.Text)
 	}
 	in.pre.drawUnderline(view, th, compX, baseline+th.Px(2))
 }

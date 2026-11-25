@@ -4,3 +4,17 @@ examples/basic/basic
 # Artefatos diversos
 *.out
 *.test
+
+# Binários dos exemplos compilados na raiz (go build ./examples/...)
+/arquivos
+/chat
+/galeria
+/editor
+/kanban
+/navegacao
+/proxy
+/todo
+/contatos
+/janelas
+/basic
+/7guis

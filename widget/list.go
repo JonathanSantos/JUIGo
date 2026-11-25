@@ -12,7 +12,7 @@ import (
 
 // List é uma lista VIRTUALIZADA de linhas uniformes: das count linhas
 // lógicas, só as visíveis existem como widgets — um pool pequeno de linhas é
-// criado por criar() e RECICLADO conforme a rolagem, com vincular(linha, i)
+// criado por create() e RECICLADO conforme a rolagem, com bind(row, i)
 // preenchendo cada uma com os dados do índice. Combine com Scroll:
 //
 //	lista := juigo.NewList(len(itens),
@@ -31,9 +31,9 @@ import (
 type List[W Widget] struct {
 	BaseWidget
 
-	criar    func() W
-	vincular func(row W, index int)
-	count    int
+	create func() W
+	bind   func(row W, index int)
+	count  int
 
 	rowH     int
 	rowW     int
@@ -52,20 +52,22 @@ type List[W Widget] struct {
 	viewport image.Rectangle
 	// selected habilita a seleção de linha (ver BindSelected).
 	selected *state.State[int]
+	// onChange é chamado quando o usuário seleciona uma linha (ver OnChange).
+	onChange func(int)
 	// hoverRow é a linha sob o ponteiro (-1 = nenhuma), realçada com a
 	// pílula de hover quando a lista é selecionável.
 	hoverRow int
 	// reorderLabel/onReorder habilitam a reordenação por arrasto (ver
 	// OnReorder); arm é o estado do gesto entre o MouseDown e o limiar.
 	reorderLabel func(index int) string
-	onReorder    func(de, para int)
+	onReorder    func(from, to int)
 	arm          reorderArm
 }
 
 // NewList cria uma lista virtualizada com count linhas. O tema é herdado no
 // mount.
-func NewList[W Widget](count int, criar func() W, vincular func(row W, index int)) *List[W] {
-	return &List[W]{criar: criar, vincular: vincular, count: count, hoverRow: -1}
+func NewList[W Widget](count int, create func() W, bind func(row W, index int)) *List[W] {
+	return &List[W]{create: create, bind: bind, count: count, hoverRow: -1}
 }
 
 // Count devolve o total de linhas lógicas.
@@ -80,7 +82,46 @@ func (l *List[W]) Count() int {
 // List quando a linha o deixa passar (Text puro, por exemplo). Encadeável.
 func (l *List[W]) BindSelected(s *state.State[int]) *List[W] {
 	l.selected = s
-	s.Watch(func(int) { l.Invalidate() })
+	state.WatchWeak(s, l, func(l *List[W], _ int) { l.Invalidate() })
+	return l
+}
+
+// Selectable habilita a seleção de linha SEM State externo: a List guarda
+// o índice selecionado por conta própria (leia com Selected, reaja com
+// OnChange). BindSelected, Select e OnChange já a habilitam. Encadeável.
+func (l *List[W]) Selectable() *List[W] {
+	if l.selected == nil {
+		l.BindSelected(state.New(-1))
+	}
+	return l
+}
+
+// Selected devolve o índice da linha selecionada (-1 = nenhuma, ou seleção
+// não habilitada).
+func (l *List[W]) Selected() int {
+	if l.selected == nil {
+		return -1
+	}
+	return l.selected.Get()
+}
+
+// Select seleciona a linha i (-1 limpa; fora do intervalo é ignorado),
+// habilitando a seleção se preciso. Como todo setter programático, não
+// dispara OnChange.
+func (l *List[W]) Select(i int) {
+	l.Selectable()
+	if i < -1 || i >= l.count || l.selected.Get() == i {
+		return
+	}
+	l.selected.Set(i)
+}
+
+// OnChange define o callback chamado, com o índice, quando o USUÁRIO
+// seleciona uma linha (depois do Set do State vinculado) e habilita a
+// seleção. Encadeável.
+func (l *List[W]) OnChange(fn func(index int)) *List[W] {
+	l.Selectable()
+	l.onChange = fn
 	return l
 }
 
@@ -109,6 +150,9 @@ func (l *List[W]) HandleEvent(ev event.Event) bool {
 		if l.selected != nil {
 			if l.selected.Get() != i {
 				l.selected.Set(i)
+				if l.onChange != nil {
+					l.onChange(i)
+				}
 			}
 			l.Invalidate()
 		}
@@ -157,12 +201,13 @@ func (l *List[W]) setHoverRow(i int) {
 }
 
 // SetCount muda o total de linhas e agenda revinculação e redesenho.
-func (l *List[W]) SetCount(n int) {
+// Encadeável.
+func (l *List[W]) SetCount(n int) *List[W] {
 	if n < 0 {
 		n = 0
 	}
 	if l.count == n {
-		return
+		return l
 	}
 	l.count = n
 	// A seleção não sobrevive fora do novo intervalo.
@@ -170,6 +215,7 @@ func (l *List[W]) SetCount(n int) {
 		l.selected.Set(-1)
 	}
 	l.Refresh()
+	return l
 }
 
 // Refresh revincula as linhas visíveis (chame após mudar os dados) e agenda
@@ -203,16 +249,16 @@ func (l *List[W]) ensureRowSize() bool {
 	}
 	// Primeira medição OU o tema mudou de métrica (escala, tamanho de
 	// fonte, troca de tema): re-mede com uma amostra e invalida o pool.
-	nova := len(l.pool) == 0
+	fresh := len(l.pool) == 0
 	var sample W
-	if nova {
-		sample = l.criar()
+	if fresh {
+		sample = l.create()
 	} else {
 		sample = l.pool[0]
 	}
 	Mount(sample, l.theme)
 	if l.count > 0 {
-		l.vincular(sample, 0)
+		l.bind(sample, 0)
 	}
 	p := sample.PreferredSize()
 	if p.Y <= 0 {
@@ -224,7 +270,7 @@ func (l *List[W]) ensureRowSize() bool {
 	l.rowSized = true
 	l.rowFace = l.theme.Face
 	l.poolValid = false
-	if nova {
+	if fresh {
 		// A amostra vira a primeira linha do pool (nada é jogado fora).
 		l.pool = append(l.pool, sample)
 	}
@@ -285,14 +331,14 @@ func (l *List[W]) ensure(visible image.Rectangle) {
 		return // pool já cobre a região, nas mesmas posições
 	}
 	for len(l.pool) < n {
-		row := l.criar()
+		row := l.create()
 		Mount(row, l.theme)
 		l.pool = append(l.pool, row)
 	}
 	l.children = l.children[:0]
-	for k := 0; k < n; k++ {
+	for k := range n {
 		row := l.pool[k]
-		l.vincular(row, first+k)
+		l.bind(row, first+k)
 		row.Layout(l.rowRect(first + k))
 		l.children = append(l.children, row)
 	}

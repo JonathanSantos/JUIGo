@@ -73,8 +73,8 @@ func TestInputNaoVazaDoCampo(t *testing.T) {
 	render.FillRect(buf, buf.Bounds(), bg)
 	in.Draw(buf)
 
-	for y := 0; y < 60; y++ {
-		for x := 0; x < 240; x++ {
+	for y := range 60 {
+		for x := range 240 {
 			if x >= x0 && x < x1 && y >= y0 && y < y1 {
 				continue // dentro do campo, pode pintar
 			}

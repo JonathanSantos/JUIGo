@@ -78,10 +78,7 @@ func StrokeRoundRect(dst *image.RGBA, r image.Rectangle, radius, w int, c color.
 	FillRect(dst, image.Rect(r.Min.X+radius, r.Max.Y-w, r.Max.X-radius, r.Max.Y), c)
 	FillRect(dst, image.Rect(r.Min.X, r.Min.Y+radius, r.Min.X+w, r.Max.Y-radius), c)
 	FillRect(dst, image.Rect(r.Max.X-w, r.Min.Y+radius, r.Max.X, r.Max.Y-radius), c)
-	inner := radius - w
-	if inner < 0 {
-		inner = 0
-	}
+	inner := max(radius-w, 0)
 	roundCorners(dst, r, radius, inner, c, false)
 }
 

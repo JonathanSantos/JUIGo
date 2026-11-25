@@ -1,0 +1,11 @@
+# Lint do JUIGo (golangci-lint v2). O conjunto padrão já cobre errcheck,
+# govet, staticcheck e unused; aqui só se ajusta o que é ruído conhecido.
+version: "2"
+
+linters:
+  exclusions:
+    rules:
+      # Em testes e exemplos, Close/Remove de arquivos temporários sem
+      # checagem não esconde bug de produto.
+      - path: (_test\.go|^examples/|^docs/gerar/)
+        linters: [errcheck]

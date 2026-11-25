@@ -2,6 +2,9 @@ package juigo
 
 import (
 	"image"
+	"time"
+
+	"golang.org/x/image/font/opentype"
 
 	"github.com/JonathanSantos/JUIGo/event"
 	"github.com/JonathanSantos/JUIGo/state"
@@ -82,6 +85,15 @@ type (
 	// DropTarget é implementado por widgets que aceitam soltar um arrasto
 	// (ver StartDrag).
 	DropTarget = widget.DropTarget
+	// DropIndicator é implementado por alvos que desenham uma linha de
+	// inserção no lugar do contorno (reordenação).
+	DropIndicator = widget.DropIndicator
+	// OverlaySpanning é implementado por camadas que ocupam a janela
+	// inteira (modais) em vez de um retângulo ancorado.
+	OverlaySpanning = widget.OverlaySpanning
+	// Session é o núcleo de interação headless por trás de cada janela —
+	// para shells próprios e testes (ver widget.Session).
+	Session = widget.Session
 	// PreeditEvent é o estado da pré-edição de um IME (composição de
 	// texto), roteado por foco.
 	PreeditEvent = event.PreeditEvent
@@ -113,10 +125,37 @@ type (
 	CursorShape = widget.CursorShape
 )
 
+// Locale reúne os textos que a própria biblioteca exibe (ver widget.Locale).
+type Locale = widget.Locale
+
+// LocaleEN devolve os textos em inglês — o padrão (ver widget.LocaleEN).
+func LocaleEN() Locale { return widget.LocaleEN() }
+
+// LocalePTBR devolve os textos em português do Brasil (ver
+// widget.LocalePTBR).
+func LocalePTBR() Locale { return widget.LocalePTBR() }
+
+// SetLocale troca os textos exibidos pela biblioteca e devolve os
+// anteriores (ver widget.SetLocale).
+func SetLocale(l Locale) (previous Locale) { return widget.SetLocale(l) }
+
+// CurrentLocale devolve os textos em vigor (ver widget.CurrentLocale).
+func CurrentLocale() Locale { return widget.CurrentLocale() }
+
 // Tema (juigo/theme).
 type (
 	// Theme centraliza cores, fonte, métricas e a escala HiDPI.
 	Theme = theme.Theme
+	// TextFont é a fonte de um papel tipográfico (título, legenda) na
+	// escala corrente.
+	TextFont = theme.TextFont
+	// MonoFont é a fonte monoespaçada do tema (editores de código).
+	MonoFont = theme.MonoFont
+	// SyntaxPalette são as cores das classes léxicas do highlight.
+	SyntaxPalette = theme.SyntaxPalette
+	// Font é uma fonte OpenType carregada — o que Theme.UseDisplayFont e
+	// Theme.UseMonoFont recebem.
+	Font = opentype.Font
 )
 
 // List é a lista virtualizada de linhas uniformes com pool reciclado.
@@ -361,10 +400,10 @@ func NewCalendar() *Calendar { return widget.NewCalendar() }
 func NewTree[ID comparable, W Widget](
 	roots func() []ID,
 	children func(ID) []ID,
-	criar func() W,
-	vincular func(row W, id ID),
+	create func() W,
+	bind func(row W, id ID),
 ) *Tree[ID, W] {
-	return widget.NewTree(roots, children, criar, vincular)
+	return widget.NewTree(roots, children, create, bind)
 }
 
 // StartDrag inicia um arrasto com o payload e o rótulo do fantasma; chame
@@ -374,24 +413,24 @@ func StartDrag(payload any, label string) { widget.StartDrag(payload, label) }
 
 // NewTable cria uma tabela de texto: títulos de coluna, total de linhas e o
 // callback de célula (ver widget.NewTable).
-func NewTable(titulos []string, count int, celula func(linha, coluna int) string) *Table {
-	return widget.NewTable(titulos, count, celula)
+func NewTable(titles []string, count int, cell func(line, col int) string) *Table {
+	return widget.NewTable(titles, count, cell)
 }
 
 // NewGrid cria uma grade com o número de colunas e os filhos dados (ver
 // widget.NewGrid).
-func NewGrid(colunas int, children ...Widget) *Grid { return widget.NewGrid(colunas, children...) }
+func NewGrid(cols int, children ...Widget) *Grid { return widget.NewGrid(cols, children...) }
 
-// NewList cria uma lista virtualizada: count linhas, criar() fabrica uma
-// linha do pool e vincular(linha, i) a preenche com os dados do índice (ver
+// NewList cria uma lista virtualizada: count linhas, create() fabrica uma
+// linha do pool e bind(row, i) a preenche com os dados do índice (ver
 // widget.NewList).
-func NewList[W Widget](count int, criar func() W, vincular func(W, int)) *List[W] {
-	return widget.NewList(count, criar, vincular)
+func NewList[W Widget](count int, create func() W, bind func(W, int)) *List[W] {
+	return widget.NewList(count, create, bind)
 }
 
 // Tooltip associa a w um texto de dica exibido quando o ponteiro pausa sobre
 // o widget, devolvendo o próprio w (ver widget.Tooltip).
-func Tooltip[W Widget](w W, texto string) W { return widget.Tooltip(w, texto) }
+func Tooltip[W Widget](w W, text string) W { return widget.Tooltip(w, text) }
 
 // BindDisabled vincula o estado desabilitado de w ao State (true desabilita),
 // devolvendo o próprio w (ver widget.BindDisabled).
@@ -399,7 +438,7 @@ func BindDisabled[W Widget](w W, s *State[bool]) W { return widget.BindDisabled(
 
 // Grow marca w para expandir no eixo principal do VBox/HBox com o peso dado,
 // devolvendo o próprio w (ver widget.Grow).
-func Grow[W Widget](w W, peso int) W { return widget.Grow(w, peso) }
+func Grow[W Widget](w W, weight int) W { return widget.Grow(w, weight) }
 
 // Centered posiciona w no eixo transversal do box com o tamanho preferido,
 // centralizado (ver widget.Centered).
@@ -420,8 +459,8 @@ func NewState[T any](v T) *State[T] { return state.New(v) }
 func Map[A, B any](s *State[A], f func(A) B) *State[B] { return state.Map(s, f) }
 
 // Combine deriva um State de várias fontes (ver state.Combine).
-func Combine[T any](compute func() T, fontes ...Observable) *State[T] {
-	return state.Combine(compute, fontes...)
+func Combine[T any](compute func() T, sources ...Observable) *State[T] {
+	return state.Combine(compute, sources...)
 }
 
 // Not deriva o State booleano inverso — o par natural de BindDisabled (ver
@@ -430,7 +469,7 @@ func Not(s *State[bool]) *State[bool] { return state.Not(s) }
 
 // NewHistory cria um histórico de desfazer/refazer com o valor inicial (ver
 // state.NewHistory).
-func NewHistory[T any](inicial T) *History[T] { return state.NewHistory(inicial) }
+func NewHistory[T any](initial T) *History[T] { return state.NewHistory(initial) }
 
 // DarkTheme constrói o tema escuro na escala 1; troque em runtime com
 // App.SetTheme (ver theme.Dark).
@@ -467,3 +506,54 @@ func Focus(w Widget) { widget.Focus(w) }
 
 // Blur limpa o foco de teclado programaticamente (ver widget.Blur).
 func Blur() { widget.Blur() }
+
+// GoMonoFont devolve a Go Mono — a fonte mono padrão (ver theme.GoMono).
+func GoMonoFont() (*Font, error) { return theme.GoMono() }
+
+// FiraCodeFont devolve a Fira Code embutida (ver theme.FiraCode).
+func FiraCodeFont() (*Font, error) { return theme.FiraCode() }
+
+// LoraFont devolve a serifada Lora Regular embutida (ver theme.Lora).
+func LoraFont() (*Font, error) { return theme.Lora() }
+
+// LoraBoldFont devolve a Lora Bold embutida (ver theme.LoraBold).
+func LoraBoldFont() (*Font, error) { return theme.LoraBold() }
+
+// GoBoldFont devolve a Go Bold — a fonte de display padrão (ver
+// theme.GoBold).
+func GoBoldFont() (*Font, error) { return theme.GoBold() }
+
+// ShowToast exibe um aviso transitório na base da janela em interação por
+// d (0 usa Theme.ToastDuration); um aviso novo substitui o anterior (ver
+// widget.ShowToast).
+func ShowToast(text string, d time.Duration) { widget.ShowToast(text, d) }
+
+// HideToast esconde o aviso transitório, se houver (ver widget.HideToast).
+func HideToast() { widget.HideToast() }
+
+// DisabledOf informa se w está efetivamente desabilitado para interação —
+// inclui estados que implicam desabilitado, como o loading do Button (ver
+// widget.DisabledOf).
+func DisabledOf(w Widget) bool { return widget.DisabledOf(w) }
+
+// NewSession cria uma sessão de interação headless com o tema dado (ver
+// widget.NewSession).
+func NewSession(t *Theme) *Session { return widget.NewSession(t) }
+
+// NewTextList cria uma lista virtualizada de linhas de texto: count linhas,
+// cada uma exibindo text(i) (ver widget.NewTextList).
+func NewTextList(count int, text func(index int) string) *List[*Text] {
+	return widget.NewTextList(count, text)
+}
+
+// NewTextTree cria uma árvore virtualizada de nós de texto: cada nó exibe
+// label(id) (ver widget.NewTextTree).
+func NewTextTree[ID comparable](roots func() []ID, children func(ID) []ID, label func(ID) string) *Tree[ID, *Text] {
+	return widget.NewTextTree(roots, children, label)
+}
+
+// BindChoice liga um Dropdown a uma escolha tipada: as opções são
+// label(item) e o State guarda o próprio item (ver widget.BindChoice).
+func BindChoice[T comparable](d *Dropdown, items []T, label func(T) string, s *State[T]) *Dropdown {
+	return widget.BindChoice(d, items, label, s)
+}

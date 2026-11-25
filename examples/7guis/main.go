@@ -18,6 +18,9 @@ import (
 )
 
 func main() {
+	// Textos da própria biblioteca (diálogos, calendário) em português.
+	juigo.SetLocale(juigo.LocalePTBR())
+
 	app, err := juigo.New("7GUIs em JUIGo", 680, 560)
 	if err != nil {
 		log.Fatal(err)
@@ -29,7 +32,7 @@ func main() {
 			app.SetRoot(juigo.NewVBox(
 				juigo.NewHBox(
 					juigo.NewButton("← Voltar", func() { app.SetRoot(inicio) }),
-					juigo.Grow(juigo.NewText(nome).Center(), 1),
+					juigo.NewText(nome).Center().Grow(1),
 				),
 				juigo.Grow(monta(), 1),
 			).Pad(8))

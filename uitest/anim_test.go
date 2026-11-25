@@ -20,7 +20,7 @@ func TestAnimacaoComRelogioVirtual(t *testing.T) {
 
 	a := anim.Tween(progresso, 1, 320*time.Millisecond, anim.Linear)
 	concluida := false
-	a.OnDone = func() { concluida = true }
+	a.OnDone(func() { concluida = true })
 
 	// Metade do tempo (10 quadros de 16ms): linear → exatamente 0,5.
 	h.Advance(160 * time.Millisecond)

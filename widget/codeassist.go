@@ -202,8 +202,8 @@ func (c *CodeEditor) styleAt(line, col int) SyntaxStyle {
 func (c *CodeEditor) matchBracket(p textPos, open, close rune, forward bool) (textPos, bool) {
 	depth := 0
 	if forward {
-		limite := p.Line + bracketScanLimit
-		for li := p.Line; li < c.buf.count() && li <= limite; li++ {
+		limit := p.Line + bracketScanLimit
+		for li := p.Line; li < c.buf.count() && li <= limit; li++ {
 			runes := c.buf.lines[li].runes
 			start := 0
 			if li == p.Line {
@@ -214,7 +214,7 @@ func (c *CodeEditor) matchBracket(p textPos, open, close rune, forward bool) (te
 				if r != open && r != close {
 					continue
 				}
-				if !(li == p.Line && ci == p.Col) && c.isCodeExempt(li, ci) {
+				if (li != p.Line || ci != p.Col) && c.isCodeExempt(li, ci) {
 					continue
 				}
 				if r == open {
@@ -226,8 +226,8 @@ func (c *CodeEditor) matchBracket(p textPos, open, close rune, forward bool) (te
 		}
 		return textPos{}, false
 	}
-	limite := p.Line - bracketScanLimit
-	for li := p.Line; li >= 0 && li >= limite; li-- {
+	limit := p.Line - bracketScanLimit
+	for li := p.Line; li >= 0 && li >= limit; li-- {
 		runes := c.buf.lines[li].runes
 		start := len(runes) - 1
 		if li == p.Line {
@@ -238,7 +238,7 @@ func (c *CodeEditor) matchBracket(p textPos, open, close rune, forward bool) (te
 			if r != open && r != close {
 				continue
 			}
-			if !(li == p.Line && ci == p.Col) && c.isCodeExempt(li, ci) {
+			if (li != p.Line || ci != p.Col) && c.isCodeExempt(li, ci) {
 				continue
 			}
 			if r == close {

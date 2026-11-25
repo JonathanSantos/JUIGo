@@ -41,8 +41,9 @@ const (
 // CaptionSize e seguem trocas de tema e de escala em runtime.
 type Text struct {
 	BaseWidget
-	// Align controla o alinhamento horizontal dentro dos bounds.
-	Align Align
+	// align controla o alinhamento horizontal dentro dos bounds (ver
+	// Align/Left/Center/Right).
+	align Align
 
 	// role é o papel tipográfico (ver Title/Subtitle/Caption).
 	role textRole
@@ -61,17 +62,24 @@ func NewText(s string) *Text {
 	return &Text{text: s}
 }
 
-// Center alinha o texto ao centro. Encadeável.
-func (t *Text) Center() *Text {
-	t.Align = AlignCenter
+// Align define o alinhamento horizontal do texto dentro dos bounds —
+// Left, Center e Right são os atalhos. Encadeável.
+func (t *Text) Align(a Align) *Text {
+	if t.align != a {
+		t.align = a
+		t.Invalidate()
+	}
 	return t
 }
 
+// Left alinha o texto à esquerda (o padrão). Encadeável.
+func (t *Text) Left() *Text { return t.Align(AlignLeft) }
+
+// Center alinha o texto ao centro. Encadeável.
+func (t *Text) Center() *Text { return t.Align(AlignCenter) }
+
 // Right alinha o texto à direita. Encadeável.
-func (t *Text) Right() *Text {
-	t.Align = AlignRight
-	return t
-}
+func (t *Text) Right() *Text { return t.Align(AlignRight) }
 
 // Title dá ao texto o papel de TÍTULO: fonte de display do tema no tamanho
 // Theme.TitleSize. Encadeável.
@@ -103,6 +111,7 @@ func (t *Text) Caption() *Text {
 func (t *Text) Color(c color.RGBA) *Text {
 	t.col = c
 	t.danger = false
+	t.Invalidate()
 	return t
 }
 
@@ -110,6 +119,7 @@ func (t *Text) Color(c color.RGBA) *Text {
 // trocas de tema em runtime — ideal para mensagens de validação. Encadeável.
 func (t *Text) Danger() *Text {
 	t.danger = true
+	t.Invalidate()
 	return t
 }
 
@@ -117,9 +127,7 @@ func (t *Text) Danger() *Text {
 // e é atualizado — com redesenho automático — a cada Set. Encadeável.
 func (t *Text) BindText(s *state.State[string]) *Text {
 	t.SetText(s.Get())
-	s.Watch(func(v string) {
-		t.SetText(v)
-	})
+	state.WatchWeak(s, t, func(t *Text, v string) { t.SetText(v) })
 	return t
 }
 
@@ -128,13 +136,14 @@ func (t *Text) Text() string {
 	return t.text
 }
 
-// SetText troca o conteúdo e agenda um redesenho se ele mudou.
-func (t *Text) SetText(s string) {
+// SetText troca o conteúdo e agenda um redesenho se ele mudou. Encadeável.
+func (t *Text) SetText(s string) *Text {
 	if t.text == s {
-		return
+		return t
 	}
 	t.text = s
 	t.Invalidate()
+	return t
 }
 
 // roleFont devolve a fonte do papel tipográfico atual, ou nil para o corpo
@@ -191,7 +200,7 @@ func (t *Text) Draw(dst *image.RGBA) {
 		w, lineH, ascent = t.theme.MeasureString(t.text), t.theme.LineHeight(), t.theme.Ascent()
 	}
 	x := bounds.Min.X
-	switch t.Align {
+	switch t.align {
 	case AlignCenter:
 		x = bounds.Min.X + (bounds.Dx()-w)/2
 	case AlignRight:

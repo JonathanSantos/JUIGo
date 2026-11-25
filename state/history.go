@@ -47,8 +47,8 @@ func (h *History[T]) Commit(v T) {
 // CommitFrom registra "anterior" como ponto de undo do valor ATUAL — para
 // edições que mutaram o valor no lugar: guarde a cópia antes de editar e
 // entregue-a aqui ao concluir.
-func (h *History[T]) CommitFrom(anterior T) {
-	h.past = append(h.past, anterior)
+func (h *History[T]) CommitFrom(previous T) {
+	h.past = append(h.past, previous)
 	h.future = nil
 	h.sync()
 }

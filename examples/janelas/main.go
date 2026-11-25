@@ -16,6 +16,9 @@ import (
 )
 
 func main() {
+	// Textos da própria biblioteca (diálogos, calendário) em português.
+	juigo.SetLocale(juigo.LocalePTBR())
+
 	app, err := juigo.New("Janelas — multi-janela em JUIGo", 460, 300)
 	if err != nil {
 		log.Fatal(err)

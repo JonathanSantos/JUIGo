@@ -133,7 +133,7 @@ func TestCodeEditorNavegacao(t *testing.T) {
 	// Documento grande: ir ao fim rola; a roda rola de volta sem mover o
 	// cursor (o CaretRect acompanha o deslocamento).
 	var sb strings.Builder
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		sb.WriteString("linha\n")
 	}
 	ed.SetText(sb.String())
@@ -226,7 +226,7 @@ func TestIncrementalCodeEditor(t *testing.T) {
 
 	// Documento maior que a janela: rolagem por roda e por navegação.
 	var sb strings.Builder
-	for i := 0; i < 120; i++ {
+	for range 120 {
 		sb.WriteString("linha de código para rolar\n")
 	}
 	ed.SetText(sb.String())

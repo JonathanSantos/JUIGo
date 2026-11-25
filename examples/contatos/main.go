@@ -20,6 +20,9 @@ import (
 )
 
 func main() {
+	// Textos da própria biblioteca (diálogos, calendário) em português.
+	juigo.SetLocale(juigo.LocalePTBR())
+
 	caminho := "juigo-contatos.json"
 	if dir, err := os.UserConfigDir(); err == nil {
 		caminho = filepath.Join(dir, "juigo-contatos.json")

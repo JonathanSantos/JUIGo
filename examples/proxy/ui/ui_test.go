@@ -82,7 +82,7 @@ func TestVisorResponseEhReadOnly(t *testing.T) {
 	if v.respView.Text() != antes {
 		t.Fatalf("o visor deveria ser somente leitura; virou %q", v.respView.Text())
 	}
-	if !v.respView.IsReadOnly() {
+	if !v.respView.ReadOnly() {
 		t.Fatal("respView deveria estar em ReadOnly")
 	}
 }

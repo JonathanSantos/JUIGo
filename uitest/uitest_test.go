@@ -253,7 +253,7 @@ func TestCaretPiscaComRelogioVirtual(t *testing.T) {
 // TestRolagemPeloHarness cobre a rolagem roteada por geometria.
 func TestRolagemPeloHarness(t *testing.T) {
 	lista := juigo.NewVBox().Gap(0).Pad(0)
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		lista.Add(juigo.NewText("linha"))
 	}
 	sc := juigo.NewScroll(lista)

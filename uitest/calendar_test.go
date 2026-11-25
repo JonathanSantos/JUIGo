@@ -50,7 +50,7 @@ func TestCalendarSelecionaENavega(t *testing.T) {
 
 	// Duas vias: Set externo move a seleção e o mês exibido.
 	data.Set(time.Date(2027, time.January, 3, 0, 0, 0, 0, time.UTC))
-	if got := cal.Selected(); got.Day() != 3 || got.Month() != time.January {
+	if got := cal.Value(); got.Day() != 3 || got.Month() != time.January {
 		t.Fatalf("Set externo deveria mover a seleção; veio %v", got)
 	}
 }
@@ -58,6 +58,9 @@ func TestCalendarSelecionaENavega(t *testing.T) {
 // TestQuickDateComCalendario: o botão ao lado do campo abre o popup e
 // escolher um dia preenche o texto DD/MM/AAAA e fecha.
 func TestQuickDateComCalendario(t *testing.T) {
+	// Aplicação em português: o locale define a máscara e o formato da data.
+	prev := juigo.SetLocale(juigo.LocalePTBR())
+	t.Cleanup(func() { juigo.SetLocale(prev) })
 	ida := quick.Date("Ida:", "data inválida")
 	f := quick.Form(ida).Submit("Reservar", nil)
 	h := uitest.New(t, juigo.NewVBox(f).Pad(12), 460, 420)
@@ -79,5 +82,29 @@ func TestQuickDateComCalendario(t *testing.T) {
 	campo := h.Find(uitest.Placeholder("DD/MM/AAAA")).(*juigo.Input)
 	if campo.Text() != alvo.Format("02/01/2006") {
 		t.Fatalf("o texto deveria refletir a data; veio %q", campo.Text())
+	}
+}
+
+// TestLocaleTrocaTextosDaBiblioteca: o padrão é inglês; SetLocale troca os
+// rótulos dos diálogos e o cabeçalho do Calendar já montado.
+func TestLocaleTrocaTextosDaBiblioteca(t *testing.T) {
+	cal := juigo.NewCalendar().SetValue(time.Date(2026, time.March, 10, 0, 0, 0, 0, time.Local))
+	h := uitest.New(t, juigo.NewVBox(cal).Pad(12), 360, 360)
+
+	quick.Confirm("Apagar?", nil)
+	if h.Find(uitest.Text("Cancel")) == nil {
+		t.Fatal("o padrão dos diálogos deveria ser inglês (Cancel)")
+	}
+	h.Key(juigo.KeyEscape)
+	antes := h.Screenshot()
+
+	juigo.SetLocale(juigo.LocalePTBR())
+	h.Session().InvalidateAll()
+	if string(antes.Pix) == string(h.Screenshot().Pix) {
+		t.Fatal("o cabeçalho do Calendar deveria mudar com o locale (March → março)")
+	}
+	quick.Confirm("Apagar?", nil)
+	if h.Find(uitest.Text("Cancelar")) == nil {
+		t.Fatal("com LocalePTBR o diálogo deveria rotular Cancelar")
 	}
 }

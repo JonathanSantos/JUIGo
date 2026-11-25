@@ -18,6 +18,9 @@ import (
 )
 
 func main() {
+	// Textos da própria biblioteca (diálogos, calendário) em português.
+	juigo.SetLocale(juigo.LocalePTBR())
+
 	raiz, err := os.UserHomeDir()
 	if err != nil || raiz == "" {
 		raiz = "."
@@ -137,7 +140,7 @@ func ui(raiz string) juigo.Widget {
 	direita := juigo.NewVBox(
 		juigo.NewText("Arquivos").Subtitle(),
 		juigo.NewText("").BindText(caminho).Caption(),
-		juigo.Grow(juigo.NewCard(juigo.NewScroll(lista)).Pad(4), 1),
+		juigo.NewCard(juigo.NewScroll(lista)).Pad(4).Grow(1),
 		juigo.NewText("").BindText(resultado).Caption(),
 		juigo.NewDivider(),
 		juigo.NewHBox(juigo.NewSpacer(), salvar.Secondary(), abrir).Gap(8),
@@ -146,5 +149,5 @@ func ui(raiz string) juigo.Widget {
 	return juigo.NewSplitPane(
 		juigo.NewScroll(arvore),
 		direita,
-	).Ratio(0.35).Min(120)
+	).SetRatio(0.35).Min(120)
 }

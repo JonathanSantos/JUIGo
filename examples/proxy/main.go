@@ -35,6 +35,9 @@ import (
 )
 
 func main() {
+	// Textos da própria biblioteca (diálogos, calendário) em português.
+	juigo.SetLocale(juigo.LocalePTBR())
+
 	// Só o localhost por padrão: um proxy de encaminhamento aberto na rede
 	// vira um RELAY — qualquer um no mesmo wifi navegaria através da sua
 	// máquina, com o seu IP. Para expor de propósito (testar de um celular,

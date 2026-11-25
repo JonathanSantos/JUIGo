@@ -22,6 +22,9 @@ import (
 )
 
 func main() {
+	// Textos da própria biblioteca (diálogos, calendário) em português.
+	juigo.SetLocale(juigo.LocalePTBR())
+
 	app, err := juigo.New("JUIGo — demo", 520, 640)
 	if err != nil {
 		log.Fatal(err)
@@ -70,7 +73,7 @@ func main() {
 	// loading durante um "trabalho de rede" — a goroutine entrega o
 	// resultado de volta à main thread com app.Post.
 	var enviar *juigo.Button
-	enviar = juigo.BindDisabled(juigo.Tooltip(juigo.NewButton("Enviar", func() {
+	enviar = juigo.NewButton("Enviar", func() {
 		enviar.SetLoading(true)
 		texto := valor.Get()
 		go func() {
@@ -80,8 +83,9 @@ func main() {
 				eco.Set("Você digitou: " + texto)
 			})
 		}()
-	}), "Atualiza o título com o texto digitado"),
-		juigo.Map(valor, func(s string) bool { return s == "" }))
+	}).
+		Tooltip("Atualiza o título com o texto digitado").
+		BindDisabled(juigo.Map(valor, func(s string) bool { return s == "" }))
 
 	// Tema claro ↔ escuro ao vivo: o Watch troca o tema da aplicação e o
 	// mount re-propaga a nova paleta pela árvore no próximo frame.
@@ -108,16 +112,16 @@ func main() {
 	// Rolagem suave: o botão anima o offset do Scroll até o topo (o Tween
 	// dirige um State que o Watch aplica ao ScrollTo).
 	rolagem := juigo.NewScroll(lista)
-	aoTopo := juigo.Tooltip(juigo.NewButton("↑ Topo", func() {
+	aoTopo := juigo.NewButton("↑ Topo", func() {
 		pos := juigo.NewState(float64(rolagem.Offset()))
 		pos.Watch(func(v float64) { rolagem.ScrollTo(int(v)) })
 		anim.Tween(pos, 0, 400*time.Millisecond, anim.EaseOut)
-	}), "Rola a lista suavemente até o topo")
+	}).Tooltip("Rola a lista suavemente até o topo")
 
 	ui := juigo.NewVBox(
 		juigo.NewText("").BindText(eco).Center(),
 		juigo.NewHBox(
-			juigo.Grow(juigo.NewInput("Digite aqui…").BindValue(valor), 1),
+			juigo.NewInput("Digite aqui…").BindValue(valor).Grow(1),
 			enviar,
 		),
 		juigo.NewText("").BindText(contador).Right(),
@@ -139,18 +143,18 @@ func main() {
 		juigo.NewTextArea("Observações (Enter quebra linha)…"),
 		juigo.NewHBox(
 			juigo.NewSpacer(),
-			juigo.Tooltip(juigo.NewButton("Limpar…", func() {
+			juigo.NewButton("Limpar…", func() {
 				quick.Confirm("Limpar o texto digitado?", func(ok bool) {
 					if ok {
 						valor.Set("")
 						eco.Set("Digite algo e clique em Enviar")
 					}
 				})
-			}), "Pede confirmação antes de limpar"),
+			}).Tooltip("Pede confirmação antes de limpar"),
 			aoTopo,
-			juigo.Tooltip(juigo.NewButton("Cadastrar…", sobre.Show), "Abre o formulário validado"),
+			juigo.NewButton("Cadastrar…", sobre.Show).Tooltip("Abre o formulário validado"),
 		),
-		juigo.Grow(rolagem, 1),
+		rolagem.Grow(1),
 	).Pad(16)
 
 	app.SetRoot(ui)

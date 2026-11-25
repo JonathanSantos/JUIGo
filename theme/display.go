@@ -87,6 +87,7 @@ type TextFont struct {
 	ascent     int
 	lineHeight int
 	cache      *render.GlyphCache
+	measurer   render.Measurer
 }
 
 // newTextFont rasteriza fnt no tamanho lógico dado × escala.
@@ -116,7 +117,7 @@ func (f *TextFont) Draw(dst *image.RGBA, s string, dot image.Point, c color.RGBA
 
 // Measure devolve a largura de s em pixels.
 func (f *TextFont) Measure(s string) int {
-	return render.MeasureText(f.Face, s)
+	return f.measurer.Measure(f.Face, s)
 }
 
 // LineHeight devolve a altura de linha em pixels.

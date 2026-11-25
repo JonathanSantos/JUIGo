@@ -87,12 +87,13 @@ type CodeEditor struct {
 
 	caretOn     bool
 	blinkCancel func()
+	blinkFn     func()
 
 	// Composição de IME, desenhada inline na linha do cursor (medida pela
 	// face mono); preAntes/preDepois são os trechos da linha ao redor.
 	pre       preeditState
-	preAntes  string
-	preDepois string
+	preBefore string
+	preAfter  string
 }
 
 // NewCodeEditor cria um editor vazio. O tema é herdado no mount.
@@ -108,20 +109,20 @@ func (c *CodeEditor) OnChange(fn func()) *CodeEditor {
 	return c
 }
 
-// ReadOnly liga/desliga o modo VISOR: com ele, o conteúdo não pode ser
+// SetReadOnly liga/desliga o modo VISOR: com ele, o conteúdo não pode ser
 // editado — digitação, Enter/Tab, Backspace/Delete, colar, recortar,
 // desfazer/refazer e composição de IME viram no-ops —, mas navegar,
 // selecionar, COPIAR e rolar continuam funcionando. Ideal para exibir
 // respostas, logs e diffs com highlight. SetText segue permitido (é o
 // caminho de quem carrega o conteúdo). Encadeável.
-func (c *CodeEditor) ReadOnly(on bool) *CodeEditor {
+func (c *CodeEditor) SetReadOnly(on bool) *CodeEditor {
 	c.readOnly = on
 	c.Invalidate()
 	return c
 }
 
-// IsReadOnly informa se o editor está em modo visor.
-func (c *CodeEditor) IsReadOnly() bool {
+// ReadOnly informa se o editor está em modo visor.
+func (c *CodeEditor) ReadOnly() bool {
 	return c.readOnly
 }
 
@@ -142,8 +143,8 @@ func (c *CodeEditor) Text() string {
 }
 
 // SetText substitui todo o conteúdo (zerando undo/redo), leva o cursor ao
-// início e rola ao topo. Não dispara OnChange.
-func (c *CodeEditor) SetText(s string) {
+// início e rola ao topo. Não dispara OnChange. Encadeável.
+func (c *CodeEditor) SetText(s string) *CodeEditor {
 	c.buf.setText(s)
 	c.cursor, c.anchor = textPos{}, textPos{}
 	c.scrollX, c.scrollY = 0, 0
@@ -153,17 +154,19 @@ func (c *CodeEditor) SetText(s string) {
 	c.restartBlink()
 	c.updateBrackets()
 	c.Invalidate()
+	return c
 }
 
 // Cursor devolve a posição do cursor (linha e coluna em runes, base 0).
-func (c *CodeEditor) Cursor() (linha, coluna int) {
+func (c *CodeEditor) Cursor() (lineNo, colNo int) {
 	return c.cursor.Line, c.cursor.Col
 }
 
 // SetCursor move o cursor (limitado ao conteúdo), limpa a seleção e rola
-// até ele ficar visível — a base de um "ir à linha".
-func (c *CodeEditor) SetCursor(linha, coluna int) {
-	c.moveTo(c.buf.clamp(textPos{linha, coluna}), false)
+// até ele ficar visível — a base de um "ir à linha". Encadeável.
+func (c *CodeEditor) SetCursor(lineNo, colNo int) *CodeEditor {
+	c.moveTo(c.buf.clamp(textPos{lineNo, colNo}), false)
+	return c
 }
 
 // LineCount devolve o número de linhas do conteúdo.
@@ -297,28 +300,6 @@ func (c *CodeEditor) xAt(line, col int) int {
 	return x
 }
 
-// colAt devolve a coluna mais próxima do deslocamento x px na linha.
-func (c *CodeEditor) colAt(line, x int) int {
-	if x <= 0 {
-		return 0
-	}
-	runes := c.buf.lines[line].runes
-	cur := 0
-	for i, r := range runes {
-		var next int
-		if r == '\t' {
-			next = (cur/c.tabW() + 1) * c.tabW()
-		} else {
-			next = cur + c.advance
-		}
-		if x < (cur+next)/2 {
-			return i
-		}
-		cur = next
-	}
-	return len(runes)
-}
-
 // lineWidth devolve (e cacheia) a largura da linha i em px.
 func (c *CodeEditor) lineWidth(i int) int {
 	l := &c.buf.lines[i]
@@ -391,10 +372,7 @@ func (c *CodeEditor) rowH() int {
 // sob o ponto).
 func (c *CodeEditor) posAt(p image.Point) textPos {
 	ta := c.textArea()
-	row := (p.Y - ta.Min.Y + c.scrollY) / c.rowH()
-	if row < 0 {
-		row = 0
-	}
+	row := max((p.Y-ta.Min.Y+c.scrollY)/c.rowH(), 0)
 	if rows := c.totalRows(); row >= rows {
 		row = rows - 1
 	}
@@ -466,10 +444,7 @@ func (c *CodeEditor) ensureVisible() bool {
 	cx := c.xAt(c.cursor.Line, c.cursor.Col) + c.pre.caretX
 	margin := 2 * c.advance
 	if cx < c.scrollX+margin {
-		c.scrollX = cx - margin
-		if c.scrollX < 0 {
-			c.scrollX = 0
-		}
+		c.scrollX = max(cx-margin, 0)
 		changed = true
 	}
 	if cx > c.scrollX+ta.Dx()-margin {
@@ -549,12 +524,12 @@ func (c *CodeEditor) insertText(s string, kind editKind) {
 		c.afterStructuralAt(line)
 		return
 	}
-	cascata := c.relexFrom(line) > line
+	cascade := c.relexFrom(line) > line
 	c.noteWidth(line)
 	c.updateBrackets()
 	// Com WrapLines, editar pode mudar quantas linhas visuais a linha
 	// ocupa — tudo abaixo desloca: repinta inteiro.
-	if c.wrap || cascata || c.ensureVisible() {
+	if c.wrap || cascade || c.ensureVisible() {
 		c.Invalidate()
 	} else {
 		c.damageLine(line)
@@ -640,11 +615,11 @@ func (c *CodeEditor) removeSelection() {
 // cascata de highlight — abrir /* — repinta tudo) e danifica só a linha.
 func (c *CodeEditor) afterLineEdit(line int) {
 	c.goalX = -1
-	cascata := c.relexFrom(line) > line
+	cascade := c.relexFrom(line) > line
 	c.noteWidth(line)
 	c.restartBlink()
 	c.updateBrackets()
-	if c.wrap || cascata || c.ensureVisible() {
+	if c.wrap || cascade || c.ensureVisible() {
 		c.Invalidate()
 	} else {
 		c.damageLine(line)
@@ -669,6 +644,14 @@ func (c *CodeEditor) afterStructuralAt(line int) {
 // HandleEvent trata caracteres, teclas, composição de IME, foco, rolagem e
 // mouse.
 func (c *CodeEditor) HandleEvent(ev event.Event) bool {
+	if c.theme == nil {
+		// Antes do mount não há métricas de fonte: eventos posicionais
+		// (mouse, rolagem) não têm como virar linha/coluna.
+		switch ev.(type) {
+		case event.MouseEvent, event.ScrollEvent:
+			return false
+		}
+	}
 	switch e := ev.(type) {
 	case event.CharEvent:
 		c.insertText(string(e.Rune), editType)
@@ -680,6 +663,7 @@ func (c *CodeEditor) HandleEvent(ev event.Event) bool {
 		return c.handleKey(e)
 	case event.FocusEvent:
 		c.focused = e.Gained
+		c.notifyFocus(e.Gained)
 		if e.Gained {
 			c.restartBlink()
 		} else {
@@ -892,19 +876,19 @@ func (c *CodeEditor) handleScroll(e event.ScrollEvent) bool {
 	dy := int(c.accumY)
 	c.accumY -= float64(dy)
 	if dy != 0 {
-		max := c.totalRows()*c.rowH() - c.textArea().Dy()
-		if max < 0 {
-			max = 0
+		limit := c.totalRows()*c.rowH() - c.textArea().Dy()
+		if limit < 0 {
+			limit = 0
 		}
-		novo := c.scrollY - dy
-		if novo < 0 {
-			novo = 0
+		next := c.scrollY - dy
+		if next < 0 {
+			next = 0
 		}
-		if novo > max {
-			novo = max
+		if next > limit {
+			next = limit
 		}
-		if novo != c.scrollY {
-			c.scrollY = novo
+		if next != c.scrollY {
+			c.scrollY = next
 			moved = true
 		}
 	}
@@ -913,19 +897,19 @@ func (c *CodeEditor) handleScroll(e event.ScrollEvent) bool {
 	dx := int(c.accumX)
 	c.accumX -= float64(dx)
 	if dx != 0 && !c.wrap {
-		max := c.maxWidth() + 2*c.advance - c.textArea().Dx()
-		if max < 0 {
-			max = 0
+		limit := c.maxWidth() + 2*c.advance - c.textArea().Dx()
+		if limit < 0 {
+			limit = 0
 		}
-		novo := c.scrollX - dx
-		if novo < 0 {
-			novo = 0
+		next := c.scrollX - dx
+		if next < 0 {
+			next = 0
 		}
-		if novo > max {
-			novo = max
+		if next > limit {
+			next = limit
 		}
-		if novo != c.scrollX {
-			c.scrollX = novo
+		if next != c.scrollX {
+			c.scrollX = next
 			moved = true
 		}
 	}
@@ -944,7 +928,10 @@ func (c *CodeEditor) restartBlink() {
 	if !c.focused || c.theme == nil || c.theme.CaretBlink <= 0 {
 		return
 	}
-	c.blinkCancel = hooks.ScheduleAfter(c.theme.CaretBlink, c.blinkTick)
+	if c.blinkFn == nil {
+		c.blinkFn = c.blinkTick
+	}
+	c.blinkCancel = hooks.ScheduleAfter(c.theme.CaretBlink, c.blinkFn)
 }
 
 func (c *CodeEditor) blinkTick() {
@@ -953,7 +940,7 @@ func (c *CodeEditor) blinkTick() {
 	}
 	c.caretOn = !c.caretOn
 	c.damageCaret()
-	c.blinkCancel = hooks.ScheduleAfter(c.theme.CaretBlink, c.blinkTick)
+	c.blinkCancel = hooks.ScheduleAfter(c.theme.CaretBlink, c.blinkFn)
 }
 
 func (c *CodeEditor) stopBlink() {
@@ -990,12 +977,12 @@ func (c *CodeEditor) syncPreedit() {
 		c.pre.measureWith(c.cellMeasure)
 	}
 	if !c.pre.active() {
-		c.preAntes, c.preDepois = "", ""
+		c.preBefore, c.preAfter = "", ""
 		return
 	}
 	line := c.buf.lineText(c.cursor.Line)
 	off := byteOffset(line, c.cursor.Col)
-	c.preAntes, c.preDepois = line[:off], line[off:]
+	c.preBefore, c.preAfter = line[:off], line[off:]
 }
 
 // byteOffset devolve o deslocamento em bytes da coluna col (em runes).
@@ -1022,21 +1009,21 @@ func (c *CodeEditor) ensureNums(count int) {
 // X absoluto do deslocamento zero. Devolve o deslocamento final. O avanço é
 // a MESMA aritmética de células do xAt (runes × célula) — desenho, caret e
 // seleção nunca divergem. Não aloca: desenha fatias de s.
-func (c *CodeEditor) drawTabbed(view *image.RGBA, s string, xContent, screenX0, baseline int, cor color.RGBA) int {
+func (c *CodeEditor) drawTabbed(view *image.RGBA, s string, xContent, screenX0, baseline int, clr color.RGBA) int {
 	start := 0
 	for i := 0; i < len(s); i++ {
 		if s[i] != '\t' {
 			continue
 		}
 		if i > start {
-			c.mono.Draw(view, s[start:i], image.Pt(screenX0+xContent, baseline), cor)
+			c.mono.Draw(view, s[start:i], image.Pt(screenX0+xContent, baseline), clr)
 			xContent += utf8.RuneCountInString(s[start:i]) * c.advance
 		}
 		xContent = (xContent/c.tabW() + 1) * c.tabW()
 		start = i + 1
 	}
 	if start < len(s) {
-		c.mono.Draw(view, s[start:], image.Pt(screenX0+xContent, baseline), cor)
+		c.mono.Draw(view, s[start:], image.Pt(screenX0+xContent, baseline), clr)
 		xContent += utf8.RuneCountInString(s[start:]) * c.advance
 	}
 	return xContent
@@ -1067,8 +1054,8 @@ func (c *CodeEditor) Draw(dst *image.RGBA) {
 	rows := c.totalRows()
 
 	// Recorte de rolagem (nunca além do conteúdo).
-	if max := rows*rowH - ta.Dy(); c.scrollY > max {
-		c.scrollY = max
+	if limit := rows*rowH - ta.Dy(); c.scrollY > limit {
+		c.scrollY = limit
 	}
 	if c.scrollY < 0 {
 		c.scrollY = 0
@@ -1076,8 +1063,8 @@ func (c *CodeEditor) Draw(dst *image.RGBA) {
 	if c.wrap {
 		c.scrollX = 0
 	} else {
-		if max := c.maxWidth() + 2*c.advance - ta.Dx(); c.scrollX > max {
-			c.scrollX = max
+		if limit := c.maxWidth() + 2*c.advance - ta.Dx(); c.scrollX > limit {
+			c.scrollX = limit
 		}
 		if c.scrollX < 0 {
 			c.scrollX = 0
@@ -1149,14 +1136,14 @@ func (c *CodeEditor) Draw(dst *image.RGBA) {
 				eCol = selEnd.Col
 			}
 			s2, e2 := max(sCol, a), min(eCol, b)
-			talao := 0
+			stub := 0
 			if eCol > b && b == len(c.buf.lines[i].runes) {
 				e2 = b
-				talao = c.advance
+				stub = c.advance
 			}
-			if e2 > s2 || talao > 0 {
+			if e2 > s2 || stub > 0 {
 				x0 := c.rowXAt(i, k, s2)
-				x1 := c.rowXAt(i, k, e2) + talao
+				x1 := c.rowXAt(i, k, e2) + stub
 				render.FillRect(textView, image.Rect(ta.Min.X+x0-c.scrollX, y, ta.Min.X+x1-c.scrollX, y+rowH), th.Selection)
 			}
 		}

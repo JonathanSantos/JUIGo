@@ -59,8 +59,8 @@ func TestBarsPositivosENegativos(t *testing.T) {
 	acima, abaixo := 0, 0
 	// A linha do zero fica entre as metades; conta Accent por metade.
 	meio := 80
-	for y := 0; y < 160; y++ {
-		for x := 0; x < 240; x++ {
+	for y := range 160 {
+		for x := range 240 {
 			c := img.RGBAAt(x, y)
 			if c.R == th.Accent.R && c.G == th.Accent.G && c.B == th.Accent.B {
 				if y < meio {

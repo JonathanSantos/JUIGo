@@ -14,6 +14,9 @@ import (
 )
 
 func main() {
+	// Textos da própria biblioteca (diálogos, calendário) em português.
+	juigo.SetLocale(juigo.LocalePTBR())
+
 	if err := juigo.Run("Navegação — JUIGo", 480, 360, ui()); err != nil {
 		log.Fatal(err)
 	}
@@ -32,7 +35,7 @@ func ui() *juigo.Navigator {
 func barra(nav *juigo.Navigator, titulo string) juigo.Widget {
 	return juigo.NewHBox(
 		juigo.NewButton("← Voltar", func() { nav.Pop() }),
-		juigo.Centered(juigo.NewText(titulo)),
+		juigo.NewText(titulo).Centered(),
 	).Gap(12)
 }
 

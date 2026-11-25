@@ -18,6 +18,9 @@ import (
 )
 
 func main() {
+	// Textos da própria biblioteca (diálogos, calendário) em português.
+	juigo.SetLocale(juigo.LocalePTBR())
+
 	app, err := juigo.New("Chat — papel e tinta", 900, 560)
 	if err != nil {
 		log.Fatal(err)
@@ -84,19 +87,17 @@ func nova() *vista {
 	}
 	v.conversas = []*conversa{{titulo: "Primeiras ideias"}}
 
-	v.lado = juigo.NewList(len(v.conversas),
-		func() *juigo.Text { return juigo.NewText("") },
-		func(t *juigo.Text, i int) {
-			if i >= 0 && i < len(v.conversas) {
-				t.SetText(v.conversas[i].titulo)
-			}
-		},
-	).BindSelected(v.selecao)
+	v.lado = juigo.NewTextList(len(v.conversas), func(i int) string {
+		if i < 0 || i >= len(v.conversas) {
+			return ""
+		}
+		return v.conversas[i].titulo
+	}).BindSelected(v.selecao)
 	v.selecao.Watch(func(i int) { v.trocar(i) })
 
 	v.feed = juigo.NewVBox().Pad(16).Gap(10)
-	v.rolagem = juigo.NewScroll(v.feed)
-	v.campo = juigo.NewInput("Escreva para a Tinta…").OnSubmit(v.enviar)
+	v.rolagem = juigo.NewScroll(v.feed).StickToEnd(true)
+	v.campo = juigo.NewInput("Escreva para a Tinta…").OnSubmit(func(string) { v.enviar() })
 
 	barra := juigo.NewMenuBar().
 		Menu("Conversa",
@@ -113,22 +114,22 @@ func nova() *vista {
 
 	sidebar := juigo.NewVBox(
 		juigo.NewText("Conversas").Subtitle(),
-		juigo.Grow(juigo.NewScroll(v.lado), 1),
+		juigo.NewScroll(v.lado).Grow(1),
 	).Pad(10).Gap(8)
 
 	painel := juigo.NewVBox(
 		juigo.NewText("").BindText(v.titulo).Title(),
 		juigo.NewDivider(),
-		juigo.Grow(v.rolagem, 1),
+		v.rolagem.Grow(1),
 		juigo.NewHBox(
-			juigo.Grow(v.campo, 1),
+			v.campo.Grow(1),
 			juigo.NewButton("Enviar", v.enviar),
 		).Gap(8),
 	).Pad(16).Gap(8)
 
 	v.Raiz = juigo.NewVBox(
 		barra,
-		juigo.Grow(juigo.NewSplitPane(sidebar, painel).Ratio(0.26).Min(120), 1),
+		juigo.NewSplitPane(sidebar, painel).SetRatio(0.26).Min(120).Grow(1),
 	)
 	v.trocar(0)
 	return v
@@ -157,7 +158,6 @@ func (v *vista) novaConversa() {
 		titulo: fmt.Sprintf("Conversa %d", len(v.conversas)+1),
 	})
 	v.lado.SetCount(len(v.conversas))
-	v.lado.Refresh()
 	v.selecao.Set(len(v.conversas) - 1)
 }
 
@@ -199,8 +199,7 @@ func (v *vista) responder(texto string) {
 				atual += " "
 			}
 			v.fluxo.Set(atual + palavras[i])
-			i++
-			v.rolagem.ScrollTo(1 << 30)
+			i++ // o feed segue o fim sozinho (StickToEnd)
 			return
 		}
 		v.pararFluxo()
@@ -233,7 +232,7 @@ func (v *vista) reprojeta() {
 	for i, m := range c.msgs {
 		if m.minha {
 			balao := juigo.NewCard(juigo.NewLabel(m.texto).MaxWidth(320)).Pad(10)
-			v.feed.Add(juigo.AtEnd(balao))
+			v.feed.Add(balao.AtEnd())
 			continue
 		}
 		nome := juigo.NewText("Tinta").Caption()
@@ -246,5 +245,5 @@ func (v *vista) reprojeta() {
 		corpo.MaxWidth(420)
 		v.feed.Add(juigo.NewVBox(nome, corpo).Gap(2))
 	}
-	v.rolagem.ScrollTo(1 << 30)
+	v.rolagem.ScrollToEnd()
 }

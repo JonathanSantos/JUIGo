@@ -68,7 +68,7 @@ func TestSplitPaneArrasteERatio(t *testing.T) {
 func TestSplitPaneVertical(t *testing.T) {
 	topo := juigo.NewText("topo")
 	base := juigo.NewText("base")
-	sp := juigo.NewSplitPane(topo, base).Vertical().Ratio(0.5)
+	sp := juigo.NewSplitPane(topo, base).Vertical().SetRatio(0.5)
 	h := uitest.New(t, sp, 200, 400)
 
 	th := h.Session().Theme()

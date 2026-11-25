@@ -110,7 +110,7 @@ func TestTabCirculaNaCamadaDoTopo(t *testing.T) {
 	}
 
 	// Duas voltas completas: o foco nunca cai no campo do modal.
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		h.Key(juigo.KeyTab)
 		if h.Focused() == juigo.Widget(interno) {
 			t.Fatalf("Tab %d escapou do popup para o modal", i+1)

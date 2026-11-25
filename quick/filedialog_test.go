@@ -117,7 +117,7 @@ func TestSaveFileNomeEClique(t *testing.T) {
 
 	// Clicar num arquivo existente copia o nome para o campo.
 	h.Click(uitest.Text("leia.md"))
-	campo := h.Find(uitest.Placeholder("nome do arquivo…")).(*juigo.Input)
+	campo := h.Find(uitest.Placeholder("file name…")).(*juigo.Input)
 	if campo.Text() != "leia.md" {
 		t.Fatalf("o campo deveria ter adotado o nome clicado; tem %q", campo.Text())
 	}
@@ -141,7 +141,7 @@ func TestSaveFileEnterNoCampo(t *testing.T) {
 	})
 
 	h.Click(uitest.Text("docs/")) // salva dentro de docs/
-	h.Click(uitest.Placeholder("nome do arquivo…"))
+	h.Click(uitest.Placeholder("file name…"))
 	h.Type("relatório.md")
 	h.Key(juigo.KeyEnter)
 	if !gotOK || gotPath != filepath.Join(raiz, "docs", "relatório.md") {

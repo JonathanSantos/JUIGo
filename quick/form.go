@@ -173,9 +173,9 @@ func (f *TextField) Placeholder(s string) *TextField {
 	return f
 }
 
-// Disabled vincula o desabilitado do controle ao State (true desabilita).
+// BindDisabled vincula o desabilitado do controle ao State (true desabilita).
 // Encadeável.
-func (f *TextField) Disabled(s *state.State[bool]) *TextField {
+func (f *TextField) BindDisabled(s *state.State[bool]) *TextField {
 	f.disabled = s
 	return f
 }
@@ -248,9 +248,9 @@ func (f *NumberField) Max(n int, msg string) *NumberField {
 	return f
 }
 
-// Disabled vincula o desabilitado do controle ao State (true desabilita).
+// BindDisabled vincula o desabilitado do controle ao State (true desabilita).
 // Encadeável.
-func (f *NumberField) Disabled(s *state.State[bool]) *NumberField {
+func (f *NumberField) BindDisabled(s *state.State[bool]) *NumberField {
 	f.disabled = s
 	return f
 }
@@ -346,9 +346,9 @@ func (f *OptionsField) Placeholder(s string) *OptionsField {
 	return f
 }
 
-// Disabled vincula o desabilitado do controle ao State (true desabilita).
+// BindDisabled vincula o desabilitado do controle ao State (true desabilita).
 // Encadeável.
-func (f *OptionsField) Disabled(s *state.State[bool]) *OptionsField {
+func (f *OptionsField) BindDisabled(s *state.State[bool]) *OptionsField {
 	f.disabled = s
 	return f
 }
@@ -359,7 +359,7 @@ func (f *OptionsField) addTo(a *assembly) {
 		a.specs = append(a.specs, form.Field(f.st, f.validators...))
 	}
 	a.steps = append(a.steps, func(m *form.Form, v *FormView) {
-		dd := widget.NewDropdown(f.options...).Placeholder(f.placeholder).
+		dd := widget.NewDropdown(f.options...).SetPlaceholder(f.placeholder).
 			BindValue(f.st).OnChange(func(string) { m.Touch(f.st) })
 		if f.st.Get() == "" {
 			if f.placeholder != "" {
@@ -399,9 +399,9 @@ func (f *CheckField) Required(msg string) *CheckField {
 	return f
 }
 
-// Disabled vincula o desabilitado do controle ao State (true desabilita).
+// BindDisabled vincula o desabilitado do controle ao State (true desabilita).
 // Encadeável.
-func (f *CheckField) Disabled(s *state.State[bool]) *CheckField {
+func (f *CheckField) BindDisabled(s *state.State[bool]) *CheckField {
 	f.disabled = s
 	return f
 }
@@ -434,9 +434,6 @@ type dateRule struct {
 	sources []state.Observable
 }
 
-// dateLayout é o formato DD/MM/AAAA dos campos de data.
-const dateLayout = "02/01/2006"
-
 // Date declara um campo de data DD/MM/AAAA; invalidMsg é exibida quando o
 // texto não parseia (campo vazio passa — combine com Required). Value
 // devolve time.Time (zero enquanto vazio ou inválido).
@@ -453,9 +450,9 @@ func (f *DateField) Required(msg string) *DateField {
 	return f
 }
 
-// Disabled vincula o desabilitado do controle ao State (true desabilita).
+// BindDisabled vincula o desabilitado do controle ao State (true desabilita).
 // Encadeável.
-func (f *DateField) Disabled(s *state.State[bool]) *DateField {
+func (f *DateField) BindDisabled(s *state.State[bool]) *DateField {
 	f.disabled = s
 	return f
 }
@@ -479,28 +476,30 @@ func (f *DateField) addTo(a *assembly) {
 	// O texto editável vive num State próprio; TODA a validação (requerido,
 	// formato e regras extras) vira UMA form.Rule chaveada nele — uma única
 	// linha de erro para o campo.
-	texto := ""
+	// Formato e máscara vêm do locale em vigor na montagem do formulário.
+	dateLayout := widget.CurrentLocale().DateLayout
+	text := ""
 	if !f.st.Get().IsZero() {
-		texto = f.st.Get().Format(dateLayout)
+		text = f.st.Get().Format(dateLayout)
 	}
-	str := state.New(texto)
+	str := state.New(text)
 	// A sincronização texto↔time.Time é registrada AQUI, antes do form.New:
 	// quando o texto muda, o Value() já está fresco na hora em que as
 	// regras multi-fonte (deste e de outros campos) são reavaliadas.
-	sincronizando := false
+	inSync := false
 	str.Watch(func(s string) {
 		t, err := time.Parse(dateLayout, strings.TrimSpace(s))
 		if err != nil {
 			t = time.Time{}
 		}
 		if !f.st.Get().Equal(t) {
-			sincronizando = true
+			inSync = true
 			f.st.Set(t)
-			sincronizando = false
+			inSync = false
 		}
 	})
 	f.st.Watch(func(t time.Time) {
-		if sincronizando {
+		if inSync {
 			return
 		}
 		s := ""
@@ -513,9 +512,9 @@ func (f *DateField) addTo(a *assembly) {
 	})
 	hasErr := f.requiredMsg != "" || f.formatMsg != "" || len(f.extras) > 0
 	if hasErr {
-		fontes := []state.Observable{str}
+		watched := []state.Observable{str}
 		for _, r := range f.extras {
-			fontes = append(fontes, r.sources...)
+			watched = append(watched, r.sources...)
 		}
 		a.specs = append(a.specs, form.Rule(str, func() string {
 			s := strings.TrimSpace(str.Get())
@@ -531,10 +530,10 @@ func (f *DateField) addTo(a *assembly) {
 				}
 			}
 			return ""
-		}, fontes...))
+		}, watched...))
 	}
 	a.steps = append(a.steps, func(m *form.Form, v *FormView) {
-		in := widget.NewInput("DD/MM/AAAA").BindValue(str).
+		in := widget.NewInput(widget.CurrentLocale().DatePlaceholder).BindValue(str).
 			Filter(func(r rune) bool { return (r >= '0' && r <= '9') || r == '/' }).
 			OnBlur(func() { m.Touch(str) })
 		v.inputs = append(v.inputs, in)
@@ -543,7 +542,7 @@ func (f *DateField) addTo(a *assembly) {
 		// MESMO State de time.Time — escolher um dia preenche o texto (pela
 		// sincronização acima) e fecha.
 		var pop *widget.Popup
-		cal := widget.NewCalendar().BindValue(f.st).OnPick(func(time.Time) {
+		cal := widget.NewCalendar().BindValue(f.st).OnChange(func(time.Time) {
 			if pop != nil {
 				pop.Close()
 			}
@@ -555,8 +554,8 @@ func (f *DateField) addTo(a *assembly) {
 			b := btn.Bounds()
 			pop.ShowAt(image.Pt(in.Bounds().Min.X, b.Max.Y+2))
 		})
-		controle := widget.NewHBox(widget.Grow(in, 1), widget.Tooltip(btn, "Calendário")).Gap(4)
-		a.addRow(f.label, controle, m, str, hasErr)
+		row := widget.NewHBox(in.Grow(1), btn.Tooltip(widget.CurrentLocale().PickDate)).Gap(4)
+		a.addRow(f.label, row, m, str, hasErr)
 	})
 }
 
@@ -626,7 +625,7 @@ func (v *FormView) Pad(padding int) *FormView {
 func (v *FormView) Submit(label string, fn func()) *FormView {
 	submit := func() { v.model.Submit(fn) }
 	for _, in := range v.inputs {
-		in.OnSubmit(submit)
+		in.OnSubmit(func(string) { submit() })
 	}
 	v.Add(Buttons(widget.NewButton(label, submit)))
 	return v

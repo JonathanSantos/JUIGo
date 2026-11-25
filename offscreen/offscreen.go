@@ -48,9 +48,14 @@ func SavePNG(path string, img image.Image) error {
 	if err != nil {
 		return fmt.Errorf("offscreen: falha ao criar %s: %w", path, err)
 	}
-	defer f.Close()
 	if err := png.Encode(f, img); err != nil {
+		_ = f.Close() // o erro de codificação é o que importa
 		return fmt.Errorf("offscreen: falha ao codificar PNG: %w", err)
+	}
+	// O Close de um arquivo escrito pode falhar (disco cheio): sem checar,
+	// um PNG truncado passaria por sucesso.
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("offscreen: falha ao gravar %s: %w", path, err)
 	}
 	return nil
 }

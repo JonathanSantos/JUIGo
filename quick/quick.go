@@ -20,7 +20,7 @@ import "github.com/JonathanSantos/JUIGo/widget"
 // preferida e centralizado na vertical, e o campo crescendo até a borda.
 func Labeled(label string, w widget.Widget) *widget.HBox {
 	return widget.NewHBox(
-		widget.Centered(widget.NewText(label)),
+		widget.NewText(label).Centered(),
 		widget.Grow(w, 1),
 	)
 }

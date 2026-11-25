@@ -58,12 +58,7 @@ func EaseInOut(t float64) float64 {
 
 // Animation é uma animação em andamento, devolvida por Tween.
 type Animation struct {
-	// OnDone é chamado quando a animação COMPLETA (não é chamado por Stop).
-	// Defina logo após o Tween — o primeiro quadro só ocorre no próximo
-	// timer. Exceção: com duração <= 0 ou sem aplicação em execução, a
-	// animação completa dentro do próprio Tween e OnDone não dispara;
-	// verifique Running().
-	OnDone func()
+	onDone func()
 
 	target  *state.State[float64]
 	cancel  func()
@@ -96,6 +91,16 @@ func Tween(s *state.State[float64], to float64, d time.Duration, ease Easing) *A
 		return a
 	}
 	a.cancel = hooks.ScheduleAfter(frame, a.tick)
+	return a
+}
+
+// OnDone registra fn para ser chamada quando a animação COMPLETA (não é
+// chamada por Stop). Registre logo após o Tween — o primeiro quadro só
+// ocorre no próximo timer. Exceção: com duração <= 0 ou sem aplicação em
+// execução, a animação completa dentro do próprio Tween e fn não dispara;
+// verifique Running(). Encadeável.
+func (a *Animation) OnDone(fn func()) *Animation {
+	a.onDone = fn
 	return a
 }
 
@@ -141,7 +146,7 @@ func (a *Animation) finish() {
 		delete(active, a.target)
 	}
 	a.target.Set(a.to)
-	if a.OnDone != nil {
-		a.OnDone()
+	if a.onDone != nil {
+		a.onDone()
 	}
 }

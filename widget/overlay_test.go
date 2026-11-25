@@ -38,8 +38,8 @@ func TestDropdownAbreNavegaSeleciona(t *testing.T) {
 	d.Layout(image.Rect(10, 10, 210, 46))
 
 	// BindValue adota o valor do State.
-	if d.Value() != "Média" || d.SelectedIndex() != 1 {
-		t.Fatalf("bind inicial: Value=%q idx=%d, esperado Média/1", d.Value(), d.SelectedIndex())
+	if d.Value() != "Média" || d.Selected() != 1 {
+		t.Fatalf("bind inicial: Value=%q idx=%d, esperado Média/1", d.Value(), d.Selected())
 	}
 
 	// Enter abre o popup logo abaixo do gatilho, com a mesma largura.
@@ -91,8 +91,8 @@ func TestDropdownAbreNavegaSeleciona(t *testing.T) {
 	// Set externo seleciona sem disparar OnChange.
 	changed = ""
 	sel.Set("Média")
-	if d.SelectedIndex() != 1 || changed != "" {
-		t.Fatalf("Set externo: idx=%d OnChange=%q", d.SelectedIndex(), changed)
+	if d.Selected() != 1 || changed != "" {
+		t.Fatalf("Set externo: idx=%d OnChange=%q", d.Selected(), changed)
 	}
 
 	// Fechado, setas trocam a seleção diretamente.
@@ -146,7 +146,7 @@ func TestTooltipSetterEView(t *testing.T) {
 	th := newTestTheme(t)
 
 	b := Tooltip(NewButton("OK", nil), "Envia o formulário")
-	var _ *Button = b // tipo concreto preservado
+	var _ = b // tipo concreto preservado
 	if TooltipTextOf(b) != "Envia o formulário" {
 		t.Fatalf("TooltipTextOf = %q", TooltipTextOf(b))
 	}

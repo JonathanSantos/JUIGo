@@ -38,14 +38,14 @@ func vitrine() juigo.Widget {
 	return juigo.NewVBox(
 		juigo.NewText("JUIGo — vitrine de widgets").Subtitle().Center(),
 		juigo.NewHBox(
-			juigo.Grow(juigo.NewInput("Digite aqui…"), 1),
+			juigo.NewInput("Digite aqui…").Grow(1),
 			juigo.NewButton("Enviar", nil),
 		),
 		juigo.NewHBox(
 			juigo.NewInput("E-mail").BindInvalid(juigo.NewState(true)),
-			juigo.Centered(juigo.NewText("E-mail inválido").Danger()),
+			juigo.NewText("E-mail inválido").Danger().Centered(),
 			juigo.NewSpacer(),
-			juigo.BindDisabled(juigo.NewButton("Inativo", nil), juigo.NewState(true)),
+			juigo.NewButton("Inativo", nil).BindDisabled(juigo.NewState(true)),
 		),
 		juigo.NewHBox(
 			notif,
@@ -56,7 +56,7 @@ func vitrine() juigo.Widget {
 		juigo.NewSlider(0, 1).BindValue(volume),
 		juigo.NewProgressBar(0, 1).BindValue(volume),
 		juigo.NewHBox(
-			juigo.Centered(juigo.NewText("Prioridade:")),
+			juigo.NewText("Prioridade:").Centered(),
 			juigo.NewDropdown("Baixa", "Média", "Alta").BindValue(prioridade),
 			juigo.NewSpacer(),
 		),
@@ -92,11 +92,11 @@ func graficos() juigo.Widget {
 	saldo := []float64{3, -1, 4, 2, -2, 5, 3}
 	return juigo.NewVBox(
 		juigo.NewText("Vendas do trimestre").Subtitle(),
-		juigo.Grow(chart.NewLine(vendas).Min(0), 1),
+		chart.NewLine(vendas).Min(0).Grow(1),
 		juigo.NewText("Saldo por semana").Subtitle(),
-		juigo.Grow(chart.NewBars(saldo), 1),
+		chart.NewBars(saldo).Grow(1),
 		juigo.NewHBox(
-			juigo.Centered(juigo.NewText("Tendência da receita").Caption()),
+			juigo.NewText("Tendência da receita").Caption().Centered(),
 			juigo.NewSpacer(),
 			chart.NewSpark(vendas),
 		).Gap(8),
@@ -156,7 +156,7 @@ func editor() juigo.Widget {
 	ed := juigo.NewCodeEditor().Highlight(syntax.Go())
 	ed.SetText("package main\n\nimport \"fmt\"\n\n// saúda n vezes\nfunc main() {\n\tnome := \"JUIGo\"\n\tfor i := 0; i < 3; i++ {\n\t\tfmt.Printf(\"olá, %s! (%d)\\n\", nome, i)\n\t}\n}")
 	ed.SetCursor(7, 5)
-	return juigo.NewVBox(juigo.Grow(ed, 1)).Pad(10)
+	return juigo.NewVBox(ed.Grow(1)).Pad(10)
 }
 
 // planilha monta o Cells do 7GUIs com fórmulas em cena.
@@ -189,6 +189,9 @@ func salva(nome string, raiz juigo.Widget, th *juigo.Theme, w, h int) {
 }
 
 func main() {
+	// Textos da própria biblioteca (diálogos, calendário) em português.
+	juigo.SetLocale(juigo.LocalePTBR())
+
 	claro, err := juigo.DefaultTheme()
 	if err != nil {
 		log.Fatal(err)

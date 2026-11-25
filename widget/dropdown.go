@@ -18,14 +18,16 @@ import (
 // State[string] em duas vias.
 type Dropdown struct {
 	BaseWidget
-	// Options são as opções exibidas, na ordem.
-	Options []string
+	// options são as opções exibidas, na ordem (ver Options/SetOptions).
+	options []string
 
 	// placeholder é exibido quando nada está selecionado (ver Placeholder).
 	placeholder string
 	// onChange é chamado com a opção escolhida a cada seleção feita pelo
 	// usuário (ver OnChange).
 	onChange func(string)
+	// onIndex recebe o índice escolhido pelo usuário (ver BindChoice).
+	onIndex  func(int)
 	selected int
 	open     bool
 	hover    bool
@@ -39,7 +41,7 @@ type Dropdown struct {
 // NewDropdown cria um dropdown com as opções dadas; a primeira vem
 // selecionada (ou nenhuma, se não houver opções). O tema é herdado no mount.
 func NewDropdown(options ...string) *Dropdown {
-	d := &Dropdown{Options: options, selected: -1}
+	d := &Dropdown{options: options, selected: -1}
 	if len(options) > 0 {
 		d.selected = 0
 	}
@@ -47,10 +49,39 @@ func NewDropdown(options ...string) *Dropdown {
 	return d
 }
 
-// Placeholder define o texto exibido quando nada está selecionado (Options
-// vazio ou seleção -1). Encadeável.
-func (d *Dropdown) Placeholder(s string) *Dropdown {
-	d.placeholder = s
+// Placeholder devolve o texto exibido quando nada está selecionado.
+func (d *Dropdown) Placeholder() string {
+	return d.placeholder
+}
+
+// SetPlaceholder define o texto exibido quando nada está selecionado e
+// agenda um redesenho. Encadeável.
+func (d *Dropdown) SetPlaceholder(s string) *Dropdown {
+	if d.placeholder != s {
+		d.placeholder = s
+		d.Invalidate()
+	}
+	return d
+}
+
+// Options devolve as opções exibidas, na ordem. A fatia é a do próprio
+// Dropdown: não a modifique — troque as opções com SetOptions.
+func (d *Dropdown) Options() []string {
+	return d.options
+}
+
+// SetOptions troca as opções e agenda um redesenho. A seleção é preservada
+// pelo TEXTO: se a opção selecionada ainda existir, segue selecionada (no
+// novo índice); senão a seleção é limpa — sem disparar OnChange nem tocar o
+// State vinculado. Encadeável.
+func (d *Dropdown) SetOptions(options ...string) *Dropdown {
+	current := d.Value()
+	d.options = options
+	d.selected = -1
+	if current != "" {
+		d.selected = d.indexOf(current)
+	}
+	d.Invalidate()
 	return d
 }
 
@@ -63,25 +94,31 @@ func (d *Dropdown) OnChange(fn func(string)) *Dropdown {
 
 // Value devolve a opção selecionada ("" se nenhuma).
 func (d *Dropdown) Value() string {
-	if d.selected < 0 || d.selected >= len(d.Options) {
+	if d.selected < 0 || d.selected >= len(d.options) {
 		return ""
 	}
-	return d.Options[d.selected]
+	return d.options[d.selected]
 }
 
-// SelectedIndex devolve o índice selecionado (-1 se nenhum).
-func (d *Dropdown) SelectedIndex() int {
+// Selected devolve o índice selecionado (-1 se nenhum).
+func (d *Dropdown) Selected() int {
 	return d.selected
 }
 
-// Select define a seleção programaticamente (limitada às opções; -1 limpa) e
-// agenda um redesenho. Não dispara OnChange; com binding, prefira State.Set.
+// Select define a seleção programaticamente (limitada às opções; -1 limpa),
+// sincroniza o State vinculado (se houver) e agenda um redesenho. Não
+// dispara OnChange.
 func (d *Dropdown) Select(i int) {
-	if i < -1 || i >= len(d.Options) || i == d.selected {
+	if i < -1 || i >= len(d.options) {
 		return
 	}
-	d.selected = i
-	d.Invalidate()
+	if i != d.selected {
+		d.selected = i
+		d.Invalidate()
+	}
+	if v := d.Value(); d.bound != nil && d.bound.Get() != v {
+		d.bound.Set(v)
+	}
 }
 
 // BindValue vincula a seleção ao State em DUAS vias: seleções do usuário
@@ -92,7 +129,7 @@ func (d *Dropdown) BindValue(s *state.State[string]) *Dropdown {
 	if i := d.indexOf(s.Get()); i >= 0 {
 		d.Select(i)
 	}
-	s.Watch(func(v string) {
+	state.WatchWeak(s, d, func(d *Dropdown, v string) {
 		if i := d.indexOf(v); i >= 0 && i != d.selected {
 			d.Select(i)
 		}
@@ -101,7 +138,7 @@ func (d *Dropdown) BindValue(s *state.State[string]) *Dropdown {
 }
 
 func (d *Dropdown) indexOf(v string) int {
-	for i, o := range d.Options {
+	for i, o := range d.options {
 		if o == v {
 			return i
 		}
@@ -126,7 +163,7 @@ func (d *Dropdown) PreferredSize() image.Point {
 	}
 	th := d.theme
 	widest := th.MeasureString(d.placeholder)
-	for _, o := range d.Options {
+	for _, o := range d.options {
 		if w := th.MeasureString(o); w > widest {
 			widest = w
 		}
@@ -152,7 +189,7 @@ func (d *Dropdown) HandleEvent(ev event.Event) bool {
 			if e.Key == event.KeyUp {
 				delta = -1
 			}
-			if i := d.selected + delta; i >= 0 && i < len(d.Options) {
+			if i := d.selected + delta; i >= 0 && i < len(d.options) {
 				d.selectFromUser(i)
 			}
 			return true
@@ -160,6 +197,7 @@ func (d *Dropdown) HandleEvent(ev event.Event) bool {
 		return false
 	case event.FocusEvent:
 		d.focused = e.Gained
+		d.notifyFocus(e.Gained)
 		return true
 	case event.MouseEvent:
 		switch e.Kind {
@@ -196,16 +234,13 @@ func (d *Dropdown) toggle() {
 		d.closePopup()
 		return
 	}
-	if len(d.Options) == 0 || d.theme == nil {
+	if len(d.options) == 0 || d.theme == nil {
 		return
 	}
 	d.open = true
-	d.list.highlight = d.selected
-	if d.list.highlight < 0 {
-		d.list.highlight = 0
-	}
+	d.list.highlight = max(d.selected, 0)
 	b := d.Bounds()
-	h := d.list.itemHeight()*len(d.Options) + 2*d.theme.BorderPx()
+	h := d.list.itemHeight()*len(d.options) + 2*d.theme.BorderPx()
 	d.list.Layout(image.Rect(b.Min.X, b.Max.Y+d.theme.Px(2), b.Max.X, b.Max.Y+d.theme.Px(2)+h))
 	OpenOverlay(d.list)
 }
@@ -222,17 +257,20 @@ func (d *Dropdown) closePopup() {
 // selectFromUser aplica uma seleção feita pelo usuário, propagando ao State
 // vinculado e ao OnChange, e fecha o popup se aberto.
 func (d *Dropdown) selectFromUser(i int) {
-	if i < 0 || i >= len(d.Options) {
+	if i < 0 || i >= len(d.options) {
 		return
 	}
 	changed := i != d.selected
 	d.selected = i
 	if changed {
-		if d.bound != nil && d.bound.Get() != d.Options[i] {
-			d.bound.Set(d.Options[i])
+		if d.bound != nil && d.bound.Get() != d.options[i] {
+			d.bound.Set(d.options[i])
+		}
+		if d.onIndex != nil {
+			d.onIndex(i)
 		}
 		if d.onChange != nil {
-			d.onChange(d.Options[i])
+			d.onChange(d.options[i])
 		}
 	}
 	d.closePopup()
@@ -256,8 +294,8 @@ func (d *Dropdown) Draw(dst *image.RGBA) {
 
 	view := render.Clip(dst, bounds, &d.clip)
 	baseline := bounds.Min.Y + (bounds.Dy()-th.LineHeight())/2 + th.Ascent()
-	if d.selected >= 0 && d.selected < len(d.Options) {
-		th.DrawText(view, d.Options[d.selected], image.Pt(bounds.Min.X+th.PaddingPx(), baseline), th.Text)
+	if d.selected >= 0 && d.selected < len(d.options) {
+		th.DrawText(view, d.options[d.selected], image.Pt(bounds.Min.X+th.PaddingPx(), baseline), th.Text)
 	} else if d.placeholder != "" {
 		th.DrawText(view, d.placeholder, image.Pt(bounds.Min.X+th.PaddingPx(), baseline), th.Placeholder)
 	}
@@ -302,7 +340,7 @@ func (l *dropdownList) itemAt(p image.Point) int {
 	}
 	th := l.owner.theme
 	i := (p.Y - l.Bounds().Min.Y - th.BorderPx()) / l.itemHeight()
-	if i < 0 || i >= len(l.owner.Options) {
+	if i < 0 || i >= len(l.owner.options) {
 		return -1
 	}
 	return i
@@ -315,7 +353,7 @@ func (l *dropdownList) HandleEvent(ev event.Event) bool {
 	case event.KeyEvent:
 		switch e.Key {
 		case event.KeyDown:
-			if l.highlight < len(d.Options)-1 {
+			if l.highlight < len(d.options)-1 {
 				l.highlight++
 			}
 			return true
@@ -328,7 +366,7 @@ func (l *dropdownList) HandleEvent(ev event.Event) bool {
 			l.highlight = 0
 			return true
 		case event.KeyEnd:
-			l.highlight = len(d.Options) - 1
+			l.highlight = len(d.options) - 1
 			return true
 		case event.KeyEnter, event.KeySpace:
 			d.selectFromUser(l.highlight)
@@ -383,7 +421,7 @@ func (l *dropdownList) Draw(dst *image.RGBA) {
 	view := render.Clip(dst, bounds, &l.clip)
 	itemH := l.itemHeight()
 	y := bounds.Min.Y + th.BorderPx()
-	for i, opt := range d.Options {
+	for i, opt := range d.options {
 		row := image.Rect(bounds.Min.X+th.BorderPx(), y, bounds.Max.X-th.BorderPx(), y+itemH)
 		if i == l.highlight {
 			// Realce arredondado como o painel: com raio zero volta a ser
@@ -398,4 +436,50 @@ func (l *dropdownList) Draw(dst *image.RGBA) {
 		th.DrawText(view, opt, image.Pt(row.Min.X+th.PaddingPx(), baseline), c)
 		y += itemH
 	}
+}
+
+// BindChoice liga um Dropdown a uma escolha TIPADA: as opções exibidas são
+// label(item) de cada item, e o State guarda o próprio item — sem converter
+// de e para string na aplicação (números, enums, structs comparáveis).
+// Duas vias: escolher faz Set(item), e um Set externo seleciona o item
+// igual (valores fora de items limpam a seleção). Substitui as opções do
+// Dropdown e devolve o próprio d, para encadear:
+//
+//	tamanho := juigo.NewState(16)
+//	juigo.BindChoice(juigo.NewDropdown(), []int{14, 16, 18}, strconv.Itoa, tamanho)
+func BindChoice[T comparable](d *Dropdown, items []T, label func(T) string, s *state.State[T]) *Dropdown {
+	options := make([]string, len(items))
+	for i, it := range items {
+		options[i] = label(it)
+	}
+	indexOf := func(v T) int {
+		for i, it := range items {
+			if it == v {
+				return i
+			}
+		}
+		return -1
+	}
+	d.options = options
+	d.selected = indexOf(s.Get())
+	d.onIndex = func(i int) {
+		if s.Get() != items[i] {
+			s.Set(items[i])
+		}
+	}
+	d.Invalidate()
+	state.WatchWeak(s, d, func(d *Dropdown, v T) {
+		if i := indexOf(v); i != d.selected {
+			d.Select(i)
+		}
+	})
+	return d
+}
+
+// SetValue seleciona a opção de texto igual a s ("" ou um texto fora das
+// opções limpa a seleção) e sincroniza o State vinculado. Não dispara
+// OnChange. Encadeável.
+func (d *Dropdown) SetValue(s string) *Dropdown {
+	d.Select(d.indexOf(s))
+	return d
 }

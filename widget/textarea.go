@@ -29,13 +29,11 @@ import (
 // State[string] em duas vias.
 type TextArea struct {
 	BaseWidget
-	// Placeholder é exibido quando o campo está vazio e sem foco.
-	Placeholder string
+	// placeholder é exibido quando o campo está vazio e sem foco.
+	placeholder string
 
 	// Callbacks definidos pelos métodos encadeáveis de mesmo nome.
 	onChange func(string)
-	onFocus  func()
-	onBlur   func()
 	// invalid liga o realce de erro (ver SetInvalid/BindInvalid).
 	invalid bool
 
@@ -74,6 +72,9 @@ type TextArea struct {
 
 	caretOn     bool
 	blinkCancel func()
+	blinkFn     func()
+	// hitXs é a tabela de prefixos reutilizada pelo clique→índice.
+	hitXs []int
 
 	// Composição de IME (event.PreeditEvent): desenhada inline na LINHA
 	// VISUAL do cursor, sublinhada, sem entrar em runes nem recalcular a
@@ -85,7 +86,7 @@ type TextArea struct {
 // NewTextArea cria um editor vazio com o placeholder dado. O tema é herdado
 // no mount.
 func NewTextArea(placeholder string) *TextArea {
-	t := &TextArea{Placeholder: placeholder, goalX: -1, caretOn: true}
+	t := &TextArea{placeholder: placeholder, goalX: -1, caretOn: true}
 	t.sync()
 	return t
 }
@@ -97,34 +98,37 @@ func (t *TextArea) OnChange(fn func(string)) *TextArea {
 	return t
 }
 
-// OnFocus define o callback chamado ao ganhar o foco de teclado. Encadeável.
-func (t *TextArea) OnFocus(fn func()) *TextArea {
-	t.onFocus = fn
-	return t
-}
-
-// OnBlur define o callback chamado ao perder o foco de teclado — útil para
-// validação "touched" (ver juigo/form). Encadeável.
-func (t *TextArea) OnBlur(fn func()) *TextArea {
-	t.onBlur = fn
-	return t
-}
-
 // SetInvalid liga/desliga o realce de erro do campo (borda na cor
-// Theme.Danger) e agenda um redesenho.
-func (t *TextArea) SetInvalid(v bool) {
+// Theme.Danger) e agenda um redesenho. Encadeável.
+func (t *TextArea) SetInvalid(v bool) *TextArea {
 	if t.invalid == v {
-		return
+		return t
 	}
 	t.invalid = v
 	t.Invalidate()
+	return t
 }
 
 // BindInvalid vincula o realce de erro ao State (true = borda Danger) — o
 // par visual de form.ErrorOf. Encadeável.
 func (t *TextArea) BindInvalid(s *state.State[bool]) *TextArea {
 	t.SetInvalid(s.Get())
-	s.Watch(func(v bool) { t.SetInvalid(v) })
+	state.WatchWeak(s, t, func(t *TextArea, v bool) { t.SetInvalid(v) })
+	return t
+}
+
+// Placeholder devolve o texto exibido enquanto o campo está vazio.
+func (t *TextArea) Placeholder() string {
+	return t.placeholder
+}
+
+// SetPlaceholder troca o texto exibido enquanto o campo está vazio e agenda
+// um redesenho. Encadeável.
+func (t *TextArea) SetPlaceholder(s string) *TextArea {
+	if t.placeholder != s {
+		t.placeholder = s
+		t.Invalidate()
+	}
 	return t
 }
 
@@ -133,15 +137,20 @@ func (t *TextArea) Text() string {
 	return t.text
 }
 
-// SetText substitui o conteúdo, move o cursor para o fim e agenda um
-// redesenho. Não dispara OnChange.
-func (t *TextArea) SetText(s string) {
+// SetText substitui o conteúdo, move o cursor para o fim, sincroniza o
+// State vinculado (se houver) e agenda um redesenho. Não dispara OnChange.
+// Encadeável.
+func (t *TextArea) SetText(s string) *TextArea {
 	t.runes = []rune(s)
 	t.cursor = len(t.runes)
 	t.anchor = t.cursor
 	t.goalX = -1
 	t.sync()
 	t.Invalidate()
+	if t.bound != nil && t.bound.Get() != t.text {
+		t.bound.Set(t.text)
+	}
+	return t
 }
 
 // Cursor devolve a posição do cursor, em runes.
@@ -154,7 +163,7 @@ func (t *TextArea) Cursor() int {
 func (t *TextArea) BindValue(s *state.State[string]) *TextArea {
 	t.bound = s
 	t.SetText(s.Get())
-	s.Watch(func(v string) {
+	state.WatchWeak(s, t, func(t *TextArea, v string) {
 		if t.text != v {
 			t.SetText(v)
 		}
@@ -203,12 +212,20 @@ func (t *TextArea) sync() {
 		}
 		t.lines = append(t.lines, string(t.runes[start:end]))
 	}
+	t.syncCaret()
+}
+
+// syncCaret recalcula só o que depende da POSIÇÃO do cursor e da âncora
+// (linha e X de cada um) e reinicia a piscada — o bastante para movimentos
+// de cursor e seleção, que não mexem no texto. Não aloca.
+func (t *TextArea) syncCaret() {
 	if t.theme != nil {
+		face := t.theme.Face
 		t.caretLine = t.lineOf(t.cursor)
-		t.caretX = t.theme.MeasureString(string(t.runes[t.lineStarts[t.caretLine]:t.cursor]))
+		t.caretX = render.MeasureRunes(face, t.runes[t.lineStarts[t.caretLine]:t.cursor])
 		t.anchorLine = t.lineOf(t.anchor)
-		t.anchorX = t.theme.MeasureString(string(t.runes[t.lineStarts[t.anchorLine]:t.anchor]))
-		t.syncFace = t.theme.Face
+		t.anchorX = render.MeasureRunes(face, t.runes[t.lineStarts[t.anchorLine]:t.anchor])
+		t.syncFace = face
 	} else {
 		t.caretLine, t.caretX, t.anchorLine, t.anchorX, t.syncFace = 0, 0, 0, 0, nil
 	}
@@ -391,17 +408,8 @@ func (t *TextArea) indexAtVisual(vli, x int) int {
 	if x <= 0 {
 		return t.startIdx(v)
 	}
-	best, bestDist := cols, abs(t.theme.MeasureString(seg)-x)
-	for i := 0; i <= cols; i++ {
-		w := t.theme.MeasureString(runePrefix(seg, i))
-		if d := abs(w - x); d < bestDist {
-			best, bestDist = i, d
-		}
-		if w >= x {
-			break
-		}
-	}
-	return t.startIdx(v) + best
+	t.hitXs = render.PrefixWidthsString(t.theme.Face, seg, t.hitXs)
+	return t.startIdx(v) + min(render.IndexAtX(t.hitXs, x), cols)
 }
 
 func abs(v int) int {
@@ -419,10 +427,7 @@ func (t *TextArea) indexAt(p image.Point) int {
 	}
 	t.ensureWrap()
 	th := t.theme
-	vli := (p.Y - (t.Bounds().Min.Y + th.PaddingPx()) + t.scrollY) / th.LineHeight()
-	if vli < 0 {
-		vli = 0
-	}
+	vli := max((p.Y-(t.Bounds().Min.Y+th.PaddingPx())+t.scrollY)/th.LineHeight(), 0)
 	if vli >= len(t.vlines) {
 		vli = len(t.vlines) - 1
 	}
@@ -444,9 +449,7 @@ func (t *TextArea) HandleEvent(ev event.Event) bool {
 		t.focused = e.Gained
 		if e.Gained {
 			t.restartBlink()
-			if t.onFocus != nil {
-				t.onFocus()
-			}
+			t.notifyFocus(true)
 		} else {
 			t.stopBlink()
 			// Perder o foco descarta a composição em andamento (o IME do
@@ -454,9 +457,7 @@ func (t *TextArea) HandleEvent(ev event.Event) bool {
 			if t.pre.clear() {
 				t.Invalidate()
 			}
-			if t.onBlur != nil {
-				t.onBlur()
-			}
+			t.notifyFocus(false)
 		}
 		return true
 	case event.ScrollEvent:
@@ -497,28 +498,28 @@ func (t *TextArea) handleScroll(e event.ScrollEvent) bool {
 	if th == nil {
 		return false
 	}
-	max := t.contentHeight() - t.innerHeight()
-	if max <= 0 {
+	limit := t.contentHeight() - t.innerHeight()
+	if limit <= 0 {
 		return false
 	}
 	delta := e.DY*float64(th.Px(th.ScrollStep)) + t.accum
 	step := int(delta)
 	t.accum = delta - float64(step)
-	novo := t.scrollY - step
-	if novo < 0 {
-		novo = 0
+	next := t.scrollY - step
+	if next < 0 {
+		next = 0
 	}
-	if novo > max {
-		novo = max
+	if next > limit {
+		next = limit
 	}
-	if novo == t.scrollY {
+	if next == t.scrollY {
 		if step != 0 {
 			t.accum = 0
 			return false
 		}
 		return true
 	}
-	t.scrollY = novo
+	t.scrollY = next
 	return true
 }
 
@@ -661,7 +662,7 @@ func (t *TextArea) moveCursor(pos int, extend bool) bool {
 		t.anchor = pos
 	}
 	if changed {
-		t.sync()
+		t.syncCaret()
 	}
 	return changed
 }
@@ -751,7 +752,10 @@ func (t *TextArea) restartBlink() {
 	if !t.focused || t.theme == nil || t.theme.CaretBlink <= 0 {
 		return
 	}
-	t.blinkCancel = hooks.ScheduleAfter(t.theme.CaretBlink, t.blinkTick)
+	if t.blinkFn == nil {
+		t.blinkFn = t.blinkTick
+	}
+	t.blinkCancel = hooks.ScheduleAfter(t.theme.CaretBlink, t.blinkFn)
 }
 
 func (t *TextArea) blinkTick() {
@@ -760,7 +764,7 @@ func (t *TextArea) blinkTick() {
 	}
 	t.caretOn = !t.caretOn
 	t.Invalidate()
-	t.blinkCancel = hooks.ScheduleAfter(t.theme.CaretBlink, t.blinkTick)
+	t.blinkCancel = hooks.ScheduleAfter(t.theme.CaretBlink, t.blinkFn)
 }
 
 func (t *TextArea) stopBlink() {
@@ -818,8 +822,8 @@ func (t *TextArea) Draw(dst *image.RGBA) {
 	caretVLine := t.visualOf(t.cursor)
 
 	// Rolagem vertical: limita e garante a linha VISUAL do cursor visível.
-	if max := len(t.vlines)*lineH - innerH; t.scrollY > max {
-		t.scrollY = max
+	if limit := len(t.vlines)*lineH - innerH; t.scrollY > limit {
+		t.scrollY = limit
 	}
 	if t.scrollY < 0 {
 		t.scrollY = 0
@@ -837,8 +841,8 @@ func (t *TextArea) Draw(dst *image.RGBA) {
 	textX := bounds.Min.X + pad
 	view := render.Clip(dst, image.Rect(bounds.Min.X+th.BorderPx(), innerTop, bounds.Max.X-th.BorderPx(), innerTop+innerH), &t.clip)
 
-	if len(t.runes) == 0 && !t.focused && t.Placeholder != "" {
-		th.DrawText(view, t.Placeholder, image.Pt(textX, innerTop+th.Ascent()), th.Placeholder)
+	if len(t.runes) == 0 && !t.focused && t.placeholder != "" {
+		th.DrawText(view, t.placeholder, image.Pt(textX, innerTop+th.Ascent()), th.Placeholder)
 		return
 	}
 
@@ -896,16 +900,16 @@ func (t *TextArea) Draw(dst *image.RGBA) {
 // restante recorta à direita do campo.
 func (t *TextArea) drawCompositionLine(view *image.RGBA, seg string, v vline, textX, y int) {
 	th := t.theme
-	antes := runePrefix(seg, t.cursor-t.startIdx(v))
-	depois := seg[len(antes):]
+	before := runePrefix(seg, t.cursor-t.startIdx(v))
+	after := seg[len(before):]
 	baseline := y + th.Ascent()
-	if antes != "" {
-		th.DrawText(view, antes, image.Pt(textX, baseline), th.Text)
+	if before != "" {
+		th.DrawText(view, before, image.Pt(textX, baseline), th.Text)
 	}
-	compX := textX + th.MeasureString(antes)
+	compX := textX + th.MeasureString(before)
 	th.DrawText(view, t.pre.text, image.Pt(compX, baseline), th.Text)
-	if depois != "" {
-		th.DrawText(view, depois, image.Pt(compX+t.pre.w, baseline), th.Text)
+	if after != "" {
+		th.DrawText(view, after, image.Pt(compX+t.pre.w, baseline), th.Text)
 	}
 	t.pre.drawUnderline(view, th, compX, baseline+th.Px(2))
 }

@@ -18,7 +18,7 @@ import (
 type Checkbox struct {
 	BaseWidget
 	// Label é o texto exibido à direita da caixa.
-	Label string
+	label string
 
 	// onChange é chamado com o novo valor a cada alternância feita pelo
 	// usuário (ver OnChange).
@@ -33,7 +33,7 @@ type Checkbox struct {
 // NewCheckbox cria um checkbox desmarcado com o rótulo dado. O tema é
 // herdado no mount.
 func NewCheckbox(label string) *Checkbox {
-	return &Checkbox{Label: label}
+	return &Checkbox{label: label}
 }
 
 // OnChange define o callback chamado com o novo valor a cada alternância
@@ -43,19 +43,36 @@ func (c *Checkbox) OnChange(fn func(bool)) *Checkbox {
 	return c
 }
 
+// Label devolve o rótulo da caixa.
+func (c *Checkbox) Label() string {
+	return c.label
+}
+
+// SetLabel troca o rótulo e agenda um redesenho. Encadeável.
+func (c *Checkbox) SetLabel(s string) *Checkbox {
+	if c.label != s {
+		c.label = s
+		c.Invalidate()
+	}
+	return c
+}
+
 // Checked devolve o valor atual.
 func (c *Checkbox) Checked() bool {
 	return c.checked
 }
 
-// SetChecked define o valor programaticamente e agenda um redesenho. Não
-// dispara OnChange; com binding, prefira State.Set.
-func (c *Checkbox) SetChecked(v bool) {
-	if c.checked == v {
-		return
+// SetChecked define o valor programaticamente, sincroniza o State vinculado
+// (se houver) e agenda um redesenho. Não dispara OnChange. Encadeável.
+func (c *Checkbox) SetChecked(v bool) *Checkbox {
+	if c.checked != v {
+		c.checked = v
+		c.Invalidate()
 	}
-	c.checked = v
-	c.Invalidate()
+	if c.bound != nil && c.bound.Get() != v {
+		c.bound.Set(v)
+	}
+	return c
 }
 
 // BindChecked vincula o valor ao State em DUAS vias: alternâncias do usuário
@@ -63,7 +80,7 @@ func (c *Checkbox) SetChecked(v bool) {
 func (c *Checkbox) BindChecked(s *state.State[bool]) *Checkbox {
 	c.bound = s
 	c.SetChecked(s.Get())
-	s.Watch(func(v bool) {
+	state.WatchWeak(s, c, func(c *Checkbox, v bool) {
 		if c.checked != v {
 			c.SetChecked(v)
 		}
@@ -84,7 +101,7 @@ func (c *Checkbox) PreferredSize() image.Point {
 	}
 	box := c.theme.LineHeight()
 	return image.Point{
-		X: box + c.theme.PaddingPx() + c.theme.MeasureString(c.Label),
+		X: box + c.theme.PaddingPx() + c.theme.MeasureString(c.label),
 		Y: box,
 	}
 }
@@ -101,6 +118,7 @@ func (c *Checkbox) HandleEvent(ev event.Event) bool {
 		return false
 	case event.FocusEvent:
 		c.focused = e.Gained
+		c.notifyFocus(e.Gained)
 		return true
 	case event.MouseEvent:
 		switch e.Kind {
@@ -179,6 +197,6 @@ func (c *Checkbox) Draw(dst *image.RGBA) {
 
 	labelX := box.Max.X + th.PaddingPx()
 	baseline := bounds.Min.Y + (bounds.Dy()-th.LineHeight())/2 + th.Ascent()
-	th.DrawText(dst, c.Label, image.Pt(labelX, baseline), th.Text)
+	th.DrawText(dst, c.label, image.Pt(labelX, baseline), th.Text)
 	c.drawDisabledOverlay(dst)
 }

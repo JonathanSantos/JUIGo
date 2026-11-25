@@ -94,19 +94,19 @@ func (s *Session) updateDrag(pos image.Point) {
 	s.dragView.Layout(image.Rectangle{Min: p, Max: p.Add(pref)})
 	s.AddDamage(s.dragView.Bounds())
 
-	alvo := s.dropTargetAt(pos)
-	if alvo != s.dragTarget {
+	target := s.dropTargetAt(pos)
+	if target != s.dragTarget {
 		if s.dragTarget != nil {
 			s.AddDamage(s.dragTarget.Bounds())
 		}
-		if alvo != nil {
-			s.AddDamage(alvo.Bounds())
+		if target != nil {
+			s.AddDamage(target.Bounds())
 		}
-		s.dragTarget = alvo
+		s.dragTarget = target
 	}
 	// Indicador de inserção: acompanha o cursor DENTRO do mesmo alvo.
 	ind := image.Rectangle{}
-	if di, ok := alvo.(DropIndicator); ok {
+	if di, ok := target.(DropIndicator); ok {
 		ind = di.DropIndicatorRect(s.dragPayload, pos)
 	}
 	if ind != s.dragIndicator {
@@ -121,11 +121,11 @@ func (s *Session) finishDrag(pos image.Point) {
 	if !s.dragging {
 		return
 	}
-	alvo := s.dropTargetAt(pos)
+	target := s.dropTargetAt(pos)
 	payload := s.dragPayload
 	s.endDrag()
-	if alvo != nil {
-		if t, ok := alvo.(DropTarget); ok {
+	if target != nil {
+		if t, ok := target.(DropTarget); ok {
 			t.Drop(payload, pos)
 		}
 	}

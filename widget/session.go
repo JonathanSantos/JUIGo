@@ -80,6 +80,10 @@ type Session struct {
 	damage      image.Rectangle
 	full        bool
 	clipScratch image.RGBA
+
+	// mountGen conta os mounts de Render: cada widget alcançado recebe o
+	// carimbo corrente, e quem ficou com carimbo antigo saiu da árvore.
+	mountGen uint64
 }
 
 // overlayEntry é uma camada da pilha de sobreposição: o widget exibido e o
@@ -683,6 +687,40 @@ func (s *Session) setFocus(w Widget) {
 	s.markDirty()
 }
 
+// pruneDetached solta as referências de interação (foco, hover, captura) a
+// widgets que saíram da árvore — removidos por Clear/reconstrução ou
+// escondidos numa aba que deixou de ser a ativa. Sem isso, um campo removido
+// seguiria recebendo o teclado e piscando o cursor para sempre. Chamado no
+// Render, logo após o mount carimbar a árvore viva.
+func (s *Session) pruneDetached() {
+	if s.focused != nil && s.isDetached(s.focused) {
+		gone := s.focused
+		s.focused = nil
+		gone.HandleEvent(event.FocusEvent{Gained: false})
+		s.markDirty()
+	}
+	if s.hovered != nil && s.isDetached(s.hovered) {
+		s.hovered = nil
+		s.cursorShape = CursorDefault
+		s.hideTooltip()
+	}
+	if s.captured != nil && s.isDetached(s.captured) {
+		s.captured = nil
+	}
+	for i := range s.overlays {
+		if p := s.overlays[i].prevFocus; p != nil && s.isDetached(p) {
+			s.overlays[i].prevFocus = nil
+		}
+	}
+}
+
+// isDetached informa se w ficou fora do mount mais recente. Widgets que não
+// embutem BaseWidget não são rastreáveis e contam como vivos.
+func (s *Session) isDetached(w Widget) bool {
+	h, ok := w.(sessionHost)
+	return ok && !h.mountedIn(s)
+}
+
 // focusNext avança o foco na ordem da árvore, com wraparound.
 func (s *Session) focusNext() {
 	order := Focusables(s.focusRoot())
@@ -745,6 +783,7 @@ func (s *Session) Render(dst *image.RGBA) (image.Rectangle, bool) {
 		return image.Rectangle{}, false
 	}
 	// Layout completo primeiro: gera o dano de geometria do frame atual.
+	s.mountGen++
 	if s.root != nil {
 		// Re-injeta o tema antes do layout para cobrir widgets adicionados
 		// dinamicamente à árvore (idempotente, sem alocações).
@@ -765,6 +804,7 @@ func (s *Session) Render(dst *image.RGBA) (image.Rectangle, bool) {
 		s.mount(s.toastView, s.theme)
 		s.layoutToast(dst.Bounds())
 	}
+	s.pruneDetached()
 
 	// O inspector desenha contornos da árvore inteira: sempre frame total.
 	if s.inspect {

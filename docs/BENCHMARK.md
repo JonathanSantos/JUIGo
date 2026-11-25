@@ -155,10 +155,52 @@ contexto com requisito legal de acessibilidade, mobile/web.
 
 | Sintoma | Resposta preparada |
 | --- | --- |
-| Transições Fade pesadas em janelas 4K | CrossFade por palavra de 64 bits/SIMD |
+| Transições Fade pesadas em janelas 4K | ✅ feito na v0.19: CrossFade por palavra de 64 bits (ver abaixo) |
 | Upload dominando em telas grandes | dano em N retângulos (fase 3, plano no ARQUITETURA.md) |
 | Glyph cache crescendo sem teto | LRU (limitação aceita, ainda sem dor) |
 | OpenGL removido do macOS | trocar só o blitter (Metal/ANGLE) |
+
+## Rodada de otimização da v0.19
+
+Uma auditoria apontou trabalho repetido por frame e por tecla; esta rodada o
+removeu. Medição **antes/depois na mesma máquina** (M2, Go 1.26.4), binários
+de benchmark do commit anterior e do atual rodados intercalados, seis
+rodadas cada, menor tempo de cada lado. A máquina estava sob carga durante a
+medição — os tempos absolutos ficaram acima dos das tabelas acima (medidos
+em repouso) e oscilaram na casa de ±30% entre rodadas; **o que vale daqui é
+a razão**, e só onde ela supera essa oscilação. As contagens de alocação são
+exatas.
+
+| Cenário | Antes | Depois | Ganho | Alocações |
+| --- | ---: | ---: | ---: | ---: |
+| Arraste de seleção no Input, 1000 caracteres (por movimento) | 1.779 µs | 5,5 µs | **323×** | 263 → 0 |
+| Movimento de cursor numa TextArea de 250 linhas | 152 µs | 2,8 µs | **54×** | 506 → 0 |
+| `PreferredSize` de um Dropdown com 50 opções | 34,6 µs | 0,68 µs | **51×** | 0 → 0 |
+| Reflow de Label (largura mudou) | 30,3 µs | 1,6 µs | **18×** | 0 → 0 |
+| CrossFade 480×320 | 854 µs | 163 µs | **5,3×** | 0 → 0 |
+| Tecla digitada no Input (inserir + apagar) | 7,8 µs | 2,6 µs | **3,0×** | 6 → 2 |
+| Frame completo 480×320, papel e tinta | 157 µs | 83 µs | 1,9× | 0 → 0 |
+| Frame completo 480×320, Default | 83 µs | 58 µs | 1,4× | 0 → 0 |
+| Rolagem em List de 10.000 linhas | 66 µs | 47 µs | 1,4× | 3 → 1 |
+| Frame completo 2560×1600 | 677 µs | 705 µs | sem mudança | 0 → 0 |
+
+O que mudou:
+
+- **Medida de texto memorizada** (`render.Measurer`, por trás de
+  `Theme.MeasureString`): o layout media os mesmos rótulos várias vezes por
+  frame; agora é uma consulta de mapa. É o que explica os ganhos de frame,
+  do Dropdown e do Label.
+- **Tabela de larguras de prefixo** (`render.PrefixWidths` + busca binária):
+  clique→índice no Input deixou de medir prefixo por prefixo (era O(n²) com
+  uma string alocada por caractere).
+- **Movimento de cursor não reconstrói o texto** da TextArea.
+- **CrossFade em palavras de 64 bits**: oito canais por iteração.
+- **`Children()` sem alocação** em Scroll, Modal, Popup e paleta; a piscada
+  do cursor não cria closure por tique.
+- O frame em tela cheia não muda: lá domina o preenchimento de pixels, não a
+  medição.
+
+Benchmarks novos em `bench_edit_test.go`.
 
 ## Reproduzindo
 

@@ -22,6 +22,8 @@ import (
 // fecha sozinho, devolvendo o foco ao modal.
 type Popup struct {
 	BaseWidget
+	// kids é a fatia reutilizada de Children (sem alocação por chamada).
+	kids [1]Widget
 	// onClose é chamado quando o popup fecha, por qualquer caminho (ver
 	// OnClose).
 	onClose func()
@@ -50,7 +52,8 @@ func (p *Popup) Children() []Widget {
 	if p.content == nil {
 		return nil
 	}
-	return []Widget{p.content}
+	p.kids[0] = p.content
+	return p.kids[:]
 }
 
 // SetTheme define um tema explícito e o propaga ao conteúdo.

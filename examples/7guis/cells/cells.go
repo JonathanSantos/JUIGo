@@ -84,7 +84,7 @@ func (m *Modelo) aval(ref string, visitando map[string]bool) string {
 	if strings.HasPrefix(bruto, "=") {
 		soma := 0.0
 		erro := false
-		for _, termo := range strings.Split(bruto[1:], "+") {
+		for termo := range strings.SplitSeq(bruto[1:], "+") {
 			termo = strings.TrimSpace(termo)
 			switch {
 			case ehRef(termo):
@@ -199,11 +199,11 @@ func (p *planilha) Draw(dst *image.RGBA) {
 	render.FillRect(dst, image.Rect(b.Min.X, b.Min.Y, b.Min.X+larg, b.Min.Y+alt), th.InputBackground)
 
 	// Cabeçalhos de coluna (A–H) e de linha (1–12).
-	for c := 0; c < colunas; c++ {
+	for c := range colunas {
 		x := b.Min.X + cabW + c*colW
 		th.DrawText(dst, string(rune('A'+c)), image.Pt(x+colW/2-th.Px(3), b.Min.Y+th.Ascent()+th.Px(3)), th.Placeholder)
 	}
-	for l := 0; l < linhas; l++ {
+	for l := range linhas {
 		y := b.Min.Y + (l+1)*linH
 		th.DrawText(dst, strconv.Itoa(l+1), image.Pt(b.Min.X+th.Px(6), y+th.Ascent()+th.Px(3)), th.Placeholder)
 	}
@@ -219,8 +219,8 @@ func (p *planilha) Draw(dst *image.RGBA) {
 	}
 
 	// Valores, recortados à própria célula.
-	for c := 0; c < colunas; c++ {
-		for l := 0; l < linhas; l++ {
+	for c := range colunas {
+		for l := range linhas {
 			v := p.m.Valor(refDe(c, l))
 			if v == "" {
 				continue
@@ -266,10 +266,10 @@ func New() *App {
 
 	raiz := juigo.NewVBox(
 		juigo.NewHBox(
-			juigo.Centered(juigo.NewText("").BindText(juigo.Map(selecao, func(r string) string { return r + ":" }))),
-			juigo.Grow(barra, 1),
+			juigo.NewText("").BindText(juigo.Map(selecao, func(r string) string { return r + ":" })).Centered(),
+			barra.Grow(1),
 		),
-		juigo.Grow(juigo.NewScroll(p).Horizontal(), 1),
+		juigo.NewScroll(p).Horizontal().Grow(1),
 	).Pad(16)
 	return &App{M: m, Plan: p, Barra: barra, Raiz: raiz}
 }

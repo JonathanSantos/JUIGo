@@ -23,6 +23,9 @@ import (
 )
 
 func main() {
+	// Textos da própria biblioteca (diálogos, calendário) em português.
+	juigo.SetLocale(juigo.LocalePTBR())
+
 	app, err := juigo.New("Galeria — os componentes do JUIGo", 1020, 660)
 	if err != nil {
 		log.Fatal(err)
@@ -135,7 +138,7 @@ func nova(aoTema func(*juigo.Theme)) (*galeria, error) {
 	knob := func(rotulo string, st *juigo.State[string], opcoes ...string) juigo.Widget {
 		d := juigo.NewDropdown(opcoes...).BindValue(st)
 		return juigo.NewHBox(
-			juigo.Centered(juigo.NewText(rotulo).Caption()),
+			juigo.NewText(rotulo).Caption().Centered(),
 			d,
 		).Gap(4)
 	}
@@ -148,7 +151,7 @@ func nova(aoTema func(*juigo.Theme)) (*galeria, error) {
 		knob("Mono", g.mono, "Go Mono", "Fira Code"),
 		knob("Tamanho", g.tamanho, "14", "16", "18"),
 		juigo.NewSpacer(),
-		juigo.Centered(juigo.NewText("Ctrl/Cmd+K busca componentes").Caption()),
+		juigo.NewText("Ctrl/Cmd+K busca componentes").Caption().Centered(),
 	).Pad(8).Gap(10)
 
 	// Menu: as páginas viram comandos globais — e a paleta, uma busca.
@@ -176,14 +179,14 @@ func nova(aoTema func(*juigo.Theme)) (*galeria, error) {
 
 	lateral := juigo.NewVBox(
 		juigo.NewText("Componentes").Subtitle(),
-		juigo.Grow(juigo.NewScroll(arvore), 1),
+		juigo.NewScroll(arvore).Grow(1),
 	).Pad(10).Gap(8)
 
 	g.Raiz = juigo.NewVBox(
 		barraMenu,
 		barraEstilo,
 		juigo.NewDivider(),
-		juigo.Grow(juigo.NewSplitPane(lateral, painel).Ratio(0.22).Min(140), 1),
+		juigo.NewSplitPane(lateral, painel).SetRatio(0.22).Min(140).Grow(1),
 	)
 	g.reprojeta()
 	return g, nil
@@ -342,7 +345,7 @@ func pgBotoes(g *galeria) juigo.Widget {
 			carregando,
 			juigo.NewSpacer(),
 			juigo.NewCheckbox("Desabilitar exemplo").BindChecked(desabilitado),
-			juigo.BindDisabled(juigo.NewButton("Exemplo", nil).Secondary(), desabilitado),
+			juigo.NewButton("Exemplo", nil).Secondary().BindDisabled(desabilitado),
 		).Gap(8)),
 	).Gap(10)
 }
@@ -446,7 +449,7 @@ func pgSuperficies(g *galeria) juigo.Widget {
 		bloco("Card e Divider — a superfície e o fio", juigo.NewVBox(
 			juigo.NewText("Cartão é agrupamento, não decoração.").Caption(),
 			juigo.NewDivider(),
-			juigo.Tooltip(juigo.NewText("Passe o ponteiro aqui para a dica."), "Tooltips falam em legenda."),
+			juigo.NewText("Passe o ponteiro aqui para a dica.").Tooltip("Tooltips falam em legenda."),
 		).Gap(6)),
 		bloco("Camadas: modal, menu e toast", juigo.NewHBox(
 			juigo.NewButton("Confirmar…", func() {
@@ -507,7 +510,7 @@ func pgGraficos(g *galeria) juigo.Widget {
 		bloco("Bars — negativos descem da linha do zero",
 			juigo.NewSized(chart.NewBars(saldo), 0, 120)),
 		bloco("Spark — do tamanho de uma palavra", juigo.NewHBox(
-			juigo.Centered(juigo.NewText("Receita").Caption()),
+			juigo.NewText("Receita").Caption().Centered(),
 			juigo.NewSpacer(),
 			chart.NewSpark(vendas),
 		).Gap(8)),

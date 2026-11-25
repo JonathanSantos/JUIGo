@@ -244,7 +244,7 @@ func (n *Navigator) top() Widget {
 // navigate inicia a transição de old (pode ser nil) para a tela que acabou
 // de virar o topo. Sem tema, sem geometria, sem duração ou com
 // TransitionNone, a troca é um corte seco.
-func (n *Navigator) navigate(old, novo Widget, tr Transition) {
+func (n *Navigator) navigate(old, incoming Widget, tr Transition) {
 	n.blurFocusIn(old)
 	if n.onChange != nil {
 		n.onChange()
@@ -253,7 +253,7 @@ func (n *Navigator) navigate(old, novo Widget, tr Transition) {
 	if n.theme != nil {
 		// Monta e posiciona a tela nova na hora (como OpenOverlay): ela nasce
 		// com geometria válida, pronta para eventos antes do primeiro frame.
-		n.mountIncoming(novo, b)
+		n.mountIncoming(incoming, b)
 	}
 	d := n.dur
 	if d == 0 && n.theme != nil {
@@ -264,7 +264,7 @@ func (n *Navigator) navigate(old, novo Widget, tr Transition) {
 		return
 	}
 	n.snapshot(old, &n.outBuf)
-	n.snapshot(novo, &n.inBuf)
+	n.snapshot(incoming, &n.inBuf)
 	n.trans = tr
 	n.animating = true
 	n.progress.Set(0)
@@ -275,7 +275,7 @@ func (n *Navigator) navigate(old, novo Widget, tr Transition) {
 		n.finishTransition()
 		return
 	}
-	tw.OnDone = n.finishTransition
+	tw.OnDone(n.finishTransition)
 	n.tween = tw
 	n.Invalidate()
 }
@@ -303,8 +303,8 @@ func (n *Navigator) blurFocusIn(old Widget) {
 }
 
 // snapshot desenha w num retrato reutilizável alinhado aos bounds do
-// navegador (fundo do tema por baixo, como o frame real). Aloca só quando o
-// tamanho muda — nunca por quadro.
+// navegador (fundo do tema por baixo, como o frame real). Aloca uma vez por
+// transição — nunca por quadro.
 func (n *Navigator) snapshot(w Widget, buf **image.RGBA) {
 	b := n.Bounds()
 	if *buf == nil || (*buf).Rect != b {
@@ -322,6 +322,10 @@ func (n *Navigator) finishTransition() {
 	}
 	n.animating = false
 	n.tween = nil
+	// Os retratos só servem durante a transição: soltá-los devolve dois
+	// buffers do tamanho do widget (dezenas de MB em telas grandes) em troca
+	// de uma alocação por navegação — evento raro, em escala humana.
+	n.outBuf, n.inBuf = nil, nil
 	n.Invalidate()
 }
 

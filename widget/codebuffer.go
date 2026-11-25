@@ -180,14 +180,14 @@ func (b *codeBuffer) insertRaw(pos textPos, text string) textPos {
 	tail := append([]rune(nil), line.runes[pos.Col:]...)
 	line.runes = append(line.runes[:pos.Col], []rune(segs[0])...)
 	b.dirty(pos.Line)
-	novas := make([]codeLine, len(segs)-1)
+	added := make([]codeLine, len(segs)-1)
 	for i, seg := range segs[1:] {
-		novas[i] = codeLine{runes: []rune(seg)}
+		added[i] = codeLine{runes: []rune(seg)}
 	}
-	fim := textPos{pos.Line + len(novas), len(novas[len(novas)-1].runes)}
-	novas[len(novas)-1].runes = append(novas[len(novas)-1].runes, tail...)
-	b.lines = append(b.lines[:pos.Line+1], append(novas, b.lines[pos.Line+1:]...)...)
-	return fim
+	endPos := textPos{pos.Line + len(added), len(added[len(added)-1].runes)}
+	added[len(added)-1].runes = append(added[len(added)-1].runes, tail...)
+	b.lines = append(b.lines[:pos.Line+1], append(added, b.lines[pos.Line+1:]...)...)
+	return endPos
 }
 
 // deleteRaw remove o intervalo [start,end) e devolve o texto removido (com
@@ -254,16 +254,16 @@ func (b *codeBuffer) replace(start, end textPos, text string) textPos {
 		removed := b.deleteRaw(start, end)
 		g.ops = append(g.ops, editOp{insert: false, start: start, end: end, text: removed})
 	}
-	fim := start
+	endPos := start
 	if text != "" {
-		fim = b.insertRaw(start, text)
-		g.ops = append(g.ops, editOp{insert: true, start: start, end: fim, text: text})
+		endPos = b.insertRaw(start, text)
+		g.ops = append(g.ops, editOp{insert: true, start: start, end: endPos, text: text})
 	}
 	if len(g.ops) > 0 {
 		b.undo = append(b.undo, g)
 	}
-	b.lastKind, b.lastPos = editOther, fim
-	return fim
+	b.lastKind, b.lastPos = editOther, endPos
+	return endPos
 }
 
 // beginBatch abre um LOTE: todas as operações até endBatch entram num
@@ -294,18 +294,18 @@ func (b *codeBuffer) record(op editOp, kind editKind, caretAfter textPos) {
 		b.lastKind, b.lastPos = editOther, caretAfter
 		return
 	}
-	adere := kind != editOther && kind == b.lastKind && len(b.undo) > 0
-	if adere {
+	sticks := kind != editOther && kind == b.lastKind && len(b.undo) > 0
+	if sticks {
 		switch kind {
 		case editType:
-			adere = op.insert && op.start == b.lastPos && !strings.Contains(op.text, "\n")
+			sticks = op.insert && op.start == b.lastPos && !strings.Contains(op.text, "\n")
 		case editDelBack:
-			adere = !op.insert && op.end == b.lastPos
+			sticks = !op.insert && op.end == b.lastPos
 		case editDelFwd:
-			adere = !op.insert && op.start == b.lastPos
+			sticks = !op.insert && op.start == b.lastPos
 		}
 	}
-	if adere {
+	if sticks {
 		g := &b.undo[len(b.undo)-1]
 		g.ops = append(g.ops, op)
 	} else {
@@ -323,13 +323,13 @@ func (b *codeBuffer) breakGroup() {
 // minLine devolve a menor linha tocada pelas operações do grupo — de onde
 // o highlight precisa re-lexar.
 func (g editGroup) minLine() int {
-	min := 0
+	lowest := 0
 	for i, op := range g.ops {
-		if i == 0 || op.start.Line < min {
-			min = op.start.Line
+		if i == 0 || op.start.Line < lowest {
+			lowest = op.start.Line
 		}
 	}
-	return min
+	return lowest
 }
 
 // undoStep desfaz o último grupo; devolve o cursor resultante e a menor

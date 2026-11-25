@@ -1,6 +1,7 @@
 package render
 
 import (
+	"encoding/binary"
 	"image"
 	"image/color"
 	"image/draw"
@@ -238,8 +239,8 @@ func CrossFade(dst *image.RGBA, a, b *image.RGBA, r image.Rectangle, t float64) 
 	if r.Empty() {
 		return
 	}
-	f := int32(t*256 + 0.5)
-	if f <= 0 {
+	f := uint64(max(t, 0)*256 + 0.5)
+	if f == 0 {
 		draw.Draw(dst, r, a, r.Min, draw.Src)
 		return
 	}
@@ -247,6 +248,7 @@ func CrossFade(dst *image.RGBA, a, b *image.RGBA, r image.Rectangle, t float64) 
 		draw.Draw(dst, r, b, r.Min, draw.Src)
 		return
 	}
+	inv := 256 - f
 	rowLen := r.Dx() * 4
 	for y := r.Min.Y; y < r.Max.Y; y++ {
 		di := dst.PixOffset(r.Min.X, y)
@@ -255,12 +257,27 @@ func CrossFade(dst *image.RGBA, a, b *image.RGBA, r image.Rectangle, t float64) 
 		drow := dst.Pix[di : di+rowLen : di+rowLen]
 		arow := a.Pix[ai : ai+rowLen : ai+rowLen]
 		brow := b.Pix[bi : bi+rowLen : bi+rowLen]
-		for x := 0; x < rowLen; x++ {
-			va := int32(arow[x])
-			drow[x] = uint8(va + (int32(brow[x])-va)*f/256)
+		// Oito canais por vez: cada palavra de 64 bits é separada em bytes
+		// pares e ímpares, cada um numa faixa de 16 bits — larga o bastante
+		// para (a*inv + b*f), que nunca passa de 255*256 — e as quatro
+		// faixas são misturadas com uma única multiplicação por lado.
+		x := 0
+		for ; x+8 <= rowLen; x += 8 {
+			wa := binary.LittleEndian.Uint64(arow[x:])
+			wb := binary.LittleEndian.Uint64(brow[x:])
+			even := ((wa&fadeLanes)*inv + (wb&fadeLanes)*f) >> 8 & fadeLanes
+			odd := (((wa>>8)&fadeLanes)*inv + ((wb>>8)&fadeLanes)*f) >> 8 & fadeLanes
+			binary.LittleEndian.PutUint64(drow[x:], even|odd<<8)
+		}
+		for ; x < rowLen; x++ {
+			drow[x] = uint8((uint64(arow[x])*inv + uint64(brow[x])*f) >> 8)
 		}
 	}
 }
+
+// fadeLanes isola os bytes pares de uma palavra de 64 bits, cada um na base
+// de uma faixa de 16 bits (ver CrossFade).
+const fadeLanes = 0x00FF00FF00FF00FF
 
 // Clip preenche out com uma VISÃO de dst recortada a r — mesmos pixels, sem
 // cópia e sem alocação (out é um scratch reutilizável, normalmente um campo

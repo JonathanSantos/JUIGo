@@ -30,31 +30,28 @@ type Grid struct {
 // herdado no mount.
 func NewGrid(cols int, children ...Widget) *Grid {
 	g := &Grid{cols: cols}
-	g.Padding = -1
-	g.Spacing = -1
+	g.padding = -1
+	g.spacing = -1
 	g.Add(children...)
 	return g
 }
 
 // Gap define o espaço entre células, em unidades lógicas. Encadeável.
 func (g *Grid) Gap(spacing int) *Grid {
-	g.Spacing = spacing
+	g.spacing = spacing
 	return g
 }
 
 // Pad define o espaço interno das bordas, em unidades lógicas. Encadeável.
 func (g *Grid) Pad(padding int) *Grid {
-	g.Padding = padding
+	g.padding = padding
 	return g
 }
 
 // measure recalcula larguras de coluna, alturas de linha e pesos.
 func (g *Grid) measure() (cols, rows int) {
 	children := g.Children()
-	cols = g.cols
-	if cols < 1 {
-		cols = 1
-	}
+	cols = max(g.cols, 1)
 	rows = (len(children) + cols - 1) / cols
 
 	g.colW = resizeInts(g.colW, cols)
@@ -89,13 +86,13 @@ func (g *Grid) Layout(bounds image.Rectangle) {
 
 	avail := bounds.Dx() - 2*padding - spacing*(cols-1)
 	total, growSum := 0, 0
-	for c := 0; c < cols; c++ {
+	for c := range cols {
 		total += g.colW[c]
 		growSum += g.colGrow[c]
 	}
 	if leftover := avail - total; leftover > 0 && growSum > 0 {
 		d := distributor{leftover: leftover, weightSum: growSum}
-		for c := 0; c < cols; c++ {
+		for c := range cols {
 			if g.colGrow[c] > 0 {
 				g.colW[c] += d.next(g.colGrow[c])
 			}
@@ -103,9 +100,9 @@ func (g *Grid) Layout(bounds image.Rectangle) {
 	}
 
 	y := bounds.Min.Y + padding
-	for r := 0; r < rows; r++ {
+	for r := range rows {
 		x := bounds.Min.X + padding
-		for c := 0; c < cols; c++ {
+		for c := range cols {
 			i := r*cols + c
 			if i >= len(children) {
 				break
@@ -125,8 +122,8 @@ func (g *Grid) placeCell(ch Widget, cell image.Rectangle) {
 		return
 	}
 	w := ch.PreferredSize().X
-	if max := cell.Dx(); w > max {
-		w = max
+	if limit := cell.Dx(); w > limit {
+		w = limit
 	}
 	x := cell.Min.X
 	switch align {
@@ -147,10 +144,10 @@ func (g *Grid) PreferredSize() image.Point {
 	cols, rows := g.measure()
 	spacing, padding := g.metrics()
 	w, h := 0, 0
-	for c := 0; c < cols; c++ {
+	for c := range cols {
 		w += g.colW[c]
 	}
-	for r := 0; r < rows; r++ {
+	for r := range rows {
 		h += g.rowH[r]
 	}
 	return image.Point{

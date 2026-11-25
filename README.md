@@ -123,12 +123,17 @@ de verdade e a interface é uma projeção dele.
 
 ## As ideias que sustentam a DX
 
-- **Tudo declarável inline** — callbacks e opções são métodos encadeáveis
-  que devolvem o tipo concreto, no estilo dos `Bind*`:
-  `NewInput("E-mail").BindValue(mail).OnSubmit(enviar)`,
+- **Tudo declarável inline** — callbacks, opções e layout são métodos
+  encadeáveis que devolvem o tipo concreto, no estilo dos `Bind*`:
+  `NewInput("E-mail").BindValue(mail).OnSubmit(enviar).Grow(1)`,
   `NewSlider(0, 1).Step(0.1).OnChange(f)`,
-  `NewModal(conteúdo).CloseOnBackdrop(false).OnClose(f)`. Qualquer
+  `NewButton("Salvar", f).Tooltip("Grava").BindDisabled(invalido)`. Qualquer
   interface cabe em uma única expressão.
+- **Uma API, uma regra** — propriedade é `X()`/`SetX(v)`, opção é verbo sem
+  `Set`, `OnChange` sempre entrega o valor e só reage ao usuário, todo
+  `Bind*` tem o seu par de leitura. As convenções estão escritas em
+  [docs/API.md](docs/API.md); quem vem de uma versão anterior segue
+  [docs/MIGRACAO-v0.19.md](docs/MIGRACAO-v0.19.md).
 - **Tema ambiente** — construtores não pedem tema: o App o injeta na árvore
   no *mount*. `DefaultTheme` (claro), `DarkTheme` (escuro) e o design
   system "papel e tinta" (`ClaudeTheme`/`ClaudeDarkTheme` — ver
@@ -140,18 +145,27 @@ de verdade e a interface é uma projeção dele.
 - **Reatividade com `State[T]`** — `NewState`/`Get`/`Set`/`Watch` + `Map` e
   `Combine` para derivados; `Set` redesenha a interface sozinho. Eventos
   continuam callbacks (`OnClick`) — estado é para dados.
-- **Layout sem cerimônia** — `VBox`/`HBox` com `Grow(w, peso)`, `Spacer`,
-  `Centered`/`AtStart`/`AtEnd`; `Grid(n, …)` para formulários alinhados;
-  `Scroll` (com eixo horizontal opcional) e `List`/`Table` virtualizadas
-  para milhares de linhas com um punhado de widgets.
-- **Disabled e loading centrais** — `BindDisabled(w, estado)` tira o widget
+- **Layout sem cerimônia** — `VBox`/`HBox` com `.Grow(peso)`, `Spacer`,
+  `.Centered()`/`.AtStart()`/`.AtEnd()`; `Grid(n, …)` para formulários
+  alinhados; `Scroll` (eixo horizontal opcional, `ScrollToEnd` e
+  `StickToEnd` para chats e logs) e `List`/`Table` virtualizadas para
+  milhares de linhas com um punhado de widgets — `NewTextList` quando a
+  linha é só texto.
+- **Disabled e loading centrais** — `.BindDisabled(estado)` tira o widget
   (e a subárvore) da interação no roteamento, com esmaecimento;
   `Button.BindLoading` mostra spinner e implica desabilitado.
 - **Trabalho assíncrono com `App.Post`** — o único método thread-safe:
   goroutine trabalha, `Post` entrega o resultado à main thread.
 - **Undo, timers e seleção** — `NewHistory` (pilhas + `CanUndo`/`CanRedo`
   prontos para botões), `After`/`Every` no relógio da aplicação,
-  `BindSelected` fazendo da linha selecionada um State como outro qualquer.
+  `BindSelected` fazendo da linha selecionada um State como outro qualquer
+  (ou só `OnChange`/`Selected()`, sem State nenhum).
+- **Vínculos que não vazam** — todo `Bind*` assina o State com referência
+  fraca: reconstruir uma lista com `Clear` + `Add` não acumula observadores,
+  e `Watch` devolve o cancelamento para quem precisa.
+- **Textos da lib em qualquer idioma** — inglês por padrão;
+  `juigo.SetLocale(juigo.LocalePTBR())` troca diálogos, calendário e formato
+  de data de uma vez.
 
 ## Design system "papel e tinta"
 

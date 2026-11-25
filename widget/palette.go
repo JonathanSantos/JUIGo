@@ -118,12 +118,14 @@ func (pi *paletteInput) HandleEvent(ev event.Event) bool {
 // (sem pano de fundo; clique fora fecha pela regra da pilha).
 type paletteView struct {
 	BaseWidget
+	// kids é a fatia reutilizada de Children (sem alocação por chamada).
+	kids     [1]Widget
 	session  *Session
 	all      []Command
 	filtered []int
-	filtro   *state.State[string]
+	filter   *state.State[string]
 	selIdx   *state.State[int]
-	lista    *List[*cmdRow]
+	list     *List[*cmdRow]
 	box      *VBox
 	clip     image.RGBA
 }
@@ -133,10 +135,10 @@ func newPaletteView(s *Session) *paletteView {
 	p := &paletteView{
 		session: s,
 		all:     s.Commands(),
-		filtro:  state.New(""),
+		filter:  state.New(""),
 		selIdx:  state.New(0),
 	}
-	p.lista = NewList(0,
+	p.list = NewList(0,
 		func() *cmdRow { return &cmdRow{} },
 		func(row *cmdRow, i int) {
 			if i < 0 || i >= len(p.filtered) {
@@ -148,10 +150,10 @@ func newPaletteView(s *Session) *paletteView {
 			row.onClick = func() { p.run(cmd) }
 		},
 	).BindSelected(p.selIdx)
-	campo := &paletteInput{pal: p}
-	campo.Input = NewInput("Comando…").BindValue(p.filtro).OnSubmit(p.runSelected)
-	p.filtro.Watch(func(string) { p.refilter() })
-	p.box = NewVBox(campo, NewSized(NewScroll(p.lista), 0, 200)).Gap(6)
+	field := &paletteInput{pal: p}
+	field.Input = NewInput(locale.CommandPlaceholder).BindValue(p.filter).OnSubmit(func(string) { p.runSelected() })
+	p.filter.Watch(func(string) { p.refilter() })
+	p.box = NewVBox(field, NewSized(NewScroll(p.list), 0, 200)).Gap(6)
 	p.refilter()
 	return p
 }
@@ -159,15 +161,15 @@ func newPaletteView(s *Session) *paletteView {
 // refilter recalcula os índices filtrados (busca case-insensitive por
 // trecho do título) e volta a seleção ao topo.
 func (p *paletteView) refilter() {
-	q := strings.ToLower(strings.TrimSpace(p.filtro.Get()))
+	q := strings.ToLower(strings.TrimSpace(p.filter.Get()))
 	p.filtered = p.filtered[:0]
 	for i := range p.all {
 		if q == "" || strings.Contains(strings.ToLower(p.all[i].Title), q) {
 			p.filtered = append(p.filtered, i)
 		}
 	}
-	p.lista.SetCount(len(p.filtered))
-	p.lista.Refresh()
+	p.list.SetCount(len(p.filtered))
+	p.list.Refresh()
 	if p.selIdx.Get() != 0 {
 		p.selIdx.Set(0)
 	}
@@ -218,7 +220,8 @@ func (p *paletteView) overlayClosed() {
 
 // Children devolve o miolo (campo + lista).
 func (p *paletteView) Children() []Widget {
-	return []Widget{p.box}
+	p.kids[0] = p.box
+	return p.kids[:]
 }
 
 // Layout posiciona o miolo com o respiro do painel.

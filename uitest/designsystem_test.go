@@ -23,7 +23,7 @@ func TestPapeisTipograficos(t *testing.T) {
 		t.Helper()
 		ht, hs, hc, hl := titulo.PreferredSize().Y, sub.PreferredSize().Y,
 			corpo.PreferredSize().Y, legenda.PreferredSize().Y
-		if !(ht > hs && hs > hc && hc > hl) {
+		if ht <= hs || hs <= hc || hc <= hl {
 			t.Fatalf("%s: a escala deveria decrescer Título>Subtítulo>corpo>legenda; veio %d/%d/%d/%d",
 				nome, ht, hs, hc, hl)
 		}

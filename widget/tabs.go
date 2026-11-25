@@ -64,9 +64,7 @@ func (t *Tabs) OnChange(fn func(int)) *Tabs {
 func (t *Tabs) BindSelected(s *state.State[int]) *Tabs {
 	t.bound = s
 	t.Select(s.Get())
-	s.Watch(func(v int) {
-		t.Select(v)
-	})
+	state.WatchWeak(s, t, func(t *Tabs, v int) { t.Select(v) })
 	return t
 }
 
@@ -76,33 +74,38 @@ func (t *Tabs) Selected() int {
 }
 
 // Select troca a aba ativa para o índice dado, ajustado ao intervalo
-// válido. Dispara OnChange e sincroniza o State vinculado quando a aba
-// efetivamente muda.
+// válido, e sincroniza o State vinculado. Como todo setter programático,
+// NÃO dispara OnChange — o callback é reservado às trocas feitas pelo
+// usuário (clique e teclado).
 func (t *Tabs) Select(i int) {
+	t.setSelected(i)
+}
+
+// setSelected aplica a troca de aba e devolve true quando a aba ativa
+// efetivamente mudou.
+func (t *Tabs) setSelected(i int) bool {
 	if len(t.pages) == 0 {
-		return
+		return false
 	}
-	if i < 0 {
-		i = 0
+	i = min(max(i, 0), len(t.pages)-1)
+	changed := i != t.selected
+	if changed {
+		t.selected = i
+		t.Invalidate()
 	}
-	if i >= len(t.pages) {
-		i = len(t.pages) - 1
-	}
-	if i == t.selected {
-		// Mantém o State vinculado em sincronia quando o Set externo veio
-		// fora do intervalo e foi ajustado.
-		if t.bound != nil && t.bound.Get() != i {
-			t.bound.Set(i)
-		}
-		return
-	}
-	t.selected = i
-	t.Invalidate()
+	// Mantém o State vinculado em sincronia — inclusive quando um Set
+	// externo veio fora do intervalo e foi ajustado.
 	if t.bound != nil && t.bound.Get() != i {
 		t.bound.Set(i)
 	}
-	if t.onChange != nil {
-		t.onChange(i)
+	return changed
+}
+
+// selectFromUser troca a aba por ação do usuário: além de Select, dispara
+// OnChange quando a aba muda.
+func (t *Tabs) selectFromUser(i int) {
+	if t.setSelected(i) && t.onChange != nil {
+		t.onChange(t.selected)
 	}
 }
 
@@ -216,19 +219,20 @@ func (t *Tabs) HandleEvent(ev event.Event) bool {
 		}
 		switch e.Key {
 		case event.KeyLeft:
-			t.Select(t.selected - 1)
+			t.selectFromUser(t.selected - 1)
 		case event.KeyRight:
-			t.Select(t.selected + 1)
+			t.selectFromUser(t.selected + 1)
 		case event.KeyHome:
-			t.Select(0)
+			t.selectFromUser(0)
 		case event.KeyEnd:
-			t.Select(len(t.pages) - 1)
+			t.selectFromUser(len(t.pages) - 1)
 		default:
 			return false
 		}
 		return true
 	case event.FocusEvent:
 		t.focused = e.Gained
+		t.notifyFocus(e.Gained)
 		return true
 	case event.MouseEvent:
 		switch e.Kind {
@@ -249,7 +253,7 @@ func (t *Tabs) HandleEvent(ev event.Event) bool {
 				return false
 			}
 			if i := t.tabAt(e.Pos); i >= 0 {
-				t.Select(i)
+				t.selectFromUser(i)
 			}
 			return true
 		case event.MouseUp:

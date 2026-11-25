@@ -28,8 +28,8 @@ func TestFillCircleForma(t *testing.T) {
 
 	uniforme := image.NewRGBA(image.Rect(0, 0, 48, 48))
 	FillCircle(uniforme, c, r, corTeste)
-	for y := 0; y < 48; y++ {
-		for x := 0; x < 48; x++ {
+	for y := range 48 {
+		for x := range 48 {
 			ex, ey := 2*c.X-x-1, 2*c.Y-y-1
 			if a, b := uniforme.RGBAAt(x, y), uniforme.RGBAAt(ex, y); a != b {
 				t.Fatalf("assimetria horizontal em (%d,%d): %v != %v", x, y, a, b)

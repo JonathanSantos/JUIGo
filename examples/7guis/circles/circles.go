@@ -165,8 +165,8 @@ func New() (*Modelo, juigo.Widget) {
 	ui := juigo.NewVBox(
 		juigo.NewHBox(
 			juigo.NewSpacer(),
-			juigo.BindDisabled(juigo.NewButton("Desfazer", m.Undo), juigo.Not(m.hist.CanUndo())),
-			juigo.BindDisabled(juigo.NewButton("Refazer", m.Redo), juigo.Not(m.hist.CanRedo())),
+			juigo.NewButton("Desfazer", m.Undo).BindDisabled(juigo.Not(m.hist.CanUndo())),
+			juigo.NewButton("Refazer", m.Redo).BindDisabled(juigo.Not(m.hist.CanRedo())),
 			juigo.NewSpacer(),
 		),
 		juigo.Grow(m.tela, 1),

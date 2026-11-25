@@ -18,8 +18,8 @@ func Confirm(title string, onResult func(ok bool)) *widget.Modal {
 	m = widget.NewModal(widget.NewVBox(
 		widget.NewText(title).Subtitle(),
 		Buttons(
-			widget.NewButton("Cancel", func() { m.Close() }).Secondary(),
-			widget.NewButton("OK", func() { ok = true; m.Close() }),
+			widget.NewButton(widget.CurrentLocale().Cancel, func() { m.Close() }).Secondary(),
+			widget.NewButton(widget.CurrentLocale().OK, func() { ok = true; m.Close() }),
 		),
 	)).OnClose(func() {
 		if onResult != nil {
@@ -36,7 +36,7 @@ func Alert(message string) *widget.Modal {
 	var m *widget.Modal
 	m = widget.NewModal(widget.NewVBox(
 		widget.NewText(message),
-		Buttons(widget.NewButton("OK", func() { m.Close() })),
+		Buttons(widget.NewButton(widget.CurrentLocale().OK, func() { m.Close() })),
 	))
 	m.Show()
 	return m
@@ -52,10 +52,10 @@ func Prompt(title, placeholder string, onSubmit func(value string)) *widget.Moda
 	accept := func() { accepted = true; m.Close() }
 	m = widget.NewModal(widget.NewVBox(
 		widget.NewText(title).Subtitle(),
-		widget.NewInput(placeholder).BindValue(value).OnSubmit(accept),
+		widget.NewInput(placeholder).BindValue(value).OnSubmit(func(string) { accept() }),
 		Buttons(
-			widget.NewButton("Cancel", func() { m.Close() }).Secondary(),
-			widget.NewButton("OK", accept),
+			widget.NewButton(widget.CurrentLocale().Cancel, func() { m.Close() }).Secondary(),
+			widget.NewButton(widget.CurrentLocale().OK, accept),
 		),
 	)).OnClose(func() {
 		if accepted && onSubmit != nil {

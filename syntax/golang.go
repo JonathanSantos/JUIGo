@@ -8,9 +8,9 @@ import (
 
 // Estados carregados entre linhas pelo lexer de Go.
 const (
-	goNormal     widget.HighlightState = 0
-	goComentario widget.HighlightState = 1
-	goRaw        widget.HighlightState = 2
+	goNormal  widget.HighlightState = 0
+	goComment widget.HighlightState = 1
+	goRaw     widget.HighlightState = 2
 )
 
 // goKeywords são as 25 palavras-chave da linguagem.
@@ -56,13 +56,13 @@ func (goLexer) HighlightLine(line string, state widget.HighlightState) ([]widget
 
 	// Estado herdado da linha anterior.
 	switch state {
-	case goComentario:
+	case goComment:
 		if idx := strings.Index(line, "*/"); idx >= 0 {
 			b.add(idx+2, widget.SyntaxComment)
 			i = idx + 2
 		} else {
 			b.add(len(line), widget.SyntaxComment)
-			return b.spans, goComentario
+			return b.spans, goComment
 		}
 	case goRaw:
 		if idx := strings.IndexByte(line, '`'); idx >= 0 {
@@ -86,7 +86,7 @@ func (goLexer) HighlightLine(line string, state widget.HighlightState) ([]widget
 				i += idx + 4
 			} else {
 				b.add(len(line)-i, widget.SyntaxComment)
-				return b.spans, goComentario
+				return b.spans, goComment
 			}
 		case c == '`':
 			if idx := strings.IndexByte(line[i+1:], '`'); idx >= 0 {

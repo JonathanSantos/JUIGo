@@ -63,10 +63,10 @@ func TestTweenProgrideECompleta(t *testing.T) {
 	s := state.New(0.0)
 	a := Tween(s, 1, 160*time.Millisecond, Linear) // 10 quadros de 16ms
 	done := 0
-	a.OnDone = func() { done++ }
+	a.OnDone(func() { done++ })
 
 	anterior := 0.0
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		if !passo() {
 			t.Fatalf("faltou quadro %d", i)
 		}
@@ -93,7 +93,7 @@ func TestRetargetEStop(t *testing.T) {
 
 	primeira := Tween(s, 1, 160*time.Millisecond, Linear)
 	doneA := false
-	primeira.OnDone = func() { doneA = true }
+	primeira.OnDone(func() { doneA = true })
 	passo()
 	passo()
 	meio := s.Get()

@@ -178,8 +178,8 @@ func (w *Window) destroy() {
 // a "em interação" — é para a sessão dela que os hooks globais (overlay,
 // foco programático, toast, arrasto) roteiam.
 func (w *Window) installCallbacks() {
-	w.window.SetFramebufferSizeCallback(func(_ *glfw.Window, largura, altura int) {
-		w.app.dispatch(w, func() { w.resize(largura, altura) })
+	w.window.SetFramebufferSizeCallback(func(_ *glfw.Window, fbW, fbH int) {
+		w.app.dispatch(w, func() { w.resize(fbW, fbH) })
 	})
 	w.window.SetContentScaleCallback(func(_ *glfw.Window, scaleX, _ float32) {
 		// Janela mudou de monitor: refaz fonte, métricas e cache de glyphs.
@@ -275,14 +275,14 @@ func (w *Window) applyCursor(shape widget.CursorShape) {
 
 // resize realoca o buffer RGBA para o novo tamanho do framebuffer, em pixels
 // físicos. Esta é a única situação em que o buffer é realocado.
-func (w *Window) resize(largura, altura int) {
-	if largura <= 0 || altura <= 0 {
+func (w *Window) resize(fbW, fbH int) {
+	if fbW <= 0 || fbH <= 0 {
 		return
 	}
-	w.width, w.height = largura, altura
-	w.buf = image.NewRGBA(image.Rect(0, 0, largura, altura))
-	w.pixelRatio = pixelRatio(w.window, largura)
-	w.session.Resize(image.Pt(largura, altura))
+	w.width, w.height = fbW, fbH
+	w.buf = image.NewRGBA(image.Rect(0, 0, fbW, fbH))
+	w.pixelRatio = pixelRatio(w.window, fbW)
+	w.session.Resize(image.Pt(fbW, fbH))
 	w.dirty = true
 }
 

@@ -46,7 +46,6 @@ func TestPaletaDeComandos(t *testing.T) {
 	var executado string
 	h := uitest.New(t, juigo.NewVBox(juigo.NewText("app")), 480, 400)
 	for _, nome := range []string{"Abrir arquivo", "Salvar como", "Sair"} {
-		nome := nome
 		h.Session().AddCommand(juigo.Command{Title: nome, Action: func() { executado = nome }})
 	}
 
@@ -130,7 +129,7 @@ func TestMenuBar(t *testing.T) {
 func TestModalRolavel(t *testing.T) {
 	cliques := 0
 	linhas := make([]juigo.Widget, 0, 24)
-	for i := 0; i < 24; i++ {
+	for i := range 24 {
 		linhas = append(linhas, juigo.NewText(fmt.Sprintf("linha %02d", i)))
 	}
 	linhas = append(linhas, juigo.NewButton("Confirmar", func() { cliques++ }))
@@ -140,7 +139,7 @@ func TestModalRolavel(t *testing.T) {
 	h.Click(uitest.Text("Abrir"))
 	// Rola o miolo do modal até o fim (âncora no PRÓPRIO modal: o alvo não
 	// sai da janela) e clica no botão.
-	for i := 0; i < 40; i++ {
+	for range 40 {
 		h.Scroll(uitest.OfType[*juigo.Modal](), -40)
 	}
 	h.Layout()

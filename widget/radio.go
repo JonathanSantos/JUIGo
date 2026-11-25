@@ -23,9 +23,9 @@ import (
 type Radio struct {
 	BaseWidget
 	// Label é o texto à direita do círculo.
-	Label string
+	label string
 	// Value é o valor que este rádio representa no grupo.
-	Value string
+	value string
 
 	// onChange é chamado com Value quando ESTE rádio é selecionado pelo
 	// usuário (ver OnChange).
@@ -40,7 +40,7 @@ type Radio struct {
 // NewRadio cria um rádio desmarcado com o rótulo e o valor dados. O tema é
 // herdado no mount.
 func NewRadio(label, value string) *Radio {
-	return &Radio{Label: label, Value: value}
+	return &Radio{label: label, value: value}
 }
 
 // OnChange define o callback chamado com Value quando ESTE rádio é
@@ -48,6 +48,26 @@ func NewRadio(label, value string) *Radio {
 func (r *Radio) OnChange(fn func(string)) *Radio {
 	r.onChange = fn
 	return r
+}
+
+// Label devolve o rótulo do rádio.
+func (r *Radio) Label() string {
+	return r.label
+}
+
+// SetLabel troca o rótulo e agenda um redesenho. Encadeável.
+func (r *Radio) SetLabel(s string) *Radio {
+	if r.label != s {
+		r.label = s
+		r.Invalidate()
+	}
+	return r
+}
+
+// Value devolve o valor que este rádio representa no grupo (o que ele
+// grava no State vinculado ao ser escolhido).
+func (r *Radio) Value() string {
+	return r.value
 }
 
 // Checked devolve se este rádio é o selecionado do grupo.
@@ -59,9 +79,9 @@ func (r *Radio) Checked() bool {
 // valor do State é igual ao seu Value, e selecioná-lo faz Set. Encadeável.
 func (r *Radio) BindValue(s *state.State[string]) *Radio {
 	r.bound = s
-	r.checked = s.Get() == r.Value
-	s.Watch(func(v string) {
-		if want := v == r.Value; want != r.checked {
+	r.checked = s.Get() == r.value
+	state.WatchWeak(s, r, func(r *Radio, v string) {
+		if want := v == r.value; want != r.checked {
 			r.checked = want
 			r.Invalidate()
 		}
@@ -86,7 +106,7 @@ func (r *Radio) PreferredSize() image.Point {
 	}
 	side := r.theme.LineHeight()
 	return image.Point{
-		X: side + r.theme.PaddingPx() + r.theme.MeasureString(r.Label),
+		X: side + r.theme.PaddingPx() + r.theme.MeasureString(r.label),
 		Y: side,
 	}
 }
@@ -102,6 +122,7 @@ func (r *Radio) HandleEvent(ev event.Event) bool {
 		return false
 	case event.FocusEvent:
 		r.focused = e.Gained
+		r.notifyFocus(e.Gained)
 		return true
 	case event.MouseEvent:
 		switch e.Kind {
@@ -139,11 +160,11 @@ func (r *Radio) selectFromUser() {
 		return
 	}
 	r.checked = true
-	if r.bound != nil && r.bound.Get() != r.Value {
-		r.bound.Set(r.Value)
+	if r.bound != nil && r.bound.Get() != r.value {
+		r.bound.Set(r.value)
 	}
 	if r.onChange != nil {
-		r.onChange(r.Value)
+		r.onChange(r.value)
 	}
 }
 
@@ -175,6 +196,6 @@ func (r *Radio) Draw(dst *image.RGBA) {
 
 	labelX := bounds.Min.X + side + th.PaddingPx()
 	baseline := bounds.Min.Y + (bounds.Dy()-th.LineHeight())/2 + th.Ascent()
-	th.DrawText(dst, r.Label, image.Pt(labelX, baseline), th.Text)
+	th.DrawText(dst, r.label, image.Pt(labelX, baseline), th.Text)
 	r.drawDisabledOverlay(dst)
 }

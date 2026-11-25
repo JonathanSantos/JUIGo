@@ -139,20 +139,20 @@ func New() (*Modelo, juigo.Widget) {
 	semSelecao := juigo.Map(m.selecionada, func(i int) bool { return i < 0 })
 	ui := juigo.NewVBox(
 		juigo.NewHBox(
-			juigo.Centered(juigo.NewText("Filtrar sobrenome:")),
-			juigo.Grow(juigo.NewInput("prefixo…").BindValue(m.filtro), 1),
+			juigo.NewText("Filtrar sobrenome:").Centered(),
+			juigo.NewInput("prefixo…").BindValue(m.filtro).Grow(1),
 		),
-		juigo.Grow(juigo.NewHBox(
-			juigo.Grow(juigo.NewScroll(m.tabela), 1),
+		juigo.NewHBox(
+			juigo.NewScroll(m.tabela).Grow(1),
 			juigo.NewGrid(2,
-				juigo.NewText("Nome:"), juigo.Grow(juigo.NewInput("nome").BindValue(m.nome), 1),
-				juigo.NewText("Sobrenome:"), juigo.Grow(juigo.NewInput("sobrenome").BindValue(m.sobrenome), 1),
+				juigo.NewText("Nome:"), juigo.NewInput("nome").BindValue(m.nome).Grow(1),
+				juigo.NewText("Sobrenome:"), juigo.NewInput("sobrenome").BindValue(m.sobrenome).Grow(1),
 			),
-		), 1),
+		).Grow(1),
 		juigo.NewHBox(
 			juigo.NewButton("Criar", m.Criar),
-			juigo.BindDisabled(juigo.NewButton("Atualizar", m.Atualizar), semSelecao),
-			juigo.BindDisabled(juigo.NewButton("Excluir", m.Excluir), semSelecao),
+			juigo.NewButton("Atualizar", m.Atualizar).BindDisabled(semSelecao),
+			juigo.NewButton("Excluir", m.Excluir).BindDisabled(semSelecao),
 		),
 	).Pad(16)
 

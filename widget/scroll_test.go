@@ -15,7 +15,7 @@ func scrollFixture(t *testing.T) (*Scroll, *VBox, []*Button) {
 	th := newTestTheme(t)
 	var btns []*Button
 	lista := NewVBox().Gap(0).Pad(0)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		b := NewButton("item", nil)
 		btns = append(btns, b)
 		lista.Add(b)
@@ -126,7 +126,7 @@ func TestScrollDesenhoRecortado(t *testing.T) {
 	// Nada pode ser pintado abaixo da viewport (y >= 100), apesar de o
 	// conteúdo laid out se estender até ~360px.
 	for y := 100; y < 200; y++ {
-		for x := 0; x < 240; x++ {
+		for x := range 240 {
 			i := buf.PixOffset(x, y)
 			if buf.Pix[i] != bg.R || buf.Pix[i+1] != bg.G || buf.Pix[i+2] != bg.B {
 				t.Fatalf("pixel pintado fora da viewport em (%d,%d)", x, y)
@@ -137,7 +137,7 @@ func TestScrollDesenhoRecortado(t *testing.T) {
 	// E dentro da viewport há conteúdo pintado.
 	painted := false
 	for y := 0; y < 100 && !painted; y++ {
-		for x := 0; x < 200; x++ {
+		for x := range 200 {
 			i := buf.PixOffset(x, y)
 			if buf.Pix[i] != bg.R || buf.Pix[i+1] != bg.G || buf.Pix[i+2] != bg.B {
 				painted = true

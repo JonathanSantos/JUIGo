@@ -16,30 +16,30 @@ import (
 // cancelam. Arquivos ocultos (prefixo ".") ficam de fora da listagem.
 
 // entrada é um item do diretório corrente do diálogo.
-type entrada struct {
-	nome string
+type entry struct {
+	name string
 	dir  bool
 }
 
 // lerDir lista o diretório com pastas primeiro e ordem alfabética
 // case-insensitive, sem os ocultos.
-func lerDir(caminho string) ([]entrada, error) {
-	itens, err := os.ReadDir(caminho)
+func readDir(dirPath string) ([]entry, error) {
+	items, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, err
 	}
-	var out []entrada
-	for _, it := range itens {
+	var out []entry
+	for _, it := range items {
 		if strings.HasPrefix(it.Name(), ".") {
 			continue
 		}
-		out = append(out, entrada{nome: it.Name(), dir: it.IsDir()})
+		out = append(out, entry{name: it.Name(), dir: it.IsDir()})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].dir != out[j].dir {
 			return out[i].dir
 		}
-		return strings.ToLower(out[i].nome) < strings.ToLower(out[j].nome)
+		return strings.ToLower(out[i].name) < strings.ToLower(out[j].name)
 	})
 	return out, nil
 }
@@ -48,56 +48,56 @@ func lerDir(caminho string) ([]entrada, error) {
 // corrente projetado numa List virtualizada, com navegação por seleção.
 type fileDialog struct {
 	dir     string
-	itens   []entrada
-	caminho *state.State[string]
-	erro    *state.State[string]
+	items   []entry
+	dirPath *state.State[string]
+	errText *state.State[string]
 	// selArq é o NOME do arquivo selecionado ("" = nenhum) — o que habilita
 	// o botão de confirmação do OpenFile.
-	selArq *state.State[string]
-	selIdx *state.State[int]
-	lista  *widget.List[*widget.HBox]
-	rolar  *widget.Scroll
+	selFile  *state.State[string]
+	selIdx   *state.State[int]
+	list     *widget.List[*widget.HBox]
+	scroller *widget.Scroll
 	// aoEscolherArquivo avisa o SaveFile para copiar o nome ao campo.
-	aoEscolherArquivo func(nome string)
+	onFilePicked func(name string)
 	// navegando guarda contra reentrada dos watches durante a troca de
 	// diretório.
-	navegando bool
+	navigating bool
 }
 
 // novoDialogo monta o miolo já listando o diretório inicial.
-func novoDialogo(inicio string) *fileDialog {
+func newFileDialog(start string) *fileDialog {
 	d := &fileDialog{
-		caminho: state.New(""),
-		erro:    state.New(""),
-		selArq:  state.New(""),
+		dirPath: state.New(""),
+		errText: state.New(""),
+		selFile: state.New(""),
 		selIdx:  state.New(-1),
 	}
 	// Cada linha é o texto com recuo interno (a pílula de seleção/hover da
 	// List ganha respiro dos dois lados — layout do design system).
-	d.lista = widget.NewList(0,
+	d.list = widget.NewList(0,
 		func() *widget.HBox { return widget.NewHBox(widget.NewText("")).Pad(6) },
 		func(row *widget.HBox, i int) {
 			t := row.Children()[0].(*widget.Text)
-			if i < 0 || i >= len(d.itens) {
+			if i < 0 || i >= len(d.items) {
 				t.SetText("")
 				return
 			}
-			e := d.itens[i]
+			e := d.items[i]
 			if e.dir {
-				t.SetText(e.nome + "/")
+				t.SetText(e.name + "/")
 			} else {
-				t.SetText(e.nome)
+				t.SetText(e.name)
 			}
 		},
 	).BindSelected(d.selIdx)
-	d.rolar = widget.NewScroll(d.lista)
+	d.scroller = widget.NewScroll(d.list)
 	d.selIdx.Watch(d.aoSelecionar)
-	d.navega(inicio)
+	d.navigate(start)
 	return d
 }
 
 // inicioPadrao devolve a pasta pessoal do usuário (ou "." sem ela).
-func inicioPadrao() string {
+func defaultStart() string {
 	if home, err := os.UserHomeDir(); err == nil && home != "" {
 		return home
 	}
@@ -106,66 +106,66 @@ func inicioPadrao() string {
 
 // aoSelecionar reage ao clique numa linha: pasta navega, arquivo seleciona.
 func (d *fileDialog) aoSelecionar(i int) {
-	if d.navegando || i < 0 || i >= len(d.itens) {
+	if d.navigating || i < 0 || i >= len(d.items) {
 		return
 	}
-	e := d.itens[i]
+	e := d.items[i]
 	if e.dir {
-		d.navega(filepath.Join(d.dir, e.nome))
+		d.navigate(filepath.Join(d.dir, e.name))
 		return
 	}
-	d.selArq.Set(e.nome)
-	if d.aoEscolherArquivo != nil {
-		d.aoEscolherArquivo(e.nome)
+	d.selFile.Set(e.name)
+	if d.onFilePicked != nil {
+		d.onFilePicked(e.name)
 	}
 }
 
 // navega troca o diretório corrente; em erro (permissão, remoção), mantém o
 // atual e exibe a causa.
-func (d *fileDialog) navega(caminho string) {
-	itens, err := lerDir(caminho)
+func (d *fileDialog) navigate(dirPath string) {
+	items, err := readDir(dirPath)
 	if err != nil {
-		d.erro.Set("Não deu para abrir: " + err.Error())
+		d.errText.Set(widget.CurrentLocale().OpenError + err.Error())
 		return
 	}
-	d.navegando = true
-	defer func() { d.navegando = false }()
-	d.dir = caminho
-	d.itens = itens
-	d.erro.Set("")
-	d.selArq.Set("")
+	d.navigating = true
+	defer func() { d.navigating = false }()
+	d.dir = dirPath
+	d.items = items
+	d.errText.Set("")
+	d.selFile.Set("")
 	d.selIdx.Set(-1)
-	d.caminho.Set(caminho)
-	d.lista.SetCount(len(itens))
-	d.lista.Refresh()
-	d.rolar.ScrollTo(0)
+	d.dirPath.Set(dirPath)
+	d.list.SetCount(len(items))
+	d.list.Refresh()
+	d.scroller.ScrollTo(0)
 }
 
 // sobe navega ao diretório pai.
-func (d *fileDialog) sobe() {
-	d.navega(filepath.Dir(d.dir))
+func (d *fileDialog) goUp() {
+	d.navigate(filepath.Dir(d.dir))
 }
 
 // vista monta o corpo do diálogo na linguagem do design system: título em
 // Subtitle, navegação com "↑" discreto (Ghost) e o caminho em legenda, a
 // lista num POÇO de superfície (Card), a linha de erro, e a barra de ações
 // separada por um Divider.
-func (d *fileDialog) vista(title string, extra widget.Widget, acoes *widget.HBox) *widget.VBox {
-	cab := widget.NewHBox(
-		widget.Tooltip(widget.NewButton("↑", d.sobe).Ghost(), "Pasta acima"),
-		widget.Centered(widget.NewText("").BindText(d.caminho).Caption()),
+func (d *fileDialog) view(title string, extra widget.Widget, actionBar *widget.HBox) *widget.VBox {
+	header := widget.NewHBox(
+		widget.NewButton("↑", d.goUp).Ghost().Tooltip(widget.CurrentLocale().FolderUp),
+		widget.NewText("").BindText(d.dirPath).Caption().Centered(),
 	).Gap(8)
 	v := widget.NewVBox(
 		widget.NewText(title).Subtitle(),
-		cab,
-		widget.NewCard(widget.NewSized(d.rolar, 380, 236)).Pad(4),
-		widget.NewText("").BindText(d.erro).Danger().Caption(),
+		header,
+		widget.NewCard(widget.NewSized(d.scroller, 380, 236)).Pad(4),
+		widget.NewText("").BindText(d.errText).Danger().Caption(),
 	).Gap(8)
 	if extra != nil {
 		v.Add(extra)
 	}
 	v.Add(widget.NewDivider())
-	v.Add(acoes)
+	v.Add(actionBar)
 	return v
 }
 
@@ -175,31 +175,31 @@ func (d *fileDialog) vista(title string, extra widget.Widget, acoes *widget.HBox
 // fechar: (caminho completo, true) no Open; ("", false) no Cancel, no
 // Escape ou no clique fora.
 func OpenFile(title string, onResult func(path string, ok bool)) *widget.Modal {
-	return OpenFileIn(inicioPadrao(), title, onResult)
+	return OpenFileIn(defaultStart(), title, onResult)
 }
 
 // OpenFileIn é o OpenFile começando no diretório dado — útil para começar
 // onde a aplicação trabalha (e para testes determinísticos).
 func OpenFileIn(dir, title string, onResult func(path string, ok bool)) *widget.Modal {
-	d := novoDialogo(dir)
+	d := newFileDialog(dir)
 	ok := false
-	caminho := ""
+	dirPath := ""
 	var m *widget.Modal
-	abrir := widget.NewButton("Open", func() {
-		if d.selArq.Get() == "" {
+	openAction := widget.NewButton(widget.CurrentLocale().Open, func() {
+		if d.selFile.Get() == "" {
 			return
 		}
-		caminho = filepath.Join(d.dir, d.selArq.Get())
+		dirPath = filepath.Join(d.dir, d.selFile.Get())
 		ok = true
 		m.Close()
 	})
-	widget.BindDisabled(abrir, state.Map(d.selArq, func(s string) bool { return s == "" }))
-	m = widget.NewModal(d.vista(title, nil, Buttons(
-		widget.NewButton("Cancel", func() { m.Close() }).Secondary(),
-		abrir,
+	openAction.BindDisabled(state.Map(d.selFile, func(s string) bool { return s == "" }))
+	m = widget.NewModal(d.view(title, nil, Buttons(
+		widget.NewButton(widget.CurrentLocale().Cancel, func() { m.Close() }).Secondary(),
+		openAction,
 	))).OnClose(func() {
 		if onResult != nil {
-			onResult(caminho, ok)
+			onResult(dirPath, ok)
 		}
 	})
 	m.Show()
@@ -213,37 +213,37 @@ func OpenFileIn(dir, title string, onResult func(path string, ok bool)) *widget.
 // criado nem verificado: sobrescrever ou não é decisão do chamador.
 // Cancelamentos chamam ("", false). onResult roda exatamente uma vez.
 func SaveFile(title, initialName string, onResult func(path string, ok bool)) *widget.Modal {
-	return SaveFileIn(inicioPadrao(), title, initialName, onResult)
+	return SaveFileIn(defaultStart(), title, initialName, onResult)
 }
 
 // SaveFileIn é o SaveFile começando no diretório dado.
 func SaveFileIn(dir, title, initialName string, onResult func(path string, ok bool)) *widget.Modal {
-	d := novoDialogo(dir)
-	nome := state.New(initialName)
-	d.aoEscolherArquivo = func(n string) { nome.Set(n) }
+	d := newFileDialog(dir)
+	name := state.New(initialName)
+	d.onFilePicked = func(n string) { name.Set(n) }
 	ok := false
-	caminho := ""
+	dirPath := ""
 	var m *widget.Modal
-	salvar := func() {
-		n := strings.TrimSpace(nome.Get())
+	save := func() {
+		n := strings.TrimSpace(name.Get())
 		if n == "" {
 			return
 		}
-		caminho = filepath.Join(d.dir, n)
+		dirPath = filepath.Join(d.dir, n)
 		ok = true
 		m.Close()
 	}
-	confirmar := widget.NewButton("Save", salvar)
-	widget.BindDisabled(confirmar, state.Map(nome, func(s string) bool {
+	confirm := widget.NewButton(widget.CurrentLocale().Save, save)
+	confirm.BindDisabled(state.Map(name, func(s string) bool {
 		return strings.TrimSpace(s) == ""
 	}))
-	campo := Labeled("Nome:", widget.NewInput("nome do arquivo…").BindValue(nome).OnSubmit(salvar))
-	m = widget.NewModal(d.vista(title, campo, Buttons(
-		widget.NewButton("Cancel", func() { m.Close() }).Secondary(),
-		confirmar,
+	field := Labeled(widget.CurrentLocale().FileName, widget.NewInput(widget.CurrentLocale().FileNamePlaceholder).BindValue(name).OnSubmit(func(string) { save() }))
+	m = widget.NewModal(d.view(title, field, Buttons(
+		widget.NewButton(widget.CurrentLocale().Cancel, func() { m.Close() }).Secondary(),
+		confirm,
 	))).OnClose(func() {
 		if onResult != nil {
-			onResult(caminho, ok)
+			onResult(dirPath, ok)
 		}
 	})
 	m.Show()

@@ -47,7 +47,7 @@ func UI() juigo.Widget {
 			juigo.NewText(""), juigo.NewText("").BindText(juigo.Map(decorrido, func(v float64) string {
 				return fmt.Sprintf("%.1fs", v)
 			})),
-			juigo.NewText("Duração:"), juigo.Grow(juigo.NewSlider(1, 30).BindValue(duracao), 1),
+			juigo.NewText("Duração:"), juigo.NewSlider(1, 30).BindValue(duracao).Grow(1),
 		),
 		juigo.NewButton("Reset", func() {
 			decorrido.Set(0)

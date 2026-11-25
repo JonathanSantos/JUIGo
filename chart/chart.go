@@ -25,7 +25,7 @@ import (
 
 // serie é o miolo comum: dados, faixa (auto ou fixada) e o buffer de
 // pontos reutilizado no desenho.
-type serie struct {
+type series struct {
 	widget.BaseWidget
 	data   []float64
 	min    float64
@@ -36,14 +36,14 @@ type serie struct {
 }
 
 // setData troca os dados e redesenha.
-func (s *serie) setData(d []float64) {
+func (s *series) setData(d []float64) {
 	s.data = d
 	s.Invalidate()
 }
 
 // faixa devolve o intervalo efetivo [lo, hi] da série: o fixado por
 // Min/Max, senão o dos dados (com folga quando degenerado).
-func (s *serie) faixa() (lo, hi float64) {
+func (s *series) band() (lo, hi float64) {
 	lo, hi = s.min, s.max
 	if !s.hasMin || !s.hasMax {
 		dlo, dhi := lo, hi
@@ -73,13 +73,13 @@ func (s *serie) faixa() (lo, hi float64) {
 
 // plot converte os dados em pontos dentro de r (índice→x, valor→y),
 // reutilizando o buffer.
-func (s *serie) plot(r image.Rectangle) []image.Point {
+func (s *series) plot(r image.Rectangle) []image.Point {
 	n := len(s.data)
 	s.pts = s.pts[:0]
 	if n == 0 || r.Dx() <= 0 || r.Dy() <= 0 {
 		return s.pts
 	}
-	lo, hi := s.faixa()
+	lo, hi := s.band()
 	for i, v := range s.data {
 		x := r.Min.X
 		if n > 1 {
@@ -101,7 +101,7 @@ func (s *serie) plot(r image.Rectangle) []image.Point {
 // Spark é a sparkline: só a linha da série, do tamanho de uma palavra —
 // para dentro de células, cartões e rodapés.
 type Spark struct {
-	serie
+	series
 }
 
 // NewSpark cria uma sparkline com os dados dados. O tema é herdado no
@@ -112,13 +112,16 @@ func NewSpark(data []float64) *Spark {
 	return s
 }
 
-// SetData substitui a série e redesenha.
-func (s *Spark) SetData(d []float64) { s.setData(d) }
+// SetData substitui a série e redesenha. Encadeável.
+func (s *Spark) SetData(d []float64) *Spark {
+	s.setData(d)
+	return s
+}
 
 // BindData observa o State: cada Set troca a série. Encadeável.
 func (s *Spark) BindData(st *state.State[[]float64]) *Spark {
 	s.data = st.Get()
-	st.Watch(func(d []float64) { s.setData(d) })
+	state.WatchWeak(st, s, func(s *Spark, d []float64) { s.setData(d) })
 	return s
 }
 
@@ -144,7 +147,7 @@ func (s *Spark) Draw(dst *image.RGBA) {
 // Line é o gráfico de linha: eixos, a série em Accent e os extremos da
 // faixa em legenda.
 type Line struct {
-	serie
+	series
 	// Rótulos dos extremos cacheados pela faixa corrente (Draw não aloca
 	// enquanto a faixa não muda).
 	loV, hiV float64
@@ -174,13 +177,16 @@ func (l *Line) Max(v float64) *Line {
 	return l
 }
 
-// SetData substitui a série e redesenha.
-func (l *Line) SetData(d []float64) { l.setData(d) }
+// SetData substitui a série e redesenha. Encadeável.
+func (l *Line) SetData(d []float64) *Line {
+	l.setData(d)
+	return l
+}
 
 // BindData observa o State: cada Set troca a série. Encadeável.
 func (l *Line) BindData(st *state.State[[]float64]) *Line {
 	l.data = st.Get()
-	st.Watch(func(d []float64) { l.setData(d) })
+	state.WatchWeak(st, l, func(l *Line, d []float64) { l.setData(d) })
 	return l
 }
 
@@ -209,10 +215,10 @@ func (l *Line) Draw(dst *image.RGBA) {
 	}
 	// Extremos da faixa em legenda apagada, dentro do canto esquerdo.
 	f := th.Caption()
-	lo, hi := l.faixa()
+	lo, hi := l.band()
 	if !l.labelsOK || lo != l.loV || hi != l.hiV {
 		l.loV, l.hiV = lo, hi
-		l.loS, l.hiS = formatoCurto(lo), formatoCurto(hi)
+		l.loS, l.hiS = shortFormat(lo), shortFormat(hi)
 		l.labelsOK = true
 	}
 	f.Draw(dst, l.hiS, image.Pt(b.Min.X+th.Px(6), b.Min.Y+f.Ascent()+th.Px(2)), th.Placeholder)
@@ -222,7 +228,7 @@ func (l *Line) Draw(dst *image.RGBA) {
 // Bars é o gráfico de barras verticais: positivos sobem, negativos descem
 // da linha do zero.
 type Bars struct {
-	serie
+	series
 }
 
 // NewBars cria um gráfico de barras com os dados dados. O tema é herdado
@@ -233,13 +239,16 @@ func NewBars(data []float64) *Bars {
 	return b
 }
 
-// SetData substitui a série e redesenha.
-func (b *Bars) SetData(d []float64) { b.setData(d) }
+// SetData substitui a série e redesenha. Encadeável.
+func (b *Bars) SetData(d []float64) *Bars {
+	b.setData(d)
+	return b
+}
 
 // BindData observa o State: cada Set troca a série. Encadeável.
 func (b *Bars) BindData(st *state.State[[]float64]) *Bars {
 	b.data = st.Get()
-	st.Watch(func(d []float64) { b.setData(d) })
+	state.WatchWeak(st, b, func(b *Bars, d []float64) { b.setData(d) })
 	return b
 }
 
@@ -276,7 +285,7 @@ func (b *Bars) Draw(dst *image.RGBA) {
 	if r.Dx() <= 0 || r.Dy() <= 0 {
 		return
 	}
-	lo, hi := b.faixa()
+	lo, hi := b.band()
 	if lo > 0 && !b.hasMin {
 		lo = 0 // barras absolutas nascem do zero
 	}
@@ -295,16 +304,16 @@ func (b *Bars) Draw(dst *image.RGBA) {
 		x := r.Min.X + i*(bw+gap)
 		f := (v - lo) / (hi - lo)
 		y := r.Max.Y - int(f*float64(r.Dy())+0.5)
-		var barra image.Rectangle
+		var bar image.Rectangle
 		if y <= zeroY {
-			barra = image.Rect(x, y, x+bw, zeroY)
+			bar = image.Rect(x, y, x+bw, zeroY)
 		} else {
-			barra = image.Rect(x, zeroY, x+bw, y)
+			bar = image.Rect(x, zeroY, x+bw, y)
 		}
-		if barra.Dy() < 1 {
-			barra.Max.Y = barra.Min.Y + 1
+		if bar.Dy() < 1 {
+			bar.Max.Y = bar.Min.Y + 1
 		}
-		render.FillRoundRect(dst, barra, radius, th.Accent)
+		render.FillRoundRect(dst, bar, radius, th.Accent)
 	}
 	line := max(th.BorderPx(), 1)
 	render.FillRect(dst, image.Rect(r.Min.X, zeroY-line/2, r.Max.X, zeroY-line/2+line), th.SurfaceBorder)
@@ -312,7 +321,7 @@ func (b *Bars) Draw(dst *image.RGBA) {
 
 // formatoCurto devolve o número com poucos dígitos para os rótulos de
 // extremos (inteiro quando é inteiro; senão uma casa decimal).
-func formatoCurto(v float64) string {
+func shortFormat(v float64) string {
 	if v == float64(int64(v)) {
 		return strconv.FormatInt(int64(v), 10)
 	}

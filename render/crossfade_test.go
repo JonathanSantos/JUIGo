@@ -44,7 +44,7 @@ func TestCrossFadeMeio(t *testing.T) {
 	dst := image.NewRGBA(b)
 	CrossFade(dst, a, bb, b, 0.5)
 	esperado := [4]int{110, 110, 125, 255}
-	for ch := 0; ch < 4; ch++ {
+	for ch := range 4 {
 		got := int(dst.Pix[ch])
 		if diff := got - esperado[ch]; diff < -1 || diff > 1 {
 			t.Fatalf("canal %d = %d, esperava ~%d", ch, got, esperado[ch])

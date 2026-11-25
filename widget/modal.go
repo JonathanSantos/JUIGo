@@ -5,6 +5,7 @@ import (
 
 	"github.com/JonathanSantos/JUIGo/event"
 	"github.com/JonathanSantos/JUIGo/render"
+	"github.com/JonathanSantos/JUIGo/state"
 	"github.com/JonathanSantos/JUIGo/theme"
 )
 
@@ -24,12 +25,16 @@ type OverlaySpanning interface {
 //	m.Show()
 type Modal struct {
 	BaseWidget
+	// kids é a fatia reutilizada de Children (sem alocação por chamada).
+	kids [1]Widget
 	// closeOnBackdrop permite fechar clicando no pano de fundo (ver
 	// CloseOnBackdrop; padrão true).
 	closeOnBackdrop bool
 	// onClose é chamado quando o modal fecha, por qualquer caminho (ver
 	// OnClose).
 	onClose func()
+	// boundOpen é o State de visibilidade vinculado (ver BindOpen).
+	boundOpen *state.State[bool]
 
 	content Widget
 	// scroll embrulha o conteúdo: quando o painel precisa ser recortado à
@@ -71,7 +76,8 @@ func (m *Modal) Children() []Widget {
 	if m.scroll == nil {
 		return nil
 	}
-	return []Widget{m.scroll}
+	m.kids[0] = m.scroll
+	return m.kids[:]
 }
 
 // SetTheme define um tema explícito e o propaga imediatamente à subárvore.
@@ -90,6 +96,25 @@ func (m *Modal) Focusable() bool {
 	return true
 }
 
+// BindOpen vincula a visibilidade ao State em duas vias: Set(true) abre,
+// Set(false) fecha, e fechar pelo usuário (Escape, clique fora, Close) faz
+// Set(false) — o diálogo vira estado da aplicação, sem guardar a referência
+// do Modal para chamar Show. Encadeável.
+func (m *Modal) BindOpen(s *state.State[bool]) *Modal {
+	m.boundOpen = s
+	state.WatchWeak(s, m, func(m *Modal, open bool) {
+		if open {
+			m.Show()
+		} else {
+			m.Close()
+		}
+	})
+	if s.Get() {
+		m.Show()
+	}
+	return m
+}
+
 // Shown informa se o modal está aberto.
 func (m *Modal) Shown() bool {
 	return m.shown
@@ -102,6 +127,9 @@ func (m *Modal) Show() {
 	}
 	m.shown = true
 	OpenOverlay(m)
+	if m.boundOpen != nil && !m.boundOpen.Get() {
+		m.boundOpen.Set(true)
+	}
 }
 
 // Close fecha o modal (restaurando o foco anterior) e chama OnClose.
@@ -111,6 +139,9 @@ func (m *Modal) Close() {
 	}
 	m.shown = false
 	CloseOverlay(m)
+	if m.boundOpen != nil && m.boundOpen.Get() {
+		m.boundOpen.Set(false)
+	}
 	if m.onClose != nil {
 		m.onClose()
 	}
@@ -127,11 +158,11 @@ func (m *Modal) Layout(bounds image.Rectangle) {
 	pref := m.content.PreferredSize()
 	w := pref.X + 2*pad
 	h := pref.Y + 2*pad
-	if max := bounds.Dx() - 2*pad; w > max {
-		w = max
+	if limit := bounds.Dx() - 2*pad; w > limit {
+		w = limit
 	}
-	if max := bounds.Dy() - 2*pad; h > max {
-		h = max
+	if limit := bounds.Dy() - 2*pad; h > limit {
+		h = limit
 	}
 	x := bounds.Min.X + (bounds.Dx()-w)/2
 	y := bounds.Min.Y + (bounds.Dy()-h)/2

@@ -35,7 +35,7 @@ func TestGrowDistribuiSobraProporcional(t *testing.T) {
 		t.Fatalf("posições erradas: a=%v b=%v c=%v", a.Bounds(), b.Bounds(), c.Bounds())
 	}
 	// Sem tipo perdido: Grow devolve o tipo concreto.
-	var _ *Button = Grow(NewButton("t", nil), 1)
+	var _ = Grow(NewButton("t", nil), 1)
 }
 
 func TestSpacerEmpurraIrmaos(t *testing.T) {

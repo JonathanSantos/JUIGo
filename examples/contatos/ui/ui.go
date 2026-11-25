@@ -72,8 +72,8 @@ func New(agenda *contatos.Agenda, repo contatos.Repositorio) *Vista {
 	notas := juigo.NewTextArea("Anotações sobre o contato…").BindValue(v.notas)
 	abas := juigo.NewTabs().
 		Add("Dados", formulario).
-		Add("Notas", juigo.NewVBox(juigo.Grow(notas, 1)))
-	detalhe := juigo.BindDisabled(abas, v.semSelecao)
+		Add("Notas", juigo.NewVBox(notas.Grow(1)))
+	detalhe := abas.BindDisabled(v.semSelecao)
 
 	v.selecionado.Watch(func(i int) {
 		if i >= 0 && i < len(v.visiveis) {
@@ -86,10 +86,10 @@ func New(agenda *contatos.Agenda, repo contatos.Repositorio) *Vista {
 
 	v.Raiz = juigo.NewHBox(
 		juigo.NewVBox(
-			juigo.NewHBox(juigo.Grow(busca, 1), adicionar).Gap(8),
-			juigo.Grow(juigo.NewScroll(v.tabela), 1),
+			juigo.NewHBox(busca.Grow(1), adicionar).Gap(8),
+			juigo.NewScroll(v.tabela).Grow(1),
 		).Gap(8),
-		juigo.Grow(detalhe, 1),
+		detalhe.Grow(1),
 	).Pad(12).Gap(16)
 
 	v.reprojeta()

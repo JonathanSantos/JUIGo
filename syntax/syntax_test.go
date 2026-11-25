@@ -70,14 +70,14 @@ func TestGoStringsEEscapes(t *testing.T) {
 func TestGoComentarioDeBlocoEntreLinhas(t *testing.T) {
 	h := Go()
 	st1, s1 := estilos(t, h, `antes /* abre`, 0)
-	if s1 != goComentario || classeEm(st1, 8) != widget.SyntaxComment {
+	if s1 != goComment || classeEm(st1, 8) != widget.SyntaxComment {
 		t.Fatalf("abrir /* deveria carregar o estado; %d", s1)
 	}
 	if classeEm(st1, 0) != widget.SyntaxText {
 		t.Fatal("o que vem antes do /* segue comum")
 	}
 	st2, s2 := estilos(t, h, `func dentro`, s1)
-	if s2 != goComentario || classeEm(st2, 0) != widget.SyntaxComment {
+	if s2 != goComment || classeEm(st2, 0) != widget.SyntaxComment {
 		t.Fatal("dentro do bloco, até 'func' é comentário")
 	}
 	st3, s3 := estilos(t, h, `fecha */ func f()`, s2)

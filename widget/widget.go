@@ -69,12 +69,20 @@ type BaseWidget struct {
 	// (offscreen, árvores recém-criadas): o dano cai no fallback global
 	// dos hooks, que o App reparte entre todas as janelas.
 	session *Session
+	// mountGen é a geração de mount da sessão em que o widget foi visto
+	// pela última vez: a Session a carimba a cada renderização, e um
+	// carimbo atrasado revela que o widget saiu da árvore (ver
+	// Session.pruneDetached).
+	mountGen uint64
 	// grow e cross são os parâmetros de layout em VBox/HBox, definidos
 	// pelas funções Grow, Centered, AtStart e AtEnd (ver flex.go).
 	grow  int
 	cross crossAlign
 	// tooltip é o texto de dica definido pela função Tooltip (tooltip.go).
 	tooltip string
+	// onFocus e onBlur são os callbacks de foco (ver OnFocus/OnBlur dos
+	// widgets focáveis), disparados por notifyFocus.
+	onFocus, onBlur func()
 	// disabled tira o widget (e sua subárvore) da interação — aplicado
 	// centralmente no roteamento (ver disabled.go).
 	disabled bool
@@ -115,12 +123,55 @@ func (b *BaseWidget) damage(r image.Rectangle) {
 // mount dela.
 func (b *BaseWidget) attachSession(s *Session) {
 	b.session = s
+	b.mountGen = s.mountGen
+}
+
+// mountedIn informa se o widget foi alcançado pelo mount mais recente de s.
+func (b *BaseWidget) mountedIn(s *Session) bool {
+	return b.session == s && b.mountGen == s.mountGen
+}
+
+// detached informa se o widget já esteve numa sessão e deixou de ser
+// alcançado pelos mounts dela (removido da árvore, aba dormente): é o sinal
+// para animações próprias (spinner) pararem de se reagendar. A folga de uma
+// geração cobre o intervalo entre o início de um Render e o mount.
+func (b *BaseWidget) detached() bool {
+	return b.session != nil && b.session.mountGen-b.mountGen > 1
+}
+
+// notifyFocus dispara o callback de foco correspondente; os widgets
+// focáveis o chamam ao tratar event.FocusEvent, depois de atualizar o
+// próprio estado.
+func (b *BaseWidget) notifyFocus(gained bool) {
+	if fn := b.onFocus; gained && fn != nil {
+		fn()
+	}
+	if fn := b.onBlur; !gained && fn != nil {
+		fn()
+	}
+}
+
+// setFocusCallbacks registra os callbacks de foco; nil mantém o atual.
+func (b *BaseWidget) setFocusCallbacks(onFocus, onBlur func()) {
+	if onFocus != nil {
+		b.onFocus = onFocus
+	}
+	if onBlur != nil {
+		b.onBlur = onBlur
+	}
+}
+
+// base devolve o próprio BaseWidget — o alvo das referências fracas de
+// bindings genéricos (BindDisabled).
+func (b *BaseWidget) base() *BaseWidget {
+	return b
 }
 
 // sessionHost é satisfeito por todo widget que embute BaseWidget; a Session
 // o usa para se anexar à árvore durante o próprio mount.
 type sessionHost interface {
 	attachSession(s *Session)
+	mountedIn(s *Session) bool
 }
 
 // Bounds devolve o retângulo absoluto definido pelo último Layout.

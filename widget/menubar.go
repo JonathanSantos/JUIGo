@@ -96,7 +96,7 @@ func (m *MenuBar) titleRect(i int) image.Rectangle {
 	b := m.Bounds()
 	pad := m.theme.PaddingPx()
 	x := b.Min.X + m.theme.Px(4)
-	for j := 0; j < i; j++ {
+	for j := range i {
 		x += m.theme.MeasureString(m.menus[j].title) + 2*pad
 	}
 	return image.Rect(x, b.Min.Y, x+m.theme.MeasureString(m.menus[i].title)+2*pad, b.Min.Y+m.barHeight())
@@ -213,9 +213,10 @@ func (m *MenuBar) Draw(dst *image.RGBA) {
 	for i := range m.menus {
 		r := m.titleRect(i)
 		pill := r.Inset(th.Px(2))
-		if i == m.open {
+		switch i {
+		case m.open:
 			render.FillRoundRect(view, pill, radius, th.Selection)
-		} else if i == m.hover {
+		case m.hover:
 			render.FillRoundRect(view, pill, radius, th.HoverBackground)
 		}
 		y := r.Min.Y + (r.Dy()-th.LineHeight())/2 + th.Ascent()
@@ -300,7 +301,7 @@ func (p *menuPane) itemRect(i int) image.Rectangle {
 	th := p.bar.theme
 	b := p.panel
 	y := b.Min.Y + th.Px(4)
-	for j := 0; j < i; j++ {
+	for j := range i {
 		y += p.rowH(th, isSeparator(p.items[j]))
 	}
 	return image.Rect(b.Min.X+th.Px(4), y, b.Max.X-th.Px(4), y+p.rowH(th, isSeparator(p.items[i])))

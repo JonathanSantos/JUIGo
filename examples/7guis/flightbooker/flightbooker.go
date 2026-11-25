@@ -25,7 +25,7 @@ func UI() juigo.Widget {
 	ida.Set(inicial)
 	var volta *quick.DateField
 	volta = quick.Date("Volta:", "Data inválida (DD/MM/AAAA)").
-		Disabled(soIda).
+		BindDisabled(soIda).
 		Rule(func() string {
 			if soIda.Get() || volta.Value().IsZero() || ida.Value().IsZero() {
 				return "" // sem volta (ou formato ainda inválido): nada a comparar
@@ -38,7 +38,7 @@ func UI() juigo.Widget {
 	volta.Set(inicial)
 
 	f := quick.Form(tipo, ida, volta)
-	reservar := juigo.BindDisabled(juigo.NewButton("Reservar", func() {
+	reservar := juigo.NewButton("Reservar", func() {
 		f.Model().Submit(func() {
 			msg := "Reservado: só ida em " + ida.Value().Format("02/01/2006")
 			if !soIda.Get() {
@@ -47,7 +47,7 @@ func UI() juigo.Widget {
 			}
 			quick.Alert(msg)
 		})
-	}), f.Model().Invalid())
+	}).BindDisabled(f.Model().Invalid())
 
 	return juigo.NewVBox(f, quick.Buttons(reservar)).Pad(16)
 }

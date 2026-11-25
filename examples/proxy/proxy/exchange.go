@@ -68,8 +68,8 @@ func shortType(ct string) string {
 		ct = ct[:i]
 	}
 	ct = strings.TrimSpace(ct)
-	if i := strings.IndexByte(ct, '/'); i >= 0 {
-		return ct[i+1:]
+	if _, after, ok := strings.Cut(ct, "/"); ok {
+		return after
 	}
 	return ct
 }

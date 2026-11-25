@@ -50,9 +50,9 @@ func (s *SplitPane) Vertical() *SplitPane {
 	return s
 }
 
-// Ratio define a fração do primeiro painel (0..1, ajustada ao intervalo).
-// Encadeável.
-func (s *SplitPane) Ratio(f float64) *SplitPane {
+// SetRatio define a fração do primeiro painel (0..1, ajustada ao
+// intervalo). Encadeável.
+func (s *SplitPane) SetRatio(f float64) *SplitPane {
 	s.setRatio(f)
 	return s
 }
@@ -71,12 +71,12 @@ func (s *SplitPane) Min(l int) *SplitPane {
 func (s *SplitPane) BindRatio(st *state.State[float64]) *SplitPane {
 	s.bound = st
 	s.setRatio(st.Get())
-	st.Watch(func(v float64) { s.setRatio(v) })
+	state.WatchWeak(st, s, func(s *SplitPane, v float64) { s.setRatio(v) })
 	return s
 }
 
-// CurrentRatio devolve a fração atual do primeiro painel.
-func (s *SplitPane) CurrentRatio() float64 {
+// Ratio devolve a fração atual do primeiro painel.
+func (s *SplitPane) Ratio() float64 {
 	return s.ratio
 }
 
@@ -232,11 +232,15 @@ func (s *SplitPane) ratioAt(pos image.Point) float64 {
 // HandleEvent arrasta o divisor (com captura de mouse) e o move pelas setas
 // quando focado.
 func (s *SplitPane) HandleEvent(ev event.Event) bool {
+	if s.theme == nil {
+		return false // antes do mount o divisor não tem geometria
+	}
 	switch e := ev.(type) {
 	case event.KeyEvent:
 		return s.handleKey(e.Key)
 	case event.FocusEvent:
 		s.focused = e.Gained
+		s.notifyFocus(e.Gained)
 		s.damage(s.splitterRect())
 		return true
 	case event.MouseEvent:
@@ -282,7 +286,7 @@ func (s *SplitPane) handleKey(k event.Key) bool {
 		return false
 	}
 	step := float64(s.theme.Px(16)) / float64(avail)
-	var dec, inc event.Key = event.KeyLeft, event.KeyRight
+	var dec, inc = event.KeyLeft, event.KeyRight
 	if s.vertical {
 		dec, inc = event.KeyUp, event.KeyDown
 	}

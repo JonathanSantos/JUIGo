@@ -40,10 +40,10 @@ func UI() juigo.Widget {
 
 	return juigo.NewVBox(
 		juigo.NewHBox(
-			juigo.Grow(juigo.NewInput("Celsius").BindValue(celsius), 1),
-			juigo.Centered(juigo.NewText("Celsius =")),
-			juigo.Grow(juigo.NewInput("Fahrenheit").BindValue(fahrenheit), 1),
-			juigo.Centered(juigo.NewText("Fahrenheit")),
+			juigo.NewInput("Celsius").BindValue(celsius).Grow(1),
+			juigo.NewText("Celsius =").Centered(),
+			juigo.NewInput("Fahrenheit").BindValue(fahrenheit).Grow(1),
+			juigo.NewText("Fahrenheit").Centered(),
 		),
 	).Pad(16)
 }

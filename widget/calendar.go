@@ -10,17 +10,8 @@ import (
 	"github.com/JonathanSantos/JUIGo/state"
 )
 
-// meses são os nomes exibidos no cabeçalho do Calendar.
-var meses = [12]string{
-	"janeiro", "fevereiro", "março", "abril", "maio", "junho",
-	"julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
-}
-
-// diasSemana são as iniciais da linha de cabeçalho (domingo primeiro).
-var diasSemana = [7]string{"D", "S", "T", "Q", "Q", "S", "S"}
-
-// diasStr são os rótulos 1..31 pré-formatados — Draw não aloca.
-var diasStr = [32]string{
+// dayLabels são os rótulos 1..31 pré-formatados — Draw não aloca.
+var dayLabels = [32]string{
 	"", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
 	"13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23",
 	"24", "25", "26", "27", "28", "29", "30", "31",
@@ -37,16 +28,17 @@ var diasStr = [32]string{
 type Calendar struct {
 	BaseWidget
 	// view é o primeiro dia do mês exibido.
-	view   time.Time
-	sel    time.Time
-	bound  *state.State[time.Time]
-	onPick func(time.Time)
-	hover  int // célula sob o ponteiro (0..41; -1 = nenhuma)
+	view     time.Time
+	sel      time.Time
+	bound    *state.State[time.Time]
+	onChange func(time.Time)
+	hover    int // célula sob o ponteiro (0..41; -1 = nenhuma)
 	// titulo é o cabeçalho "mês ano" cacheado por mês exibido (Draw não
 	// aloca).
-	titulo     string
-	tituloView time.Time
-	clip       image.RGBA
+	title       string
+	titleView   time.Time
+	titleLocale uint64 // geração do locale em que o título foi formatado
+	clip        image.RGBA
 }
 
 // NewCalendar cria um calendário exibindo o mês atual. O tema é herdado no
@@ -67,21 +59,32 @@ func monthStart(t time.Time) time.Time {
 func (c *Calendar) BindValue(s *state.State[time.Time]) *Calendar {
 	c.bound = s
 	c.adopt(s.Get())
-	s.Watch(func(t time.Time) { c.adopt(t) })
+	state.WatchWeak(s, c, func(c *Calendar, t time.Time) { c.adopt(t) })
 	return c
 }
 
-// OnPick define o callback chamado quando um dia é clicado (depois do Set
-// do State vinculado) — o gancho de popups que fecham na escolha.
-// Encadeável.
-func (c *Calendar) OnPick(fn func(time.Time)) *Calendar {
-	c.onPick = fn
+// OnChange define o callback chamado, com a data, quando o usuário escolhe
+// um dia (depois do Set do State vinculado) — o gancho de popups que fecham
+// na escolha. Encadeável.
+func (c *Calendar) OnChange(fn func(time.Time)) *Calendar {
+	c.onChange = fn
 	return c
 }
 
-// Selected devolve a data selecionada (zero = nenhuma).
-func (c *Calendar) Selected() time.Time {
+// Value devolve a data selecionada (zero = nenhuma).
+func (c *Calendar) Value() time.Time {
 	return c.sel
+}
+
+// SetValue move a seleção (e o mês exibido) para a data dada (zero limpa a
+// seleção) e sincroniza o State vinculado, se houver. Não dispara OnChange.
+// Encadeável.
+func (c *Calendar) SetValue(t time.Time) *Calendar {
+	c.adopt(t)
+	if c.bound != nil && !c.bound.Get().Equal(t) {
+		c.bound.Set(t)
+	}
+	return c
 }
 
 // adopt move a seleção (e o mês exibido) para t; zero limpa a seleção.
@@ -93,22 +96,22 @@ func (c *Calendar) adopt(t time.Time) {
 		}
 		return
 	}
-	dia := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
-	if !c.sel.Equal(dia) || !c.view.Equal(monthStart(dia)) {
-		c.sel = dia
-		c.view = monthStart(dia)
+	day := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	if !c.sel.Equal(day) || !c.view.Equal(monthStart(day)) {
+		c.sel = day
+		c.view = monthStart(day)
 		c.Invalidate()
 	}
 }
 
-// pick seleciona a data, sincroniza o State e dispara OnPick.
+// pick seleciona a data, sincroniza o State e dispara OnChange.
 func (c *Calendar) pick(t time.Time) {
 	c.adopt(t)
 	if c.bound != nil && !c.bound.Get().Equal(t) {
 		c.bound.Set(t)
 	}
-	if c.onPick != nil {
-		c.onPick(t)
+	if c.onChange != nil {
+		c.onChange(t)
 	}
 }
 
@@ -178,7 +181,7 @@ func (c *Calendar) CursorShape() CursorShape { return CursorHand }
 // HandleEvent navega pelos ‹ ›, seleciona no clique e rastreia o hover.
 func (c *Calendar) HandleEvent(ev event.Event) bool {
 	e, ok := ev.(event.MouseEvent)
-	if !ok {
+	if !ok || c.theme == nil { // sem tema não há geometria de células
 		return false
 	}
 	switch e.Kind {
@@ -236,17 +239,18 @@ func (c *Calendar) Draw(dst *image.RGBA) {
 		w := th.MeasureString(s)
 		th.DrawText(view, s, image.Pt(r.Min.X+(r.Dx()-w)/2, hy), th.Text)
 	}
-	if !c.tituloView.Equal(c.view) {
-		c.titulo = fmt.Sprintf("%s %d", meses[c.view.Month()-1], c.view.Year())
-		c.tituloView = c.view
+	if !c.titleView.Equal(c.view) || c.titleLocale != localeGen {
+		c.title = fmt.Sprintf("%s %d", locale.Months[c.view.Month()-1], c.view.Year())
+		c.titleView = c.view
+		c.titleLocale = localeGen
 	}
-	tw := th.MeasureString(c.titulo)
-	th.DrawText(view, c.titulo, image.Pt(b.Min.X+(b.Dx()-tw)/2, hy), th.Text)
+	tw := th.MeasureString(c.title)
+	th.DrawText(view, c.title, image.Pt(b.Min.X+(b.Dx()-tw)/2, hy), th.Text)
 
 	// Iniciais da semana, em legenda apagada.
 	f := th.Caption()
 	wy := b.Min.Y + c.headerH() + (c.weekH()-f.LineHeight())/2 + f.Ascent()
-	for i, d := range diasSemana {
+	for i, d := range locale.Weekdays {
 		dw := f.Measure(d)
 		x := b.Min.X + i*c.cellW() + (c.cellW()-dw)/2
 		f.Draw(view, d, image.Pt(x, wy), th.Placeholder)
@@ -254,29 +258,29 @@ func (c *Calendar) Draw(dst *image.RGBA) {
 
 	// Grade de dias: pílula de hover, pílula da seleção, hoje em Accent e
 	// meses vizinhos apagados.
-	hoje := time.Now()
-	inicio := c.gridStart()
-	for i := 0; i < 42; i++ {
-		dia := inicio.AddDate(0, 0, i)
+	today := time.Now()
+	start := c.gridStart()
+	for i := range 42 {
+		day := start.AddDate(0, 0, i)
 		r := c.cellRect(i)
 		pill := r.Inset(th.Px(2))
-		selecionado := !c.sel.IsZero() && dia.Equal(c.sel)
-		if selecionado {
+		selected := !c.sel.IsZero() && day.Equal(c.sel)
+		if selected {
 			render.FillRoundRect(view, pill, radius, th.Selection)
 		} else if i == c.hover {
 			render.FillRoundRect(view, pill, radius, th.HoverBackground)
 		}
-		cor := th.Text
-		if dia.Month() != c.view.Month() {
-			cor = th.Placeholder
+		clr := th.Text
+		if day.Month() != c.view.Month() {
+			clr = th.Placeholder
 		}
-		if dia.Year() == hoje.Year() && dia.YearDay() == hoje.YearDay() && !selecionado {
-			cor = th.Accent
+		if day.Year() == today.Year() && day.YearDay() == today.YearDay() && !selected {
+			clr = th.Accent
 		}
-		s := diasStr[dia.Day()]
+		s := dayLabels[day.Day()]
 		sw := th.MeasureString(s)
 		y := r.Min.Y + (r.Dy()-th.LineHeight())/2 + th.Ascent()
-		th.DrawText(view, s, image.Pt(r.Min.X+(r.Dx()-sw)/2, y), cor)
+		th.DrawText(view, s, image.Pt(r.Min.X+(r.Dx()-sw)/2, y), clr)
 	}
 	c.drawDisabledOverlay(dst)
 }

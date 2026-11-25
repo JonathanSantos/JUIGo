@@ -11,14 +11,14 @@ import (
 // Para layout automático, use VBox ou HBox.
 type Container struct {
 	BaseWidget
-	// Padding é o espaço interno das bordas em unidades LÓGICAS (convertido
+	// padding é o espaço interno das bordas em unidades LÓGICAS (convertido
 	// pela escala do tema no layout). Negativo usa o padrão: sem padding.
-	// Aplicado apenas pelos containers de layout (VBox/HBox).
-	Padding int
-	// Spacing é o espaço entre filhos consecutivos em unidades lógicas.
+	// Aplicado apenas pelos containers de layout (ver Pad de VBox/HBox/Grid).
+	padding int
+	// spacing é o espaço entre filhos consecutivos em unidades lógicas.
 	// Negativo usa o padrão do tema (Theme.Spacing). Aplicado apenas pelos
-	// containers de layout (VBox/HBox).
-	Spacing int
+	// containers de layout (ver Gap de VBox/HBox/Grid).
+	spacing int
 
 	children []Widget
 }
@@ -26,7 +26,7 @@ type Container struct {
 // NewContainer cria um container de posicionamento absoluto com os filhos
 // dados. O tema é herdado no mount.
 func NewContainer(children ...Widget) *Container {
-	c := &Container{Padding: -1, Spacing: -1}
+	c := &Container{padding: -1, spacing: -1}
 	c.Add(children...)
 	return c
 }
@@ -83,7 +83,7 @@ func (c *Container) PreferredSize() image.Point {
 // metrics resolve Spacing e Padding para pixels na escala do tema, aplicando
 // os padrões (Spacing do tema; padding zero) quando os campos são negativos.
 func (c *Container) metrics() (spacingPx, paddingPx int) {
-	spacing, padding := c.Spacing, c.Padding
+	spacing, padding := c.spacing, c.padding
 	if spacing < 0 {
 		if c.theme != nil {
 			spacing = c.theme.Spacing
@@ -111,21 +111,21 @@ type VBox struct {
 // padding. Ajuste com Gap e Pad (unidades lógicas, escaladas pelo tema).
 func NewVBox(children ...Widget) *VBox {
 	v := &VBox{}
-	v.Padding = -1
-	v.Spacing = -1
+	v.padding = -1
+	v.spacing = -1
 	v.Add(children...)
 	return v
 }
 
 // Gap define o espaço entre filhos, em unidades lógicas. Encadeável.
 func (v *VBox) Gap(spacing int) *VBox {
-	v.Spacing = spacing
+	v.spacing = spacing
 	return v
 }
 
 // Pad define o espaço interno das bordas, em unidades lógicas. Encadeável.
 func (v *VBox) Pad(padding int) *VBox {
-	v.Padding = padding
+	v.padding = padding
 	return v
 }
 
@@ -168,8 +168,8 @@ func (v *VBox) placeChild(ch Widget, x0, x1, y, h int) {
 		return
 	}
 	w := ch.PreferredSize().X
-	if max := x1 - x0; w > max {
-		w = max
+	if limit := x1 - x0; w > limit {
+		w = limit
 	}
 	x := x0
 	switch align {
@@ -210,21 +210,21 @@ type HBox struct {
 // padding. Ajuste com Gap e Pad (unidades lógicas, escaladas pelo tema).
 func NewHBox(children ...Widget) *HBox {
 	h := &HBox{}
-	h.Padding = -1
-	h.Spacing = -1
+	h.padding = -1
+	h.spacing = -1
 	h.Add(children...)
 	return h
 }
 
 // Gap define o espaço entre filhos, em unidades lógicas. Encadeável.
 func (h *HBox) Gap(spacing int) *HBox {
-	h.Spacing = spacing
+	h.spacing = spacing
 	return h
 }
 
 // Pad define o espaço interno das bordas, em unidades lógicas. Encadeável.
 func (h *HBox) Pad(padding int) *HBox {
-	h.Padding = padding
+	h.padding = padding
 	return h
 }
 
@@ -268,8 +268,8 @@ func (h *HBox) placeChild(ch Widget, y0, y1, x, w int) {
 		return
 	}
 	ph := ch.PreferredSize().Y
-	if max := y1 - y0; ph > max {
-		ph = max
+	if limit := y1 - y0; ph > limit {
+		ph = limit
 	}
 	y := y0
 	switch align {

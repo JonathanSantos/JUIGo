@@ -18,8 +18,8 @@ import (
 // State[float64] em duas vias.
 type Slider struct {
 	BaseWidget
-	// Min e Max delimitam o intervalo de valores (Min <= Max).
-	Min, Max float64
+	// min e max delimitam o intervalo de valores (Min <= Max).
+	min, max float64
 
 	// step é o incremento das setas do teclado (ver Step); zero usa 5% do
 	// intervalo.
@@ -54,7 +54,30 @@ func NewSlider(min, max float64) *Slider {
 	if max < min {
 		min, max = max, min
 	}
-	return &Slider{Min: min, Max: max, value: min}
+	return &Slider{min: min, max: max, value: min}
+}
+
+// Min devolve o limite inferior do intervalo.
+func (s *Slider) Min() float64 {
+	return s.min
+}
+
+// Max devolve o limite superior do intervalo.
+func (s *Slider) Max() float64 {
+	return s.max
+}
+
+// SetRange troca o intervalo (invertido se max < min), reajusta o valor
+// atual para caber nele e agenda um redesenho. Não dispara callbacks.
+// Encadeável.
+func (s *Slider) SetRange(min, max float64) *Slider {
+	if max < min {
+		min, max = max, min
+	}
+	s.min, s.max = min, max
+	s.SetValue(s.value)
+	s.Invalidate()
+	return s
 }
 
 // Value devolve o valor atual.
@@ -62,15 +85,19 @@ func (s *Slider) Value() float64 {
 	return s.value
 }
 
-// SetValue define o valor programaticamente (limitado ao intervalo) e agenda
-// um redesenho. Não dispara OnChange; com binding, prefira State.Set.
-func (s *Slider) SetValue(v float64) {
+// SetValue define o valor programaticamente (limitado ao intervalo),
+// sincroniza o State vinculado (se houver) e agenda um redesenho. Não
+// dispara OnChange. Encadeável.
+func (s *Slider) SetValue(v float64) *Slider {
 	v = s.clamp(v)
-	if s.value == v {
-		return
+	if s.value != v {
+		s.value = v
+		s.Invalidate()
 	}
-	s.value = v
-	s.Invalidate()
+	if s.bound != nil && s.bound.Get() != v {
+		s.bound.Set(v)
+	}
+	return s
 }
 
 // BindValue vincula o valor ao State em DUAS vias: ajustes do usuário fazem
@@ -78,7 +105,7 @@ func (s *Slider) SetValue(v float64) {
 func (s *Slider) BindValue(st *state.State[float64]) *Slider {
 	s.bound = st
 	s.SetValue(st.Get())
-	st.Watch(func(v float64) {
+	state.WatchWeak(st, s, func(s *Slider, v float64) {
 		if s.value != s.clamp(v) {
 			s.SetValue(v)
 		}
@@ -110,6 +137,7 @@ func (s *Slider) HandleEvent(ev event.Event) bool {
 		return s.handleKey(e.Key)
 	case event.FocusEvent:
 		s.focused = e.Gained
+		s.notifyFocus(e.Gained)
 		return true
 	case event.MouseEvent:
 		switch e.Kind {
@@ -147,7 +175,7 @@ func (s *Slider) HandleEvent(ev event.Event) bool {
 func (s *Slider) handleKey(k event.Key) bool {
 	step := s.step
 	if step <= 0 {
-		step = (s.Max - s.Min) / 20
+		step = (s.max - s.min) / 20
 	}
 	switch k {
 	case event.KeyLeft:
@@ -155,9 +183,9 @@ func (s *Slider) handleKey(k event.Key) bool {
 	case event.KeyRight:
 		return s.setFromUser(s.value + step)
 	case event.KeyHome:
-		return s.setFromUser(s.Min)
+		return s.setFromUser(s.min)
 	case event.KeyEnd:
-		return s.setFromUser(s.Max)
+		return s.setFromUser(s.max)
 	}
 	return false
 }
@@ -181,22 +209,22 @@ func (s *Slider) setFromUser(v float64) bool {
 
 // clamp limita v ao intervalo [Min, Max].
 func (s *Slider) clamp(v float64) float64 {
-	if v < s.Min {
-		return s.Min
+	if v < s.min {
+		return s.min
 	}
-	if v > s.Max {
-		return s.Max
+	if v > s.max {
+		return s.max
 	}
 	return v
 }
 
 // ratio devolve a posição relativa do valor no intervalo, em [0, 1].
 func (s *Slider) ratio() float64 {
-	span := s.Max - s.Min
+	span := s.max - s.min
 	if span <= 0 {
 		return 0
 	}
-	return (s.value - s.Min) / span
+	return (s.value - s.min) / span
 }
 
 // trackSpan devolve os X inicial e final do curso da alça (centro da alça
@@ -214,10 +242,10 @@ func (s *Slider) valueAt(x int) float64 {
 	}
 	x0, x1 := s.trackSpan()
 	if x1 <= x0 {
-		return s.Min
+		return s.min
 	}
 	rel := float64(x-x0) / float64(x1-x0)
-	return s.Min + rel*(s.Max-s.Min)
+	return s.min + rel*(s.max-s.min)
 }
 
 // Draw desenha o trilho (ativo até a alça, na cor de destaque) e a alça.
@@ -230,10 +258,7 @@ func (s *Slider) Draw(dst *image.RGBA) {
 
 	x0, x1 := s.trackSpan()
 	cy := b.Min.Y + b.Dy()/2
-	half := th.Px(th.SliderTrackThickness) / 2
-	if half < 1 {
-		half = 1
-	}
+	half := max(th.Px(th.SliderTrackThickness)/2, 1)
 	hx := x0 + int(s.ratio()*float64(x1-x0))
 
 	// Trilho completo e trecho ativo por cima: com raio o trilho vira uma

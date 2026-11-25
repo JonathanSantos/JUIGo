@@ -23,6 +23,8 @@ import (
 // maior que a área visível.
 type Scroll struct {
 	BaseWidget
+	// kids é a fatia reutilizada de Children (sem alocação por chamada).
+	kids [1]Widget
 
 	child  Widget
 	offset int     // deslocamento vertical do conteúdo, em pixels
@@ -36,6 +38,13 @@ type Scroll struct {
 	accumX     float64
 	// axis trava cada gesto de trackpad no eixo dominante (rolagem 2D).
 	axis axisLock
+
+	// stick mantém a rolagem colada ao FIM enquanto o conteúdo cresce (ver
+	// StickToEnd); atEnd registra se o último layout terminou no fim, e
+	// toEnd pede o salto ao fim no próximo layout (ver ScrollToEnd).
+	stick bool
+	atEnd bool
+	toEnd bool
 }
 
 // NewScroll cria um Scroll para o filho dado. O tema é herdado no mount.
@@ -56,7 +65,10 @@ func (s *Scroll) Children() []Widget {
 	if s.child == nil {
 		return nil
 	}
-	return []Widget{s.child}
+	// Fatia de um array do próprio Scroll: consultado a cada mount e a cada
+	// evento de mouse, não pode alocar.
+	s.kids[0] = s.child
+	return s.kids[:]
 }
 
 // SetTheme define um tema explícito e o propaga imediatamente à subárvore,
@@ -75,6 +87,40 @@ func (s *Scroll) Offset() int {
 // intervalo válido no próximo layout), e agenda um redesenho.
 func (s *Scroll) ScrollTo(y int) {
 	s.offset = y
+	s.toEnd = false
+	s.atEnd = false // o layout recalcula; um salto para cima solta o StickToEnd
+	s.Invalidate()
+}
+
+// ScrollToEnd rola até o fim do conteúdo no próximo layout — inclusive o
+// conteúdo acrescentado nesta mesma rodada de eventos (a mensagem recém
+// adicionada a um chat, a linha nova de um log).
+func (s *Scroll) ScrollToEnd() {
+	s.toEnd = true
+	s.Invalidate()
+}
+
+// StickToEnd liga o modo "colado ao fim": enquanto a rolagem estiver no fim,
+// conteúdo novo a mantém no fim (chats, logs, terminais); se o usuário
+// rolar para cima, a posição dele é respeitada até voltar ao fim.
+// Encadeável.
+func (s *Scroll) StickToEnd(on bool) *Scroll {
+	s.stick = on
+	s.atEnd = on // nasce colado: o primeiro conteúdo já aparece no fim
+	s.Invalidate()
+	return s
+}
+
+// OffsetX devolve o deslocamento horizontal atual, em pixels (zero sem
+// Horizontal).
+func (s *Scroll) OffsetX() int {
+	return s.offsetX
+}
+
+// ScrollToX define o deslocamento horizontal, em pixels (limitado ao
+// intervalo válido no próximo layout; sem efeito sem Horizontal).
+func (s *Scroll) ScrollToX(x int) {
+	s.offsetX = x
 	s.Invalidate()
 }
 
@@ -96,22 +142,20 @@ func (s *Scroll) Layout(bounds image.Rectangle) {
 		return
 	}
 	pref := s.child.PreferredSize()
-	contentH := pref.Y
-	if contentH < bounds.Dy() {
-		contentH = bounds.Dy()
+	contentH := max(pref.Y, bounds.Dy())
+	maxOff := contentH - bounds.Dy()
+	if s.toEnd || (s.stick && s.atEnd) {
+		s.offset = maxOff
+		s.toEnd = false
 	}
-	if max := contentH - bounds.Dy(); s.offset > max {
-		s.offset = max
-	}
-	if s.offset < 0 {
-		s.offset = 0
-	}
+	s.offset = min(max(s.offset, 0), maxOff)
+	s.atEnd = s.offset >= maxOff
 	contentW := bounds.Dx()
 	if s.horizontal && pref.X > contentW {
 		contentW = pref.X
 	}
-	if max := contentW - bounds.Dx(); s.offsetX > max {
-		s.offsetX = max
+	if limit := contentW - bounds.Dx(); s.offsetX > limit {
+		s.offsetX = limit
 	}
 	if s.offsetX < 0 {
 		s.offsetX = 0
@@ -133,7 +177,7 @@ func (s *Scroll) HandleEvent(ev event.Event) bool {
 	if !ok || s.child == nil || s.theme == nil {
 		return false
 	}
-	passo := float64(s.theme.Px(s.theme.ScrollStep))
+	stepPx := float64(s.theme.Px(s.theme.ScrollStep))
 
 	// Trava de eixo do trackpad: só quando os dois eixos rolam.
 	dxIn, dyIn := e.DX, e.DY
@@ -142,57 +186,58 @@ func (s *Scroll) HandleEvent(ev event.Event) bool {
 	}
 
 	// Eixo vertical.
-	consumiu := false
-	if max := s.child.Bounds().Dy() - s.Bounds().Dy(); max > 0 {
+	consumed := false
+	if limit := s.child.Bounds().Dy() - s.Bounds().Dy(); limit > 0 {
 		// Acumula deltas fracionários (trackpad) até renderem pixels
 		// inteiros.
-		delta := dyIn*passo + s.accum
+		delta := dyIn*stepPx + s.accum
 		step := int(delta)
 		s.accum = delta - float64(step)
-		novo := s.offset - step
-		if novo < 0 {
-			novo = 0
+		next := s.offset - step
+		if next < 0 {
+			next = 0
 		}
-		if novo > max {
-			novo = max
+		if next > limit {
+			next = limit
 		}
 		switch {
-		case novo != s.offset:
-			s.offset = novo
-			consumiu = true
+		case next != s.offset:
+			s.offset = next
+			s.atEnd = next >= limit // rolar para cima solta o StickToEnd
+			consumed = true
 		case step != 0:
 			// Já estava no limite nesta direção: propaga para o ancestral.
 			s.accum = 0
 		case dyIn != 0:
-			consumiu = true // delta minúsculo: aguardando acumular
+			consumed = true // delta minúsculo: aguardando acumular
 		}
 	}
 
 	// Eixo horizontal (quando habilitado).
 	if s.horizontal {
-		if max := s.child.Bounds().Dx() - s.Bounds().Dx(); max > 0 {
-			delta := dxIn*passo + s.accumX
+		if limit := s.child.Bounds().Dx() - s.Bounds().Dx(); limit > 0 {
+			delta := dxIn*stepPx + s.accumX
 			step := int(delta)
 			s.accumX = delta - float64(step)
-			novo := s.offsetX - step
-			if novo < 0 {
-				novo = 0
+			next := s.offsetX - step
+			if next < 0 {
+				next = 0
 			}
-			if novo > max {
-				novo = max
+			if next > limit {
+				next = limit
 			}
 			switch {
-			case novo != s.offsetX:
-				s.offsetX = novo
-				consumiu = true
+			case next != s.offsetX:
+				s.offsetX = next
+				consumed = true
 			case step != 0:
 				s.accumX = 0
 			case dxIn != 0:
-				consumiu = true
+				consumed = true
 			}
 		}
 	}
-	return consumiu
+	return consumed
 }
 
 // Draw desenha o filho recortado à área visível e o indicador de posição.
@@ -212,10 +257,7 @@ func (s *Scroll) Draw(dst *image.RGBA) {
 	contentH := s.child.Bounds().Dy()
 	viewportH := bounds.Dy()
 	if contentH > viewportH {
-		thumbH := viewportH * viewportH / contentH
-		if thumbH < minThumb {
-			thumbH = minThumb
-		}
+		thumbH := max(viewportH*viewportH/contentH, minThumb)
 		maxOff := contentH - viewportH
 		thumbY := bounds.Min.Y + (viewportH-thumbH)*s.offset/maxOff
 		// Com raio, o indicador vira uma pílula (raio limitado à metade da
@@ -225,10 +267,7 @@ func (s *Scroll) Draw(dst *image.RGBA) {
 	contentW := s.child.Bounds().Dx()
 	viewportW := bounds.Dx()
 	if s.horizontal && contentW > viewportW {
-		thumbW := viewportW * viewportW / contentW
-		if thumbW < minThumb {
-			thumbW = minThumb
-		}
+		thumbW := max(viewportW*viewportW/contentW, minThumb)
 		maxOff := contentW - viewportW
 		thumbX := bounds.Min.X + (viewportW-thumbW)*s.offsetX/maxOff
 		render.FillRoundRect(view, image.Rect(thumbX, bounds.Max.Y-w-margin, thumbX+thumbW, bounds.Max.Y-margin), th.RadiusPx(), th.Placeholder)

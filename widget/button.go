@@ -8,6 +8,7 @@ import (
 	"github.com/JonathanSantos/JUIGo/internal/hooks"
 	"github.com/JonathanSantos/JUIGo/render"
 	"github.com/JonathanSantos/JUIGo/state"
+	"github.com/JonathanSantos/JUIGo/theme"
 )
 
 // ButtonState identifica o estado visual do Button.
@@ -44,8 +45,8 @@ const (
 // fundo apenas no hover — ações discretas, barras densas).
 type Button struct {
 	BaseWidget
-	// Label é o texto do botão.
-	Label string
+	// label é o texto do botão (ver Label/SetLabel).
+	label string
 
 	// variant é a hierarquia visual (primário por padrão).
 	variant buttonVariant
@@ -66,6 +67,7 @@ type Button struct {
 	// desabilitado (sem cliques, fora do Tab) enquanto ativo.
 	loading      bool
 	spinnerPhase int
+	spinnerTick  func()
 	spinnerStop  func()
 }
 
@@ -73,7 +75,7 @@ type Button struct {
 // no mount; o padding padrão vem do tema.
 func NewButton(label string, onClick func()) *Button {
 	return &Button{
-		Label:   label,
+		label:   label,
 		padding: -1,
 		onClick: onClick,
 	}
@@ -127,6 +129,20 @@ func (b *Button) State() ButtonState {
 	return b.state
 }
 
+// Label devolve o texto do botão.
+func (b *Button) Label() string {
+	return b.label
+}
+
+// SetLabel troca o texto do botão e agenda um redesenho. Encadeável.
+func (b *Button) SetLabel(s string) *Button {
+	if b.label != s {
+		b.label = s
+		b.Invalidate()
+	}
+	return b
+}
+
 // Loading informa se o botão está no estado de carregamento.
 func (b *Button) Loading() bool {
 	return b.loading
@@ -140,10 +156,10 @@ func (b *Button) Loading() bool {
 //	go func() {
 //	    resultado := buscar()
 //	    app.Post(func() { btn.SetLoading(false); usar(resultado) })
-//	}()
-func (b *Button) SetLoading(v bool) {
+//	}() Encadeável.
+func (b *Button) SetLoading(v bool) *Button {
 	if b.loading == v {
-		return
+		return b
 	}
 	b.loading = v
 	b.stopSpinner()
@@ -154,14 +170,13 @@ func (b *Button) SetLoading(v bool) {
 		b.scheduleSpinner()
 	}
 	b.Invalidate()
+	return b
 }
 
 // BindLoading vincula o estado de carregamento ao State. Encadeável.
 func (b *Button) BindLoading(s *state.State[bool]) *Button {
 	b.SetLoading(s.Get())
-	s.Watch(func(v bool) {
-		b.SetLoading(v)
-	})
+	state.WatchWeak(s, b, func(b *Button, v bool) { b.SetLoading(v) })
 	return b
 }
 
@@ -170,19 +185,36 @@ func (b *Button) isDisabled() bool {
 	return b.BaseWidget.isDisabled() || b.loading
 }
 
+// inheritTheme estende o mount: um botão posto em loading ANTES do mount
+// (sem tema, logo sem intervalo de animação) ou que voltou à árvore depois
+// de dormir (aba inativa) começa a animar aqui.
+func (b *Button) inheritTheme(t *theme.Theme) *theme.Theme {
+	t = b.BaseWidget.inheritTheme(t)
+	if b.loading && b.spinnerStop == nil {
+		b.scheduleSpinner()
+	}
+	return t
+}
+
 // scheduleSpinner agenda o próximo quadro da animação de carregamento.
 func (b *Button) scheduleSpinner() {
 	if b.theme == nil || b.theme.SpinnerStep <= 0 {
 		return
 	}
-	b.spinnerStop = hooks.ScheduleAfter(b.theme.SpinnerStep, func() {
-		if !b.loading {
-			return
+	if b.spinnerTick == nil {
+		b.spinnerTick = func() {
+			b.spinnerStop = nil
+			// Fora da árvore (botão descartado), a animação para de se
+			// reagendar — senão o timer manteria o botão vivo para sempre.
+			if !b.loading || b.detached() {
+				return
+			}
+			b.spinnerPhase = (b.spinnerPhase + 1) % 3
+			b.Invalidate()
+			b.scheduleSpinner()
 		}
-		b.spinnerPhase = (b.spinnerPhase + 1) % 3
-		b.Invalidate()
-		b.scheduleSpinner()
-	})
+	}
+	b.spinnerStop = hooks.ScheduleAfter(b.theme.SpinnerStep, b.spinnerTick)
 }
 
 // stopSpinner cancela o quadro pendente da animação.
@@ -205,6 +237,7 @@ func (b *Button) HandleEvent(ev event.Event) bool {
 		return false
 	case event.FocusEvent:
 		b.focused = e.Gained
+		b.notifyFocus(e.Gained)
 		return true
 	case event.MouseEvent:
 		return b.handleMouse(e)
@@ -270,7 +303,7 @@ func (b *Button) PreferredSize() image.Point {
 	}
 	pad := b.padPx()
 	return image.Point{
-		X: b.theme.MeasureString(b.Label) + 2*pad,
+		X: b.theme.MeasureString(b.label) + 2*pad,
 		Y: b.theme.LineHeight() + 2*pad,
 	}
 }
@@ -299,10 +332,10 @@ func (b *Button) Draw(dst *image.RGBA) {
 	if b.loading {
 		b.drawSpinner(view, bounds)
 	} else {
-		labelW := b.theme.MeasureString(b.Label)
+		labelW := b.theme.MeasureString(b.label)
 		x := bounds.Min.X + (bounds.Dx()-labelW)/2
 		y := bounds.Min.Y + (bounds.Dy()-b.theme.LineHeight())/2 + b.theme.Ascent()
-		b.theme.DrawText(view, b.Label, image.Pt(x, y), b.fgColor())
+		b.theme.DrawText(view, b.label, image.Pt(x, y), b.fgColor())
 	}
 	b.drawDisabledOverlay(dst)
 }
@@ -318,13 +351,13 @@ func (b *Button) drawSpinner(dst *image.RGBA, bounds image.Rectangle) {
 	cy := bounds.Min.Y + bounds.Dy()/2
 	// Pontos inativos: rótulo misturado 50/50 com o fundo do estado
 	// (FillCircle é sólido, então a "transparência" é pré-misturada).
-	fundo := b.bgColor()
-	if fundo.A == 0 {
-		fundo = th.Background // Ghost em repouso: o fundo visível é a janela
+	backing := b.bgColor()
+	if backing.A == 0 {
+		backing = th.Background // Ghost em repouso: o fundo visível é a janela
 	}
 	fg := b.fgColor()
-	dim := mix(fg, fundo)
-	for i := 0; i < 3; i++ {
+	dim := mix(fg, backing)
+	for i := range 3 {
 		c := dim
 		if i == b.spinnerPhase {
 			c = fg

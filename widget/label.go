@@ -86,20 +86,21 @@ func (l *Label) MaxWidth(lu int) *Label {
 // BindText vincula o conteúdo ao State (ver Text.BindText). Encadeável.
 func (l *Label) BindText(s *state.State[string]) *Label {
 	l.SetText(s.Get())
-	s.Watch(func(v string) { l.SetText(v) })
+	state.WatchWeak(s, l, func(l *Label, v string) { l.SetText(v) })
 	return l
 }
 
 // Text devolve o conteúdo atual.
 func (l *Label) Text() string { return l.text }
 
-// SetText troca o conteúdo e agenda um redesenho se ele mudou.
-func (l *Label) SetText(s string) {
+// SetText troca o conteúdo e agenda um redesenho se ele mudou. Encadeável.
+func (l *Label) SetText(s string) *Label {
 	if l.text == s {
-		return
+		return l
 	}
 	l.text = s
 	l.bump()
+	return l
 }
 
 // bump invalida o cache do wrap e agenda um redesenho.

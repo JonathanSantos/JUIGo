@@ -38,25 +38,20 @@ type App struct {
 	bus  *event.Bus
 	// corrente é a janela cujo callback está em execução: é para a sessão
 	// dela que os hooks globais (overlay, foco, toast, arrasto) roteiam.
-	corrente *Window
+	current *Window
 	// fatalErr registra uma falha ocorrida dentro de um callback (que não
 	// pode devolver erro); Run a detecta e encerra.
 	fatalErr error
 	// timers são os agendamentos pendentes (hooks.Schedule): o loop usa
 	// WaitEventsTimeout para acordar no vencimento mais próximo.
-	timers   []appTimer
-	timerSeq int
+	timers timerQueue
 	// postMu protege posted — a ÚNICA estrutura do JUIGo tocada por outras
 	// goroutines (ver Post).
 	postMu sync.Mutex
 	posted []func()
-}
-
-// appTimer é um agendamento pendente de hooks.Schedule.
-type appTimer struct {
-	id int
-	at time.Time
-	fn func()
+	// terminated (sob postMu) marca que o GLFW já foi encerrado: um Post
+	// tardio de goroutine é descartado em vez de tocar a biblioteca morta.
+	terminated bool
 }
 
 // New cria a aplicação com a janela principal (título e tamanho dados) e
@@ -124,17 +119,17 @@ func (a *App) NewWindow(title string, width, height int) (*Window, error) {
 // dispatch executa fn com w marcada como a janela em interação — os hooks
 // globais roteiam para a sessão dela durante a entrega do evento.
 func (a *App) dispatch(w *Window, fn func()) {
-	prev := a.corrente
-	a.corrente = w
+	prev := a.current
+	a.current = w
 	fn()
-	a.corrente = prev
+	a.current = prev
 }
 
 // activeSession devolve a sessão da janela em interação; fora de um
 // callback, a da janela focada; senão, a da primeira janela aberta.
 func (a *App) activeSession() *widget.Session {
-	if a.corrente != nil {
-		return a.corrente.session
+	if a.current != nil {
+		return a.current.session
 	}
 	for _, w := range a.windows {
 		if w.window.GetAttrib(glfw.Focused) == glfw.True {
@@ -225,51 +220,9 @@ func (a *App) installHooks() {
 // schedule agenda fn para executar na main thread após d e devolve o
 // cancelamento. Implementação de hooks.Schedule.
 func (a *App) schedule(d time.Duration, fn func()) func() {
-	a.timerSeq++
-	id := a.timerSeq
-	a.timers = append(a.timers, appTimer{id: id, at: time.Now().Add(d), fn: fn})
+	id := a.timers.add(time.Now().Add(d), fn)
 	glfw.PostEmptyEvent() // acorda o loop para recalcular o timeout
-	return func() {
-		for i := range a.timers {
-			if a.timers[i].id == id {
-				a.timers = append(a.timers[:i], a.timers[i+1:]...)
-				return
-			}
-		}
-	}
-}
-
-// nextTimerWait devolve quanto falta para o agendamento mais próximo.
-func (a *App) nextTimerWait() (time.Duration, bool) {
-	if len(a.timers) == 0 {
-		return 0, false
-	}
-	next := a.timers[0].at
-	for _, t := range a.timers[1:] {
-		if t.at.Before(next) {
-			next = t.at
-		}
-	}
-	return time.Until(next), true
-}
-
-// runDueTimers executa os agendamentos vencidos. Os callbacks rodam após a
-// remoção da lista e podem agendar novos timers com segurança.
-func (a *App) runDueTimers() {
-	now := time.Now()
-	var due []func()
-	kept := a.timers[:0]
-	for _, t := range a.timers {
-		if t.at.After(now) {
-			kept = append(kept, t)
-		} else {
-			due = append(due, t.fn)
-		}
-	}
-	a.timers = kept
-	for _, fn := range due {
-		fn()
-	}
+	return func() { a.timers.cancel(id) }
 }
 
 // pixelRatio calcula a razão framebuffer/janela (pixels físicos por unidade
@@ -385,8 +338,11 @@ func (a *App) Post(fn func()) {
 		return
 	}
 	a.postMu.Lock()
+	defer a.postMu.Unlock()
+	if a.terminated {
+		return // aplicação encerrada: não há mais loop para entregar
+	}
 	a.posted = append(a.posted, fn)
-	a.postMu.Unlock()
 	glfw.PostEmptyEvent() // thread-safe: acorda o loop
 }
 
@@ -433,14 +389,19 @@ func (a *App) Run() error {
 	for len(a.windows) > 0 {
 		// Com timers pendentes (piscada do cursor, tooltip), o loop acorda
 		// no vencimento mais próximo; sem timers, bloqueia como sempre.
-		if wait, ok := a.nextTimerWait(); ok {
-			if wait > 0 {
+		if next, ok := a.timers.next(); ok {
+			if wait := time.Until(next); wait > 0 {
 				glfw.WaitEventsTimeout(wait.Seconds())
+			} else {
+				// Timer já vencido: não espera, mas AINDA processa a
+				// entrada — senão, com animações mais lentas que o próprio
+				// intervalo, mouse e teclado ficariam represados.
+				glfw.PollEvents()
 			}
 		} else {
 			glfw.WaitEvents()
 		}
-		a.runDueTimers()
+		a.timers.runDue(time.Now())
 		a.runPosted()
 		if a.fatalErr != nil {
 			a.destroy()
@@ -470,6 +431,10 @@ func (a *App) destroy() {
 		w.destroy()
 	}
 	a.windows = nil
+	a.postMu.Lock()
+	a.terminated = true
+	a.posted = nil
+	a.postMu.Unlock()
 	glfw.Terminate()
 }
 

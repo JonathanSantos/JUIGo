@@ -123,9 +123,6 @@ func boxLeftover(children []Widget, avail, spacing int, mainPref func(Widget) in
 			fixed += mainPref(ch)
 		}
 	}
-	leftover = avail - fixed - spacing*(len(children)-1)
-	if leftover < 0 {
-		leftover = 0
-	}
+	leftover = max(avail-fixed-spacing*(len(children)-1), 0)
 	return leftover, weightSum
 }

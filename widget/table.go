@@ -35,11 +35,13 @@ type Table struct {
 	colX   []int
 
 	selected *state.State[int]
+	// onChange é chamado quando o usuário seleciona uma linha (ver OnChange).
+	onChange func(int)
 	viewport image.Rectangle
 	clip     image.RGBA
 	// onReorder habilita a reordenação por arrasto (ver OnReorder); arm é o
 	// estado do gesto entre o MouseDown e o limiar.
-	onReorder func(de, para int)
+	onReorder func(from, to int)
 	arm       reorderArm
 }
 
@@ -51,8 +53,8 @@ func NewTable(titles []string, count int, cell func(row, col int) string) *Table
 
 // Widths define larguras lógicas por coluna (na ordem); 0 divide a sobra
 // igualmente entre as colunas zeradas. Encadeável.
-func (t *Table) Widths(larguras ...int) *Table {
-	t.widths = larguras
+func (t *Table) Widths(widths ...int) *Table {
+	t.widths = widths
 	return t
 }
 
@@ -60,7 +62,46 @@ func (t *Table) Widths(larguras ...int) *Table {
 // -1 = nenhuma): clicar seleciona, um Set externo move o realce. Encadeável.
 func (t *Table) BindSelected(s *state.State[int]) *Table {
 	t.selected = s
-	s.Watch(func(int) { t.Invalidate() })
+	state.WatchWeak(s, t, func(t *Table, _ int) { t.Invalidate() })
+	return t
+}
+
+// Selectable habilita a seleção de linha SEM State externo: a Table guarda
+// o índice selecionado por conta própria (leia com Selected, reaja com
+// OnChange). BindSelected, Select e OnChange já a habilitam. Encadeável.
+func (t *Table) Selectable() *Table {
+	if t.selected == nil {
+		t.BindSelected(state.New(-1))
+	}
+	return t
+}
+
+// Selected devolve o índice da linha selecionada (-1 = nenhuma, ou seleção
+// não habilitada).
+func (t *Table) Selected() int {
+	if t.selected == nil {
+		return -1
+	}
+	return t.selected.Get()
+}
+
+// Select seleciona a linha i (-1 limpa; fora do intervalo é ignorado),
+// habilitando a seleção se preciso. Como todo setter programático, não
+// dispara OnChange.
+func (t *Table) Select(i int) {
+	t.Selectable()
+	if i < -1 || i >= t.count || t.selected.Get() == i {
+		return
+	}
+	t.selected.Set(i)
+}
+
+// OnChange define o callback chamado, com o índice, quando o USUÁRIO
+// seleciona uma linha (depois do Set do State vinculado) e habilita a
+// seleção. Encadeável.
+func (t *Table) OnChange(fn func(index int)) *Table {
+	t.Selectable()
+	t.onChange = fn
 	return t
 }
 
@@ -70,19 +111,20 @@ func (t *Table) Count() int {
 }
 
 // SetCount muda o total de linhas (limpando a seleção fora do intervalo) e
-// agenda um redesenho.
-func (t *Table) SetCount(n int) {
+// agenda um redesenho. Encadeável.
+func (t *Table) SetCount(n int) *Table {
 	if n < 0 {
 		n = 0
 	}
 	if t.count == n {
-		return
+		return t
 	}
 	t.count = n
 	if t.selected != nil && t.selected.Get() >= n {
 		t.selected.Set(-1)
 	}
 	t.Invalidate()
+	return t
 }
 
 // Refresh agenda um redesenho (chame após mudar os DADOS das células).
@@ -101,8 +143,12 @@ func (t *Table) rowH() int {
 	return t.theme.LineHeight() + t.theme.Px(6)
 }
 
-// RowRect devolve o retângulo absoluto da linha i (útil em testes).
+// RowRect devolve o retângulo absoluto da linha i (útil em testes). Antes
+// do mount (sem tema, logo sem altura de linha), devolve o retângulo vazio.
 func (t *Table) RowRect(i int) image.Rectangle {
+	if t.theme == nil {
+		return image.Rectangle{}
+	}
 	b := t.Bounds()
 	h := t.rowH()
 	top := b.Min.Y + h + i*h // primeira linha abaixo do cabeçalho
@@ -116,8 +162,8 @@ func (t *Table) PreferredSize() image.Point {
 		return image.Point{}
 	}
 	w := 0
-	for i, título := range t.titles {
-		colW := t.theme.MeasureString(título) + 2*t.theme.PaddingPx()
+	for i, title := range t.titles {
+		colW := t.theme.MeasureString(title) + 2*t.theme.PaddingPx()
 		if i < len(t.widths) && t.widths[i] > 0 {
 			colW = t.theme.Px(t.widths[i])
 		}
@@ -132,19 +178,16 @@ func (t *Table) resolveCols() {
 	b := t.Bounds()
 	n := len(t.titles)
 	t.colX = resizeInts(t.colX, n+1)
-	fixa, flexiveis := 0, 0
+	fixed, flexible := 0, 0
 	for i := range t.titles {
 		if i < len(t.widths) && t.widths[i] > 0 {
-			fixa += t.theme.Px(t.widths[i])
+			fixed += t.theme.Px(t.widths[i])
 		} else {
-			flexiveis++
+			flexible++
 		}
 	}
-	sobra := b.Dx() - fixa
-	if sobra < 0 {
-		sobra = 0
-	}
-	d := distributor{leftover: sobra, weightSum: flexiveis}
+	rest := max(b.Dx()-fixed, 0)
+	d := distributor{leftover: rest, weightSum: flexible}
 	x := b.Min.X
 	for i := range t.titles {
 		t.colX[i] = x
@@ -173,11 +216,11 @@ func (t *Table) HandleEvent(ev event.Event) bool {
 			return false
 		}
 		// Clique sobre o cabeçalho fixo não seleciona nem arma.
-		cab := t.viewport.Min.Y
+		header := t.viewport.Min.Y
 		if t.viewport.Empty() {
-			cab = t.Bounds().Min.Y
+			header = t.Bounds().Min.Y
 		}
-		if e.Pos.Y < cab+t.rowH() {
+		if e.Pos.Y < header+t.rowH() {
 			return true
 		}
 		i := (e.Pos.Y - t.Bounds().Min.Y - t.rowH()) / t.rowH()
@@ -190,6 +233,9 @@ func (t *Table) HandleEvent(ev event.Event) bool {
 		if t.selected != nil {
 			if t.selected.Get() != i {
 				t.selected.Set(i)
+				if t.onChange != nil {
+					t.onChange(i)
+				}
 			}
 			t.Invalidate()
 		}
@@ -223,14 +269,16 @@ func (t *Table) Draw(dst *image.RGBA) {
 	}
 	region = region.Intersect(b)
 
-	// Linhas visíveis na região.
-	first := (region.Min.Y - b.Min.Y - h) / h
-	if first < 0 {
-		first = 0
-	}
-	last := (region.Max.Y - 1 - b.Min.Y - h) / h
+	// Linhas visíveis na região E dentro do destino: num redesenho parcial
+	// (dst recortado ao dano), só as linhas tocadas são formatadas.
+	rows := region.Intersect(dst.Bounds())
+	first := max((rows.Min.Y-b.Min.Y-h)/h, 0)
+	last := (rows.Max.Y - 1 - b.Min.Y - h) / h
 	if last >= t.count {
 		last = t.count - 1
+	}
+	if rows.Empty() {
+		last = first - 1
 	}
 	sel := -1
 	if t.selected != nil {
@@ -243,27 +291,27 @@ func (t *Table) Draw(dst *image.RGBA) {
 			render.FillRect(dst, r, th.Selection)
 		}
 		for c := range t.titles {
-			cel := image.Rect(t.colX[c], r.Min.Y, t.colX[c+1], r.Max.Y)
-			view := render.Clip(dst, cel, &t.clip)
-			th.DrawText(view, t.cell(i, c), image.Pt(cel.Min.X+th.PaddingPx(), baseline(r.Min.Y)), th.Text)
+			cellRect := image.Rect(t.colX[c], r.Min.Y, t.colX[c+1], r.Max.Y)
+			view := render.Clip(dst, cellRect, &t.clip)
+			th.DrawText(view, t.cell(i, c), image.Pt(cellRect.Min.X+th.PaddingPx(), baseline(r.Min.Y)), th.Text)
 		}
 		render.FillRect(dst, image.Rect(b.Min.X, r.Max.Y, b.Max.X, r.Max.Y+1), th.InputBorder)
 	}
 
 	// Cabeçalho FIXO no topo da viewport, por cima das linhas roladas.
-	cabTop := region.Min.Y
-	cab := image.Rect(b.Min.X, cabTop, b.Max.X, cabTop+h)
-	render.FillRect(dst, cab, th.HoverBackground)
+	headerTop := region.Min.Y
+	header := image.Rect(b.Min.X, headerTop, b.Max.X, headerTop+h)
+	render.FillRect(dst, header, th.HoverBackground)
 	// Títulos no papel de LEGENDA (menores que as células): a hierarquia
 	// tipográfica do design system aplicada ao dado tabular.
-	cap := th.Caption()
-	capBase := cab.Min.Y + (h-cap.LineHeight())/2 + cap.Ascent()
-	for c, título := range t.titles {
-		cel := image.Rect(t.colX[c], cab.Min.Y, t.colX[c+1], cab.Max.Y)
-		view := render.Clip(dst, cel, &t.clip)
-		cap.Draw(view, título, image.Pt(cel.Min.X+th.PaddingPx(), capBase), th.Text)
+	caption := th.Caption()
+	capBase := header.Min.Y + (h-caption.LineHeight())/2 + caption.Ascent()
+	for c, title := range t.titles {
+		cellRect := image.Rect(t.colX[c], header.Min.Y, t.colX[c+1], header.Max.Y)
+		view := render.Clip(dst, cellRect, &t.clip)
+		caption.Draw(view, title, image.Pt(cellRect.Min.X+th.PaddingPx(), capBase), th.Text)
 	}
-	render.FillRect(dst, image.Rect(b.Min.X, cab.Max.Y-1, b.Max.X, cab.Max.Y), th.InputBorder)
+	render.FillRect(dst, image.Rect(b.Min.X, header.Max.Y-1, b.Max.X, header.Max.Y), th.InputBorder)
 	// Divisões verticais por toda a região visível.
 	for c := 1; c < len(t.titles); c++ {
 		render.FillRect(dst, image.Rect(t.colX[c], region.Min.Y, t.colX[c]+1, region.Max.Y), th.InputBorder)

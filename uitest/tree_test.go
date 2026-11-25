@@ -153,7 +153,7 @@ func TestIncrementalPaineisArvore(t *testing.T) {
 		juigo.NewText("Detalhe"),
 		juigo.NewInput("filtro…"),
 	).Pad(8)
-	sp := juigo.NewSplitPane(juigo.NewScroll(tree), direita).Ratio(0.4).Min(40)
+	sp := juigo.NewSplitPane(juigo.NewScroll(tree), direita).SetRatio(0.4).Min(40)
 	h := uitest.New(t, sp, 400, 300)
 
 	verifica := func(passo string) {

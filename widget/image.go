@@ -31,11 +31,12 @@ func NewImage(src image.Image) *Image {
 	return &Image{src: src, srcChanged: true}
 }
 
-// SetImage troca a imagem exibida e agenda um redesenho.
-func (im *Image) SetImage(src image.Image) {
+// SetImage troca a imagem exibida e agenda um redesenho. Encadeável.
+func (im *Image) SetImage(src image.Image) *Image {
 	im.src = src
 	im.srcChanged = true
 	im.Invalidate()
+	return im
 }
 
 // PreferredSize devolve o tamanho da imagem em unidades lógicas convertidas

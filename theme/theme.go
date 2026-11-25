@@ -81,6 +81,7 @@ type MonoFont struct {
 	lineHeight int
 	advance    int
 	cache      *render.GlyphCache
+	measurer   render.Measurer
 }
 
 // newMonoFont rasteriza fnt no tamanho lógico dado × escala.
@@ -121,7 +122,7 @@ func (m *MonoFont) Draw(dst *image.RGBA, s string, dot image.Point, c color.RGBA
 
 // Measure devolve a largura de s em pixels.
 func (m *MonoFont) Measure(s string) int {
-	return render.MeasureText(m.Face, s)
+	return m.measurer.Measure(m.Face, s)
 }
 
 // LineHeight devolve a altura de linha em pixels.
@@ -288,6 +289,7 @@ type Theme struct {
 	ascent     int
 	lineHeight int
 	cache      *render.GlyphCache
+	measurer   render.Measurer
 
 	monoFnt *opentype.Font
 	mono    *MonoFont
@@ -423,6 +425,7 @@ func (t *Theme) SetScale(scale float64) error {
 	t.ascent = m.Ascent.Ceil()
 	t.lineHeight = m.Height.Ceil()
 	t.cache = render.NewGlyphCache(face)
+	t.measurer = render.Measurer{} // medidas da face antiga não valem mais
 
 	mono, err := newMonoFont(t.monoFnt, t.FontSize, scale)
 	if err != nil {
@@ -531,8 +534,11 @@ func (t *Theme) DrawText(dst *image.RGBA, s string, dot image.Point, c color.RGB
 // MeasureString devolve a largura de s em pixels com a fonte do tema. É a
 // ÚNICA fonte de verdade para largura de texto: layout e posicionamento de
 // cursor devem passar por aqui.
+//
+// As medidas são memorizadas por string (render.Measurer): medir o mesmo
+// rótulo a cada layout e a cada frame custa uma consulta de mapa.
 func (t *Theme) MeasureString(s string) int {
-	return render.MeasureText(t.Face, s)
+	return t.measurer.Measure(t.Face, s)
 }
 
 // DrawMono desenha s com a fonte mono PADRÃO do tema (ver Mono/MonoFont).

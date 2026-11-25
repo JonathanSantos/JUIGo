@@ -62,10 +62,7 @@ func insertionIndex(posY, topY, rowH, count int) int {
 	if rowH <= 0 {
 		return 0
 	}
-	b := (posY - topY + rowH/2) / rowH
-	if b < 0 {
-		b = 0
-	}
+	b := max((posY-topY+rowH/2)/rowH, 0)
 	if b > count {
 		b = count
 	}
@@ -101,7 +98,7 @@ func indicatorRect(bounds image.Rectangle, topY, rowH, b, thickness int) image.R
 // próxima do cursor ganha um indicador, e soltar chama fn(de, para) com o
 // índice original e o índice FINAL do item — soltar no mesmo lugar não
 // chama. A aplicação move o item nos dados e chama Refresh. Encadeável.
-func (l *List[W]) OnReorder(label func(index int) string, fn func(de, para int)) *List[W] {
+func (l *List[W]) OnReorder(label func(index int) string, fn func(from, to int)) *List[W] {
 	l.reorderLabel = label
 	l.onReorder = fn
 	return l
@@ -121,8 +118,8 @@ func (l *List[W]) Drop(payload any, pos image.Point) {
 		return
 	}
 	b := insertionIndex(pos.Y, l.Bounds().Min.Y, l.rowH, l.count)
-	if para := finalIndex(p.from, b); para != p.from {
-		l.onReorder(p.from, para)
+	if to := finalIndex(p.from, b); to != p.from {
+		l.onReorder(p.from, to)
 	}
 }
 
@@ -140,7 +137,7 @@ func (l *List[W]) DropIndicatorRect(payload any, pos image.Point) image.Rectangl
 // do fantasma é a primeira célula da linha. Soltar chama fn(de, para) com o
 // índice original e o índice FINAL da linha — soltar no mesmo lugar não
 // chama. A aplicação move a linha nos dados e chama Refresh. Encadeável.
-func (t *Table) OnReorder(fn func(de, para int)) *Table {
+func (t *Table) OnReorder(fn func(from, to int)) *Table {
 	t.onReorder = fn
 	return t
 }
@@ -160,8 +157,8 @@ func (t *Table) Drop(payload any, pos image.Point) {
 	}
 	h := t.rowH()
 	b := insertionIndex(pos.Y, t.Bounds().Min.Y+h, h, t.count)
-	if para := finalIndex(p.from, b); para != p.from {
-		t.onReorder(p.from, para)
+	if to := finalIndex(p.from, b); to != p.from {
+		t.onReorder(p.from, to)
 	}
 }
 

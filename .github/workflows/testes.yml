@@ -21,4 +21,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgl1-mesa-dev xorg-dev
       - run: go vet ./...
-      - run: go test ./...
+      - name: Código gerado em dia
+        run: |
+          go generate ./...
+          git diff --exit-code
+      - name: Testes (com detector de corridas)
+        run: go test -race ./...
+      - name: Benchmarks compilam e rodam uma vez
+        run: go test -run xxx -bench . -benchtime 1x .
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Dependências do GLFW (cgo)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev xorg-dev
+      - name: golangci-lint (config em .golangci.yml)
+        run: go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2 run --timeout 5m ./...

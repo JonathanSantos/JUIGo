@@ -167,8 +167,8 @@ func TestRecorteNosLimites(t *testing.T) {
 	FillRoundRect(grande, r, 5, corTeste)
 	StrokeRoundRect(grande, r.Add(image.Pt(12, 4)), 5, 2, corTeste)
 
-	for y := 0; y < 24; y++ {
-		for x := 0; x < 32; x++ {
+	for y := range 24 {
+		for x := range 32 {
 			if a, b := pequena.RGBAAt(x, y), grande.RGBAAt(x, y); a != b {
 				t.Fatalf("recorte divergente em (%d,%d): %v != %v", x, y, a, b)
 			}

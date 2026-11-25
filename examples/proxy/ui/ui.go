@@ -92,22 +92,22 @@ func New(prox *proxy.Proxy, post func(func())) *Vista {
 		Widths(70, 60, 60)
 
 	// Detalhe: visores ReadOnly em abas + ações de mock.
-	v.reqView = juigo.NewCodeEditor().ReadOnly(true).WrapLines(true)
-	v.respView = juigo.NewCodeEditor().ReadOnly(true).WrapLines(true)
+	v.reqView = juigo.NewCodeEditor().SetReadOnly(true).WrapLines(true)
+	v.respView = juigo.NewCodeEditor().SetReadOnly(true).WrapLines(true)
 	v.mocks = juigo.NewVBox().Pad(8).Gap(6)
 
 	mockar := juigo.NewButton("Simular esta resposta", v.criaMockDaSelecao)
 	novoMock := juigo.NewButton("Novo mock…", v.novoMock).Pad(4)
 
 	v.abas = juigo.NewTabs().
-		Add("Requisição", juigo.NewVBox(juigo.Grow(v.reqView, 1))).
+		Add("Requisição", juigo.NewVBox(v.reqView.Grow(1))).
 		Add("Resposta", juigo.NewVBox(
-			juigo.Grow(v.respView, 1),
+			v.respView.Grow(1),
 			juigo.NewHBox(juigo.NewSpacer(), mockar),
 		).Gap(6)).
 		Add("Mocks", juigo.NewVBox(
 			juigo.NewHBox(juigo.NewText("Regras de simulação").Center(), juigo.NewSpacer(), novoMock),
-			juigo.Grow(juigo.NewScroll(v.mocks), 1),
+			juigo.NewScroll(v.mocks).Grow(1),
 		).Gap(6))
 
 	v.sel.Watch(func(i int) {
@@ -121,20 +121,20 @@ func New(prox *proxy.Proxy, post func(func())) *Vista {
 
 	v.Raiz = juigo.NewVBox(
 		juigo.NewHBox(
-			juigo.Centered(juigo.NewText("Status:")),
-			juigo.Centered(juigo.NewText("").BindText(v.status)),
-			juigo.Centered(inspecionar),
+			juigo.NewText("Status:").Centered(),
+			juigo.NewText("").BindText(v.status).Centered(),
+			inspecionar.Centered(),
 			exportarCA,
 			juigo.NewSpacer(),
-			juigo.Centered(juigo.NewText("Método:")),
+			juigo.NewText("Método:").Centered(),
 			filtroMetodo,
-			juigo.Grow(filtroTexto, 1),
+			filtroTexto.Grow(1),
 			limpar,
 		).Gap(8),
-		juigo.Grow(juigo.NewHBox(
-			juigo.Grow(juigo.NewScroll(v.tabela), 1),
-			juigo.Grow(v.abas, 1),
-		).Gap(12), 1),
+		juigo.NewHBox(
+			juigo.NewScroll(v.tabela).Grow(1),
+			v.abas.Grow(1),
+		).Gap(12).Grow(1),
 	).Pad(12).Gap(8)
 
 	// A captura vem de goroutines: salta para a main thread e reprojeta.
@@ -317,9 +317,9 @@ func (v *Vista) linhaMock(r *proxy.MockRule) juigo.Widget {
 		v.rebuildMocks()
 	}).Pad(4)
 	return juigo.NewHBox(
-		juigo.Centered(liga),
-		juigo.Grow(juigo.NewText(rotulo), 1),
-		juigo.Centered(remover),
+		liga.Centered(),
+		juigo.NewText(rotulo).Grow(1),
+		remover.Centered(),
 	).Gap(6)
 }
 

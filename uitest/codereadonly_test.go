@@ -18,7 +18,7 @@ func TestCodeEditorReadOnly(t *testing.T) {
 	hooks.ClipboardRead = func() string { return clip }
 	defer func() { hooks.ClipboardWrite, hooks.ClipboardRead = prevW, prevR }()
 
-	ed := juigo.NewCodeEditor().ReadOnly(true)
+	ed := juigo.NewCodeEditor().SetReadOnly(true)
 	h := uitest.New(t, juigo.NewVBox(juigo.Grow(ed, 1)).Pad(8), 420, 260)
 	ed.SetText("linha um\nlinha dois") // SetText é permitido no visor
 	h.Click(uitest.OfType[*juigo.CodeEditor]())
@@ -62,7 +62,7 @@ func TestCodeEditorReadOnly(t *testing.T) {
 	}
 
 	// Desligar volta a permitir edição.
-	ed.ReadOnly(false)
+	ed.SetReadOnly(false)
 	ed.SetCursor(0, 0)
 	h.Type("Z")
 	if ed.Text() == original {

@@ -11,7 +11,7 @@ func TestContador(t *testing.T) {
 	if h.Find(uitest.Text("0")) == nil {
 		t.Fatal("o contador deveria começar em 0")
 	}
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		h.Click(uitest.Text("Contar"))
 	}
 	if h.Find(uitest.Text("3")) == nil {

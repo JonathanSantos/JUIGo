@@ -33,6 +33,9 @@ func main() {
 `
 
 func main() {
+	// Textos da própria biblioteca (diálogos, calendário) em português.
+	juigo.SetLocale(juigo.LocalePTBR())
+
 	titulo := "amostra.go"
 	conteudo := amostra
 	if len(os.Args) > 1 {
@@ -119,11 +122,11 @@ func main() {
 	fonte := juigo.NewDropdown("Go Mono", "Fira Code").BindValue(fonteSel)
 
 	raiz := juigo.NewVBox(
-		juigo.Grow(editor, 1),
+		editor.Grow(1),
 		juigo.NewHBox(
-			juigo.Centered(juigo.NewText("").BindText(status)),
+			juigo.NewText("").BindText(status).Centered(),
 			juigo.NewSpacer(),
-			juigo.Centered(quebra),
+			quebra.Centered(),
 			fonte,
 			menor,
 			maior,

@@ -190,6 +190,9 @@ func exemplo() *quadro {
 }
 
 func main() {
+	// Textos da própria biblioteca (diálogos, calendário) em português.
+	juigo.SetLocale(juigo.LocalePTBR())
+
 	v := nova(exemplo())
 	app, err := juigo.New("Kanban — drag-and-drop em JUIGo", 640, 360)
 	if err != nil {

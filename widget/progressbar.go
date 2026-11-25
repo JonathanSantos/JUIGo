@@ -13,8 +13,8 @@ import (
 // Nasce pronto para reatividade: BindValue espelha um State[float64].
 type ProgressBar struct {
 	BaseWidget
-	// Min e Max delimitam o intervalo (Min <= Max).
-	Min, Max float64
+	// min e max delimitam o intervalo (Min <= Max).
+	min, max float64
 
 	value float64
 }
@@ -25,7 +25,30 @@ func NewProgressBar(min, max float64) *ProgressBar {
 	if max < min {
 		min, max = max, min
 	}
-	return &ProgressBar{Min: min, Max: max, value: min}
+	return &ProgressBar{min: min, max: max, value: min}
+}
+
+// Min devolve o limite inferior do intervalo.
+func (p *ProgressBar) Min() float64 {
+	return p.min
+}
+
+// Max devolve o limite superior do intervalo.
+func (p *ProgressBar) Max() float64 {
+	return p.max
+}
+
+// SetRange troca o intervalo (invertido se max < min), reajusta o valor
+// atual para caber nele e agenda um redesenho. Não dispara callbacks.
+// Encadeável.
+func (p *ProgressBar) SetRange(min, max float64) *ProgressBar {
+	if max < min {
+		min, max = max, min
+	}
+	p.min, p.max = min, max
+	p.SetValue(p.value)
+	p.Invalidate()
+	return p
 }
 
 // Value devolve o valor atual.
@@ -34,27 +57,27 @@ func (p *ProgressBar) Value() float64 {
 }
 
 // SetValue define o valor (limitado ao intervalo) e agenda um redesenho.
-func (p *ProgressBar) SetValue(v float64) {
-	if v < p.Min {
-		v = p.Min
+// Encadeável.
+func (p *ProgressBar) SetValue(v float64) *ProgressBar {
+	if v < p.min {
+		v = p.min
 	}
-	if v > p.Max {
-		v = p.Max
+	if v > p.max {
+		v = p.max
 	}
 	if p.value == v {
-		return
+		return p
 	}
 	p.value = v
 	p.Invalidate()
+	return p
 }
 
 // BindValue espelha o State na barra (uma via: a barra só exibe).
 // Encadeável.
 func (p *ProgressBar) BindValue(s *state.State[float64]) *ProgressBar {
 	p.SetValue(s.Get())
-	s.Watch(func(v float64) {
-		p.SetValue(v)
-	})
+	state.WatchWeak(s, p, func(p *ProgressBar, v float64) { p.SetValue(v) })
 	return p
 }
 
@@ -79,10 +102,10 @@ func (p *ProgressBar) Draw(dst *image.RGBA) {
 	b := p.Bounds()
 	radius := th.RadiusPx()
 	render.FillRoundRect(dst, b, radius, th.InputBorder)
-	span := p.Max - p.Min
+	span := p.max - p.min
 	if span <= 0 {
 		return
 	}
-	fill := int(float64(b.Dx()) * (p.value - p.Min) / span)
+	fill := int(float64(b.Dx()) * (p.value - p.min) / span)
 	render.FillRoundRect(dst, image.Rect(b.Min.X, b.Min.Y, b.Min.X+fill, b.Max.Y), radius, th.Accent)
 }

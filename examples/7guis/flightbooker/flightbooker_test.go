@@ -12,6 +12,9 @@ import (
 func centro(r image.Rectangle) image.Point { return r.Min.Add(r.Size().Div(2)) }
 
 func TestReservaDeVoo(t *testing.T) {
+	// O exemplo é uma aplicação em português: datas em DD/MM/AAAA.
+	prev := juigo.SetLocale(juigo.LocalePTBR())
+	t.Cleanup(func() { juigo.SetLocale(prev) })
 	h := uitest.New(t, UI(), 460, 320)
 
 	inputs := []*juigo.Input{}

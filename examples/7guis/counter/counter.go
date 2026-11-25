@@ -14,7 +14,7 @@ func UI() juigo.Widget {
 	n := juigo.NewState(0)
 	return juigo.NewVBox(
 		juigo.NewHBox(
-			juigo.Grow(juigo.NewText("").BindText(juigo.Map(n, strconv.Itoa)).Center(), 1),
+			juigo.NewText("").BindText(juigo.Map(n, strconv.Itoa)).Center().Grow(1),
 			juigo.NewButton("Contar", func() { n.Set(n.Get() + 1) }),
 		),
 	).Pad(16)

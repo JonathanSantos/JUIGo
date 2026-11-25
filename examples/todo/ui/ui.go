@@ -54,12 +54,12 @@ func New(lista *tarefas.Lista, repo tarefas.Repositorio) *Vista {
 		linhas:        juigo.NewVBox(),
 	}
 
-	v.marcarTodas = juigo.Tooltip(juigo.NewCheckbox("").OnChange(func(marcar bool) {
+	v.marcarTodas = juigo.NewCheckbox("").OnChange(func(marcar bool) {
 		v.aplica(func() { v.lista.MarcarTodas(marcar) })
-	}), "Marcar/desmarcar todas")
+	}).Tooltip("Marcar/desmarcar todas")
 
 	novo := juigo.NewInput("O que precisa ser feito?").BindValue(v.novoTexto)
-	novo.OnSubmit(func() {
+	novo.OnSubmit(func(string) {
 		v.aplica(func() { v.lista.Adicionar(v.novoTexto.Get()) })
 		v.novoTexto.Set("")
 	})
@@ -69,16 +69,16 @@ func New(lista *tarefas.Lista, repo tarefas.Repositorio) *Vista {
 	v.Raiz = juigo.NewVBox(
 		juigo.NewText("tarefas").Center(),
 		juigo.NewHBox(
-			juigo.Centered(v.marcarTodas),
-			juigo.Grow(novo, 1),
+			v.marcarTodas.Centered(),
+			novo.Grow(1),
 		),
-		juigo.Grow(juigo.NewScroll(v.linhas), 1),
+		juigo.NewScroll(v.linhas).Grow(1),
 		juigo.NewHBox(
-			juigo.Centered(juigo.NewText("").BindText(v.resumo)),
+			juigo.NewText("").BindText(v.resumo).Centered(),
 			juigo.NewSpacer(),
-			juigo.BindDisabled(juigo.NewButton("Limpar concluídas", func() {
+			juigo.NewButton("Limpar concluídas", func() {
 				v.aplica(func() { v.lista.LimparConcluidas() })
-			}), juigo.Not(v.temConcluidas)),
+			}).BindDisabled(juigo.Not(v.temConcluidas)),
 		),
 		juigo.NewHBox(
 			juigo.NewSpacer(),
@@ -136,9 +136,9 @@ func (v *Vista) linha(t tarefas.Tarefa) juigo.Widget {
 			texto := campo.Text()
 			v.aplica(func() { v.lista.Renomear(t.ID, texto) })
 		}
-		campo.OnSubmit(func() { commit(); juigo.Blur() }).OnBlur(commit)
+		campo.OnSubmit(func(string) { commit(); juigo.Blur() }).OnBlur(commit)
 		juigo.Focus(campo) // a edição abre pronta para digitar
-		return juigo.NewHBox(juigo.Grow(campo, 1))
+		return juigo.NewHBox(campo.Grow(1))
 	}
 
 	marcada := juigo.NewCheckbox("").OnChange(func(bool) {
@@ -150,13 +150,13 @@ func (v *Vista) linha(t tarefas.Tarefa) juigo.Widget {
 		v.editando = t.ID
 		v.reprojeta() // sem mutação de domínio: só a projeção muda
 	}
-	excluir := juigo.Tooltip(juigo.NewButton("×", func() {
+	excluir := juigo.NewButton("×", func() {
 		v.aplica(func() { v.lista.Remover(t.ID) })
-	}).Pad(4), "Excluir tarefa")
+	}).Pad(4).Tooltip("Excluir tarefa")
 	return juigo.NewHBox(
-		juigo.Centered(marcada),
+		marcada.Centered(),
 		juigo.Grow(rotulo, 1),
-		juigo.Centered(excluir),
+		excluir.Centered(),
 	)
 }
 

@@ -35,10 +35,9 @@ func (c *CodeEditor) ensureWrap() {
 		return
 	}
 	c.ensureMetrics()
-	avail := c.textArea().Dx() - c.advance // folga para o caret no fim
-	if avail < c.advance {
-		avail = c.advance
-	}
+	avail := max(
+		// folga para o caret no fim
+		c.textArea().Dx()-c.advance, c.advance)
 	if avail != c.wrapW {
 		c.wrapW = avail
 		for i := range c.buf.lines {
@@ -221,20 +220,14 @@ func (c *CodeEditor) drawScrollbars(view *image.RGBA, ta image.Rectangle) {
 	minThumb := th.Px(4 * th.ScrollbarWidth)
 
 	if contentH := c.totalRows() * c.rowH(); contentH > ta.Dy() {
-		thumbH := ta.Dy() * ta.Dy() / contentH
-		if thumbH < minThumb {
-			thumbH = minThumb
-		}
+		thumbH := max(ta.Dy()*ta.Dy()/contentH, minThumb)
 		maxOff := contentH - ta.Dy()
 		thumbY := ta.Min.Y + (ta.Dy()-thumbH)*c.scrollY/maxOff
 		render.FillRoundRect(view, image.Rect(ta.Max.X-w-margin, thumbY, ta.Max.X-margin, thumbY+thumbH), th.RadiusPx(), th.Placeholder)
 	}
 	if !c.wrap {
 		if contentW := c.maxWidth() + 2*c.advance; contentW > ta.Dx() {
-			thumbW := ta.Dx() * ta.Dx() / contentW
-			if thumbW < minThumb {
-				thumbW = minThumb
-			}
+			thumbW := max(ta.Dx()*ta.Dx()/contentW, minThumb)
 			maxOff := contentW - ta.Dx()
 			thumbX := ta.Min.X + (ta.Dx()-thumbW)*c.scrollX/maxOff
 			render.FillRoundRect(view, image.Rect(thumbX, ta.Max.Y-w-margin, thumbX+thumbW, ta.Max.Y-margin), th.RadiusPx(), th.Placeholder)
@@ -249,7 +242,7 @@ func (c *CodeEditor) damageHScrollbar() {
 		return
 	}
 	ta := c.textArea()
-	alto := c.theme.Px(c.theme.ScrollbarWidth) + 2*c.theme.BorderPx()
-	c.damage(image.Rect(ta.Min.X, ta.Max.Y-alto, ta.Max.X, ta.Max.Y))
+	tall := c.theme.Px(c.theme.ScrollbarWidth) + 2*c.theme.BorderPx()
+	c.damage(image.Rect(ta.Min.X, ta.Max.Y-tall, ta.Max.X, ta.Max.Y))
 	hooks.RequestFrame()
 }

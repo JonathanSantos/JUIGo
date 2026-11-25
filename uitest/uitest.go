@@ -89,6 +89,10 @@ func NewWithTheme(t testing.TB, root widget.Widget, th *theme.Theme, width, heig
 }
 
 func newWith(t testing.TB, root widget.Widget, th *theme.Theme, width, height int) *Harness {
+	// O locale é global ao processo: o que um teste trocar não vaza para os
+	// seguintes.
+	prevLocale := widget.CurrentLocale()
+	t.Cleanup(func() { widget.SetLocale(prevLocale) })
 	h := &Harness{t: t, theme: th, size: image.Pt(width, height)}
 	h.session = widget.NewSession(th)
 	h.session.OnDirty = func() { h.Repaints++ }

@@ -55,11 +55,10 @@ func DisabledOf(w Widget) bool {
 //
 //	juigo.BindDisabled(botaoEnviar, juigo.Map(valor, estaVazio))
 func BindDisabled[W Widget](w W, s *state.State[bool]) W {
-	if p, ok := any(w).(interface{ SetDisabled(bool) }); ok {
-		p.SetDisabled(s.Get())
-		s.Watch(func(v bool) {
-			p.SetDisabled(v)
-		})
+	if p, ok := any(w).(interface{ base() *BaseWidget }); ok {
+		b := p.base()
+		b.SetDisabled(s.Get())
+		state.WatchWeak(s, b, func(b *BaseWidget, v bool) { b.SetDisabled(v) })
 	}
 	return w
 }

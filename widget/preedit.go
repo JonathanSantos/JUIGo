@@ -32,10 +32,7 @@ func (p *preeditState) active() bool {
 // set registra o estado vindo do evento (cursor limitado ao texto).
 func (p *preeditState) set(e event.PreeditEvent) {
 	p.runes = append(p.runes[:0], []rune(e.Text)...)
-	p.caret = e.Caret
-	if p.caret < 0 {
-		p.caret = 0
-	}
+	p.caret = max(e.Caret, 0)
 	if p.caret > len(p.runes) {
 		p.caret = len(p.runes)
 	}
@@ -94,9 +91,9 @@ func (p *preeditState) measureWith(measure func(string) int) {
 // um traço único sem blocos; com blocos, um por bloco (com vão de 1px) e o
 // bloco em conversão mais grosso, na cor de destaque. Não aloca.
 func (p *preeditState) drawUnderline(view *image.RGBA, th *theme.Theme, compX, y int) {
-	esp := th.BorderPx()
+	thick := th.BorderPx()
 	if len(p.blockX) < 2 {
-		render.FillRect(view, image.Rect(compX, y, compX+p.w, y+esp), th.Text)
+		render.FillRect(view, image.Rect(compX, y, compX+p.w, y+thick), th.Text)
 		return
 	}
 	for i := 0; i+1 < len(p.blockX); i++ {
@@ -105,11 +102,11 @@ func (p *preeditState) drawUnderline(view *image.RGBA, th *theme.Theme, compX, y
 		if i+2 < len(p.blockX) && x1 > x0+1 {
 			x1-- // vão entre blocos
 		}
-		alt, cor := esp, th.Text
+		h, clr := thick, th.Text
 		if i == p.focused {
-			alt, cor = 2*esp, th.Accent
+			h, clr = 2*thick, th.Accent
 		}
-		render.FillRect(view, image.Rect(x0, y, x1, y+alt), cor)
+		render.FillRect(view, image.Rect(x0, y, x1, y+h), clr)
 	}
 }
 
