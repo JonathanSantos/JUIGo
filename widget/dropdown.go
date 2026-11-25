@@ -427,10 +427,10 @@ func (l *dropdownList) Draw(dst *image.RGBA) {
 		// retos): a opção escolhida é sempre uma pílula de seleção — forma,
 		// não só cor de texto, para ler em qualquer tema —, e as demais sob
 		// o ponteiro ou o teclado ganham o hover.
-		switch {
-		case i == d.selected:
+		switch i {
+		case d.selected:
 			render.FillRoundRect(view, row, radius, th.Selection)
-		case i == l.highlight:
+		case l.highlight:
 			render.FillRoundRect(view, row, radius, th.HoverBackground)
 		}
 		baseline := y + (itemH-th.LineHeight())/2 + th.Ascent()
