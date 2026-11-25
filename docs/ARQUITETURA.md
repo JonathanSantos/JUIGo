@@ -131,18 +131,19 @@ execução só por `internal/hooks`, registrado na inicialização.
   `StartDrag`/`DropTarget` da aplicação.
 - **Tema**: nenhuma cor ou tamanho hardcoded nos widgets — tudo vem de
   `Theme`. `Theme.MeasureString` é a única fonte de verdade para largura de
-  texto (layout e posicionamento de cursor). Há dois temas prontos —
-  `DefaultTheme` (claro) e `DarkTheme` (escuro, mesmas métricas) — e
-  `App.SetTheme` troca em RUNTIME: a nova paleta se propaga pela árvore no
+  texto (layout e posicionamento de cursor). As cores nascem de sementes:
+  `theme.New(Palette)` deriva todos os tokens em OKLCh (função pura das
+  sementes, sem custo por frame) e ajusta cada par à régua WCAG;
+  `DefaultTheme`/`DarkTheme` são a identidade Nanquim feita assim, e
+  `Theme.Audit` confere qualquer tema. `App.SetTheme` troca em RUNTIME: a nova paleta se propaga pela árvore no
   próximo frame (widgets com `SetTheme` explícito mantêm o próprio).
   Cantos arredondados vêm de `Theme.Radius` (unidades lógicas, padrão 4):
   fundo, borda, anel de foco e a lavagem de desabilitado seguem o raio via
   `render.FillRoundRect`/`StrokeRoundRect`/`FillRoundRectOver` — cobertura
   por pixel só nos blocos de canto (antialiasing de rampa de 1px), faixas
   cheias no miolo, zero alocação, custo de 0–6% no frame completo. Com
-  `Radius` zero as primitivas degradam byte a byte para as retas — o visual
-  clássico (`ClassicTheme`) é o mesmo de antes, verificado por render
-  idêntico; `ButtonBorder` com alfa zero desliga a borda do botão. Círculos
+  `Radius` zero as primitivas degradam byte a byte para as retas (o visual
+  `ClassicTheme`); `ButtonBorder` com alfa zero desliga a borda do botão. Círculos
   (`FillCircle`/`StrokeCircle` — Radio, spinner) têm o mesmo antialiasing
   em todos os temas: qualidade de desenho, não uma escolha de visual.
 - **Texto**: o Input opera sobre `[]rune` (cursor e âncora de seleção em

@@ -22,8 +22,8 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/vitrine-claude-escuro.png">
-    <img alt="Vitrine de widgets do JUIGo no tema papel e tinta" src="docs/vitrine-claude.png" width="470">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/vitrine-escuro.png">
+    <img alt="Vitrine de widgets do JUIGo na identidade Nanquim" src="docs/vitrine-claro.png" width="470">
   </picture>
 </p>
 
@@ -154,40 +154,48 @@ Grid, Scroll, Modal, Popup ancorado, Tooltip, MenuBar e Navigator.
 | **Formulários em uma expressão** | `quick.Form` com handles tipados, validação e erros por campo; `Confirm`/`Alert`/`Prompt`, `Menu`, `Toast` e seletor de arquivos 100% JUIGo. |
 | **Navegação** | `Navigator` com pilha de telas e transições animadas (deslizar nas quatro direções e fade); telas dormentes preservam o estado. |
 | **Comandos e paleta** | `Command{Título, atalho, ação}`, `MenuBar` cujos itens são comandos e a paleta **Ctrl/Cmd+K** embutida. |
-| **Tema ambiente** | Construtores não pedem tema; `DefaultTheme`, `DarkTheme` e o design system papel e tinta, trocáveis em runtime. HiDPI transparente. |
+| **Temas por sementes** | Construtores não pedem tema. Uma cor de ação basta para um tema completo, claro e escuro, com contraste WCAG garantido (`NewTheme(Palette{…})`, `Theme.Audit`). Troca em runtime, HiDPI transparente. |
 | **Testável de verdade** | `uitest` dirige o MESMO núcleo do App real, headless, com relógio virtual e screenshots determinísticos. |
 | **Rápida por construção** | Dirty regions, zero alocações no caminho quente; um golden test prova que o frame incremental é byte a byte igual ao completo. |
 | **E mais** | Múltiplas janelas, drag-and-drop, undo/redo (`History`), timers, animações (`anim.Tween`), `App.Post` para goroutines, textos da lib em inglês ou pt-BR (`SetLocale`) e inspector de depuração (**Ctrl/Cmd+I**). |
 
-## Design system "papel e tinta"
+## Design system Nanquim
 
 <table>
   <tr>
-    <td><img alt="Papel e tinta, claro" src="docs/identidade-claude.png"></td>
-    <td><img alt="Papel e tinta, escuro" src="docs/identidade-claude-escuro.png"></td>
+    <td><img alt="Nanquim, claro" src="docs/identidade-claro.png"></td>
+    <td><img alt="Nanquim, escuro" src="docs/identidade-escuro.png"></td>
   </tr>
 </table>
 
-Uma identidade completa pronta para usar, inspirada na linguagem visual do
-Claude (Anthropic): papel e tinta como base, títulos na serif Lora
-(embutida, OFL), terracota exclusiva para ações e neutros quentes. Vem com
-papéis tipográficos (`Title/Subtitle/Caption`), hierarquia de botões
-(`Secondary`/`Ghost`), superfícies (`Card`, `Divider`) e movimento.
-`juigo.ClaudeTheme()` e `juigo.ClaudeDarkTheme()` compartilham as métricas
-e alternam em runtime sem a interface pular. Tokens e regras em
-[docs/DESIGN.md](docs/DESIGN.md).
+A identidade do JUIGo e o tema padrão: tinta preta como ação, neutros
+puros, um único sinal âmbar para foco e seleção e títulos em Go Mono Bold.
+Vem com papéis tipográficos (`Title/Subtitle/Caption`), hierarquia de
+botões (`Secondary`/`Ghost`), cores de estado (`Danger`/`Success`/
+`Warning`), superfícies (`Card`, `Divider`) e movimento. `DefaultTheme()` e
+`DarkTheme()` compartilham as métricas e alternam em runtime sem a
+interface pular.
 
-<details>
-<summary><b>Os temas clássicos</b> — <code>DefaultTheme</code> e <code>DarkTheme</code></summary>
-<br>
+**Seu tema em uma linha.** Os temas nascem de sementes: escolha a cor de
+ação (e, se quiser, o matiz dos neutros e o sinal) e o construtor deriva
+todos os tokens, nos dois modos, já passando na régua de contraste.
 
-| Tema claro | Tema escuro |
-| --- | --- |
-| ![Vitrine no tema claro](docs/vitrine-claro.png) | ![Vitrine no tema escuro](docs/vitrine-escuro.png) |
+```go
+marca := juigo.Palette{Primary: color.RGBA{R: 0x2B, G: 0x59, B: 0xD9, A: 0xFF}}
+claro, _ := juigo.NewTheme(marca)
+marca.Dark = true
+escuro, _ := juigo.NewTheme(marca)
+```
 
-Todos com cantos arredondados com antialiasing (`Theme.Radius`, padrão 4);
-`ClassicTheme` (ou `Radius = 0`) devolve o visual reto, pixel a pixel.
-</details>
+<table>
+  <tr>
+    <td><img alt="Tema cobalto, feito com uma semente" src="docs/tema-cobalto.png"></td>
+    <td><img alt="Tema musgo escuro, feito com duas sementes" src="docs/tema-musgo-escuro.png"></td>
+  </tr>
+</table>
+
+Tokens, regras e como a derivação funciona em [docs/DESIGN.md](docs/DESIGN.md).
+O visual anterior segue disponível em `ClassicTheme()`/`ClassicDarkTheme()`.
 
 ## Como se usa
 
@@ -267,7 +275,8 @@ ordem, sem dormir.
   `Set`, `OnChange` sempre entrega o valor e só reage ao usuário, todo
   `Bind*` tem o seu par de leitura. Convenções em [docs/API.md](docs/API.md);
   quem vem de uma versão anterior segue
-  [docs/MIGRACAO-v0.19.md](docs/MIGRACAO-v0.19.md).
+  [docs/MIGRACAO-v0.19.md](docs/MIGRACAO-v0.19.md) e
+  [docs/MIGRACAO-v0.20.md](docs/MIGRACAO-v0.20.md).
 - **Layout sem cerimônia** — `VBox`/`HBox` com `.Grow(peso)`, `Spacer`,
   `.Centered()`/`.AtStart()`/`.AtEnd()`; `Grid(n, …)` para formulários
   alinhados; `Scroll` (com `ScrollToEnd` e `StickToEnd` para chats e logs)
@@ -294,7 +303,7 @@ ordem, sem dormir.
   </tr>
   <tr>
     <td colspan="2">
-      <img alt="Chat papel e tinta" src="docs/chat.png"><br>
+      <img alt="Chat na identidade Nanquim" src="docs/chat.png"><br>
       <b><code>go run ./examples/chat</code></b> — a demo bandeira do design system: <code>SplitPane</code>,
       balões de <code>Card</code> com <code>Label</code>, barra de menus com atalhos e a resposta chegando "digitando".
     </td>
@@ -461,5 +470,5 @@ desenho é isolado em `render/`.
 ## Licença
 
 [MIT](LICENSE). A fonte Go Regular embutida segue a
-[licença BSD do projeto Go](https://go.dev/LICENSE); Lora e Fira Code, a
-OFL (textos em [`theme/assets`](theme/assets)).
+[licença BSD do projeto Go](https://go.dev/LICENSE); Fira Code, a OFL
+(texto em [`theme/assets`](theme/assets)).

@@ -1,30 +1,32 @@
-/* Site do JUIGo: os tokens são os do design system "papel e tinta"
-   (docs/DESIGN.md) e as fontes são as mesmas embutidas na biblioteca. */
+/* Site do JUIGo: os tokens são os da identidade Nanquim (docs/DESIGN.md),
+   derivados pelo theme.New, e as fontes são as mesmas da biblioteca. */
 
 @font-face { font-family: "Go"; src: url("fonts/GoRegular.ttf") format("truetype"); font-display: swap; }
-@font-face { font-family: "Lora"; src: url("fonts/Lora-Regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
-@font-face { font-family: "Lora"; src: url("fonts/Lora-Bold.ttf") format("truetype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Go Mono"; src: url("fonts/GoMonoBold.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
 @font-face { font-family: "Fira Code"; src: url("fonts/FiraCode-Regular.ttf") format("truetype"); font-display: swap; }
 
 :root {
-  --papel: #FAF9F5;
-  --tinta: #141413;
-  --apagado: #6F695F;
-  --fio: #D6CFC2;
-  --aveia: #F0EEE6;
-  --manilla: #EBDBBC;
+  --fundo: #FAFAFA;
+  --tinta: #121212;
+  --apagado: #737373;
+  --fio: #D3D3D3;
+  --hover: #F0F0F0;
+  --selecao: #FEE3BE;
   --campo: #FFFFFF;
-  --terracota: #D97757;
-  --terracota-funda: #BD5F3D;
-  --foco: #C15F3C;
-  --linha-atual: #F2EFE7;
-  --k: #B0512F; --s: #667B4E; --n: #4E7396; --c: #8C857A; --b: #9A6B2F;
+  --acao: #111111;
+  --acao-hover: #232323;
+  --acao-funda: #050505;
+  --acao-texto: #FFFFFF;
+  --foco: #B98631;
+  --link: #121212;
+  --linha-atual: #F5F5F5;
+  --k: #3E6DC8; --s: #815B19; --n: #B2511E; --c: #737373; --b: #23817D;
 
-  --serif: "Lora", Georgia, serif;
+  --display: "Go Mono", ui-monospace, Menlo, monospace;
   --sans: "Go", "Helvetica Neue", Arial, sans-serif;
   --mono: "Fira Code", ui-monospace, Menlo, monospace;
 
-  --raio: 8px;
+  --raio: 4px;
   --barra-h: 56px;
   --indice-w: 232px;
   --coluna: 46rem;
@@ -32,16 +34,21 @@
 }
 
 [data-tema="escuro"] {
-  --papel: #262624;
-  --tinta: #EDEBE3;
-  --apagado: #A09A8D;
-  --fio: #4C4A44;
-  --aveia: #30302E;
-  --manilla: #574434;
-  --campo: #30302E;
-  --foco: #E39A7D;
-  --linha-atual: #2E2E2B;
-  --k: #E5876A; --s: #A9BC8F; --n: #8FB4D9; --c: #8F8A80; --b: #D4A27F;
+  --fundo: #0F0F0F;
+  --tinta: #EDEDED;
+  --apagado: #949494;
+  --fio: #313131;
+  --hover: #202020;
+  --selecao: #604108;
+  --campo: #171717;
+  --acao: #EDEDED;
+  --acao-hover: #FAFAFA;
+  --acao-funda: #D3D3D3;
+  --acao-texto: #121212;
+  --foco: #F0A500;
+  --link: #EDEDED;
+  --linha-atual: #1E1E1E;
+  --k: #91B7FD; --s: #E6B469; --n: #F79E76; --c: #949494; --b: #60CCC5;
   color-scheme: dark;
 }
 
@@ -49,19 +56,19 @@
 html { scroll-padding-top: calc(var(--barra-h) + 16px); -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
-  background: var(--papel);
+  background: var(--fundo);
   color: var(--tinta);
   font: 16px/1.6 var(--sans);
   transition: background-color .35s ease, color .35s ease;
 }
 
-a { color: var(--foco); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+a { color: var(--link); text-decoration-color: var(--foco); text-underline-offset: 3px; text-decoration-thickness: 1px; }
 a:hover { text-decoration-thickness: 2px; }
 :focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; border-radius: 4px; }
 
 code, kbd, pre { font-family: var(--mono); font-size: .875em; font-variant-ligatures: none; }
 :not(pre) > code {
-  background: var(--aveia);
+  background: var(--hover);
   padding: .1em .35em;
   border-radius: 4px;
 }
@@ -73,7 +80,7 @@ kbd {
 }
 
 .pular { position: absolute; left: -9999px; }
-.pular:focus { left: 16px; top: 12px; z-index: 30; background: var(--papel); padding: 6px 10px; }
+.pular:focus { left: 16px; top: 12px; z-index: 30; background: var(--fundo); padding: 6px 10px; }
 
 /* ---- Barra do topo ---- */
 .barra {
@@ -81,12 +88,12 @@ kbd {
   height: var(--barra-h);
   display: flex; align-items: center; gap: 20px;
   padding: 0 24px;
-  background: var(--papel);
+  background: var(--fundo);
   border-bottom: 1px solid var(--fio);
   transition: background-color .35s ease, border-color .35s ease;
 }
 .marca {
-  font: 700 22px/1 var(--serif);
+  font: 700 22px/1 var(--display);
   color: var(--tinta);
   text-decoration: none;
   letter-spacing: -.01em;
@@ -94,9 +101,9 @@ kbd {
 .versao { color: var(--apagado); font-size: 13px; }
 .barra-links { margin-left: auto; display: flex; gap: 20px; }
 .barra-links a { color: var(--tinta); text-decoration: none; font-size: 15px; }
-.barra-links a:hover { color: var(--foco); }
+.barra-links a:hover { color: var(--tinta); text-decoration: underline; text-decoration-color: var(--foco); }
 
-/* O interruptor imita o Checkbox/Slider da lib: trilho de fio, pino terracota. */
+/* O interruptor imita o Slider da lib: trilho de fio, pino de tinta. */
 .tema {
   display: flex; align-items: center; gap: 8px;
   background: none; border: 0; padding: 4px; cursor: pointer;
@@ -110,11 +117,11 @@ kbd {
 .tema-botao {
   position: absolute; top: 3px; left: 3px;
   width: 14px; height: 14px; border-radius: 50%;
-  background: var(--papel);
+  background: var(--fundo);
   transition: transform .25s ease, background-color .25s ease;
 }
-[data-tema="escuro"] .tema-trilho { background: var(--terracota); }
-[data-tema="escuro"] .tema-botao { transform: translateX(14px); background: #FAF9F5; }
+[data-tema="escuro"] .tema-trilho { background: var(--acao); }
+[data-tema="escuro"] .tema-botao { transform: translateX(14px); background: var(--fundo); }
 
 .menu {
   display: none;
@@ -130,7 +137,7 @@ kbd {
   margin: 0 auto;
 }
 
-/* O índice é a Tree da galeria: grupos em legenda, item ativo numa pílula manilla. */
+/* O índice é a Tree da galeria: grupos em legenda, item ativo numa pílula de seleção. */
 .indice {
   position: sticky; top: var(--barra-h);
   align-self: start;
@@ -154,8 +161,8 @@ kbd {
   text-decoration: none;
   transition: background-color .15s ease;
 }
-.indice a:hover { background: var(--aveia); }
-.indice a[aria-current="true"] { background: var(--manilla); }
+.indice a:hover { background: var(--hover); }
+.indice a[aria-current="true"] { background: var(--selecao); }
 
 main {
   padding: 48px 48px 80px;
@@ -163,7 +170,7 @@ main {
 }
 main > section { max-width: var(--coluna); margin-bottom: 72px; }
 
-h1, h2, h3 { font-family: var(--serif); font-weight: 400; line-height: 1.2; letter-spacing: -.01em; }
+h1, h2, h3 { font-family: var(--display); font-weight: 400; line-height: 1.2; letter-spacing: -.01em; }
 h1 { font-size: clamp(2rem, 3.4vw, 2.8rem); margin: 0 0 20px; max-width: 16em; }
 h2 { font-size: 1.85rem; margin: 0 0 14px; }
 h3 { font-size: 1.25rem; margin: 0 0 6px; }
@@ -184,21 +191,21 @@ main > .topo {
   display: grid; grid-template-columns: repeat(4, auto); justify-content: start; gap: 12px 26px;
   color: var(--apagado); font-size: 15px;
 }
-.fatos strong { display: block; font: 400 26px/1.2 var(--serif); color: var(--tinta); }
+.fatos strong { display: block; font: 400 26px/1.2 var(--display); color: var(--tinta); }
 .topo h1 { grid-column: 1 / -1; }
 .topo-texto { min-width: 0; }
 .topo-captura { margin: 0; }
 .topo-captura figcaption { margin-top: 14px; font-size: 14px; color: var(--apagado); }
 
 /* As capturas são renderizações da lib no MESMO fundo da página: sem
-   moldura de janela, só o fio do campo — parecem vivas no papel. */
+   moldura de janela, só o fio do campo — parecem vivas na página. */
 .captura {
   display: block;
   max-width: 100%;
   height: auto;
   border: 1px solid var(--fio);
   border-radius: var(--raio);
-  background: var(--papel);
+  background: var(--fundo);
 }
 .captura.larga { margin-top: 18px; }
 .trocando .captura[data-escuro] { animation: virar .5s ease; }
@@ -223,14 +230,14 @@ main > .topo {
 .copiar {
   flex: none;
   font: 14px var(--sans);
-  color: #FAF9F5;
-  background: var(--terracota);
+  color: var(--acao-texto);
+  background: var(--acao);
   border: 0; border-radius: 6px;
   padding: 6px 12px;
   cursor: pointer;
 }
-.copiar:hover { background: #E08A6C; }
-.copiar:active { background: var(--terracota-funda); }
+.copiar:hover { background: var(--acao-hover); }
+.copiar:active { background: var(--acao-funda); }
 
 pre {
   position: relative;
@@ -269,7 +276,7 @@ pre:hover .copiar, pre .copiar:focus-visible { opacity: 1; }
   width: 28px; height: 28px; border-radius: 50%;
   border: 1px solid var(--fio);
   display: grid; place-items: center;
-  font: 15px/1 var(--serif);
+  font: 15px/1 var(--display);
 }
 
 /* ---- Componentes ---- */
@@ -292,7 +299,7 @@ pre:hover .copiar, pre .copiar:focus-visible { opacity: 1; }
   border-bottom: 1px solid var(--fio);
 }
 .componente:last-child { border-bottom: 0; }
-.componente h4 { font: 400 1.3rem/1.25 var(--serif); margin: 0 0 4px; }
+.componente h4 { font: 400 1.3rem/1.25 var(--display); margin: 0 0 4px; }
 .componente p { color: var(--apagado); font-size: 15px; margin: 0; }
 .componente pre { margin: 0; }
 .componente-captura { margin: 0; }
@@ -314,7 +321,7 @@ main > #exemplos { max-width: 1000px; }
 .numeros { border-collapse: collapse; width: 100%; max-width: 40rem; font-size: 15px; }
 .numeros th, .numeros td { padding: 10px 0; border-bottom: 1px solid var(--fio); text-align: left; }
 .numeros th { font-weight: 400; color: var(--apagado); padding-right: 24px; }
-.numeros td { font: 400 18px var(--serif); text-align: right; white-space: nowrap; }
+.numeros td { font: 400 18px var(--display); text-align: right; white-space: nowrap; }
 
 .rodape {
   max-width: var(--coluna);
@@ -340,7 +347,7 @@ main > #exemplos { max-width: 1000px; }
     display: none;
     position: fixed; inset: var(--barra-h) 0 0 0; z-index: 15;
     height: auto; width: auto;
-    background: var(--papel);
+    background: var(--fundo);
     padding: 20px 24px 40px;
   }
   .indice.aberto { display: block; }

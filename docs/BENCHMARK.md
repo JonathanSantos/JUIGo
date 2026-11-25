@@ -34,8 +34,8 @@ de acessibilidade, ainda não.
 
 | Cenário | CPU/frame | Alocações | % do orçamento 60 Hz |
 | --- | ---: | ---: | ---: |
-| Frame completo 480×320, tema Default | 50 µs | 0 | 0,3% |
-| Frame completo 480×320, **papel e tinta** | 96 µs | 0 | 0,6% |
+| Frame completo 480×320, tema Default (Nanquim) | 46 µs | 0 | 0,3% |
+| Frame completo 480×320, tema Classic (cantos retos) | 42 µs | 0 | 0,3% |
 | Frame completo 960×640 (escala 2×) | 142 µs | 0 | 0,9% |
 | Frame completo **2560×1600** (retina 13" inteira) | 553 µs | 0 | 3,3% |
 | Frame **incremental** (dirty region de um campo) | 15 µs | 0 | 0,1% |
@@ -44,9 +44,11 @@ de acessibilidade, ainda não.
 
 Leituras:
 
-- **O papel e tinta custa ~1,9× o Default** no mesmo conteúdo — é o preço
-  do raio 10 com antialiasing em todo controle e da serif nos papéis de
-  título. Segue sendo 0,6% do orçamento; a estética é paga com folga.
+- **Nanquim e Classic custam o mesmo** na prática: 46 µs contra 42 µs
+  está dentro da oscilação de ±30% entre rodadas descrita abaixo. (O
+  antigo tema "papel e tinta", removido na v0.20, custava ~1,9× por causa
+  do raio 10 e da serif.) Só estas duas linhas foram medidas de novo
+  (2026-11-24, `-count=3`); as demais são da v0.19.
 - **Dirty regions entregam 3,3×** sobre o frame completo na cena pequena;
   a vantagem cresce com a janela (o incremental é proporcional ao dano,
   não à tela).
@@ -78,10 +80,10 @@ Leituras:
 
 | Métrica | Valor |
 | --- | ---: |
-| Binário do chat (exemplo mais completo), `-s -w` | 3,7 MB |
-| Binário com símbolos | 5,8 MB |
-| — dos quais fontes embutidas (Go Regular/Mono/Bold, Fira, Lora ×2) | ~1,1 MB |
-| Tema papel e tinta (fontes rasterizadas + caches), heap | ~0,3 MB |
+| Binário do chat (exemplo mais completo), `-s -w` | 3,8 MiB (4,0 MB) |
+| Binário com símbolos | 5,9 MiB |
+| — dos quais fontes embutidas (Go Regular/Mono/Bold/Mono Bold, Fira) | ~0,9 MB |
+| Tema (fontes rasterizadas + caches), heap — medido na v0.19 | ~0,3 MB |
 | UI densa 900×560 (SplitPane + List 10k + sessão + framebuffer), heap | ~2,2 MB |
 | RSS no App real com GL (referência histórica, 1400×850) | ~101 MB (88 MB são a stack OpenGL do macOS) |
 
@@ -179,7 +181,7 @@ exatas.
 | Reflow de Label (largura mudou) | 30,3 µs | 1,6 µs | **18×** | 0 → 0 |
 | CrossFade 480×320 | 854 µs | 163 µs | **5,3×** | 0 → 0 |
 | Tecla digitada no Input (inserir + apagar) | 7,8 µs | 2,6 µs | **3,0×** | 6 → 2 |
-| Frame completo 480×320, papel e tinta | 157 µs | 83 µs | 1,9× | 0 → 0 |
+| Frame completo 480×320, papel e tinta (tema removido na v0.20) | 157 µs | 83 µs | 1,9× | 0 → 0 |
 | Frame completo 480×320, Default | 83 µs | 58 µs | 1,4× | 0 → 0 |
 | Rolagem em List de 10.000 linhas | 66 µs | 47 µs | 1,4× | 3 → 1 |
 | Frame completo 2560×1600 | 677 µs | 705 µs | sem mudança | 0 → 0 |

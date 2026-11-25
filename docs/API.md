@@ -3,7 +3,8 @@
 Como se escreve — e como se estende — a API do JUIGo. Tudo o que é exportado
 segue estas regras; um widget novo que as respeite já "soa" como o resto da
 biblioteca. Quem está migrando de uma versão anterior encontra o passo a
-passo em [MIGRACAO-v0.19.md](MIGRACAO-v0.19.md).
+passo em [MIGRACAO-v0.19.md](MIGRACAO-v0.19.md) e
+[MIGRACAO-v0.20.md](MIGRACAO-v0.20.md).
 
 ## 1. Uma interface é uma expressão
 

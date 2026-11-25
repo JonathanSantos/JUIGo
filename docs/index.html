@@ -7,7 +7,7 @@
 <meta name="description" content="Biblioteca de GUI desktop para Go escrita do zero: renderização por software, estado reativo tipado, formulários validados e testes de UI determinísticos.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23D97757'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='20' text-anchor='middle' fill='%23FAF9F5'%3EJ%3C/text%3E%3C/svg%3E">
 <link rel="preload" href="site/fonts/GoRegular.ttf" as="font" type="font/ttf" crossorigin>
-<link rel="preload" href="site/fonts/Lora-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="site/fonts/GoMonoBold.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="site/estilo.css">
 <script>
   // Aplica o tema antes da primeira pintura (evita o clarão).
@@ -75,8 +75,8 @@
     </ul>
   </div>
   <figure class="topo-captura">
-    <img class="captura" width="470" height="500" alt="Vitrine de widgets do JUIGo no tema papel e tinta"
-      data-claro="vitrine-claude.png" data-escuro="vitrine-claude-escuro.png" src="vitrine-claude.png">
+    <img class="captura" width="470" height="500" alt="Vitrine de widgets do JUIGo na identidade Nanquim"
+      data-claro="vitrine-claro.png" data-escuro="vitrine-escuro.png" src="vitrine-claro.png">
     <figcaption>Não é um mockup. Cada imagem desta página foi renderizada pela própria JUIGo,
       offscreen, a partir do código ao lado dela. Troque o tema no alto e todas são trocadas pelas
       renderizações escuras.</figcaption>
@@ -158,15 +158,17 @@ ui := juigo.NewHBox(
     <code>Spacer</code> e <code>Gap</code>; <code>Grid</code> para formulários alinhados;
     <code>Scroll</code>, <code>List</code> e <code>Table</code> virtualizadas para milhares de
     linhas.</p>
-  <p>Construtores não pedem tema: o App o injeta na árvore. Há <code>DefaultTheme</code>,
-    <code>DarkTheme</code> e o design system papel e tinta (<code>ClaudeTheme</code> e
-    <code>ClaudeDarkTheme</code>, o desta página), trocáveis em tempo de execução. Métricas são
-    unidades lógicas, então HiDPI é transparente.</p>
+  <p>Construtores não pedem tema: o App o injeta na árvore. O padrão é a identidade Nanquim, a
+    desta página (<code>DefaultTheme</code> e <code>DarkTheme</code>), trocável em tempo de
+    execução. Um tema próprio nasce de sementes: <code>NewTheme(Palette{Primary: …})</code> deriva
+    todos os tokens, claro e escuro, com contraste WCAG garantido. Métricas são unidades lógicas,
+    então HiDPI é transparente.</p>
   <pre><code class="go">app, err := juigo.New("Notas", 800, 600)
 if err != nil {
 	log.Fatal(err)
 }
-escuro, _ := juigo.ClaudeDarkTheme()
+marca := juigo.Palette{Primary: color.RGBA{R: 0x2B, G: 0x59, B: 0xD9, A: 0xFF}, Dark: true}
+escuro, _ := juigo.NewTheme(marca)
 app.SetTheme(escuro)
 app.SetRoot(ui)
 app.Run()</code></pre>
@@ -252,7 +254,7 @@ go func() {
         troque tema, fontes e tamanho de texto em pleno voo.</figcaption>
     </figure>
     <figure class="exemplo amplo">
-      <img class="captura" alt="Chat papel e tinta" src="chat.png" loading="lazy">
+      <img class="captura" alt="Chat na identidade Nanquim" src="chat.png" loading="lazy">
       <figcaption><code>examples/chat</code> Conversas num SplitPane, balões com Label, barra de
         menus e paleta de comandos.</figcaption>
     </figure>
@@ -309,9 +311,9 @@ go func() {
   <p>JUIGo é um projeto de estudo, sob licença
     <a href="https://github.com/JonathanSantos/JUIGo/blob/main/LICENSE">MIT</a>. Na série 0.x a API
     ainda muda entre versões.</p>
-  <p>Fontes desta página, as mesmas embutidas na lib: Go Regular
-    (<a href="https://go.dev/LICENSE">BSD</a>), Lora e Fira Code
-    (<a href="site/fonts/Lora-OFL.txt">OFL</a>, <a href="site/fonts/FiraCode-OFL.txt">OFL</a>).</p>
+  <p>Fontes desta página, as mesmas da lib: Go Regular e Go Mono Bold
+    (<a href="https://go.dev/LICENSE">BSD</a>) e Fira Code
+    (<a href="site/fonts/FiraCode-OFL.txt">OFL</a>).</p>
 </footer>
 
 </main>

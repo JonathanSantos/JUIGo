@@ -1,161 +1,215 @@
-# Design system "papel e tinta"
+# Design system Nanquim
 
-A identidade visual pronta do JUIGo, inspirada na linguagem visual pública
-do Claude (Anthropic): papel, tinta, terracota e uma serif de livro nos
-títulos. É uma homenagem aproximada — o tema não usa marcas nem representa
-a Anthropic; as cores vêm da paleta térrea publicada na identidade da
-empresa, e a serif é a [Lora](https://github.com/cyrealtype/Lora) (OFL),
-embutida.
+A identidade visual do JUIGo. Tinta preta sobre neutros puros, um único
+sinal âmbar e títulos em Go Mono Bold: cara de ferramenta, nada de
+decoração. É o tema padrão: `juigo.Run` já abre com ele, sem configurar
+nada.
 
 | Claro | Escuro |
 | --- | --- |
-| ![Identidade, claro](identidade-claude.png) | ![Identidade, escuro](identidade-claude-escuro.png) |
-| ![Vitrine papel e tinta, claro](vitrine-claude.png) | ![Vitrine papel e tinta, escuro](vitrine-claude-escuro.png) |
+| ![Identidade, claro](identidade-claro.png) | ![Identidade, escuro](identidade-escuro.png) |
+| ![Vitrine, claro](vitrine-claro.png) | ![Vitrine, escuro](vitrine-escuro.png) |
 
 ```go
-th, _ := juigo.ClaudeTheme()       // claro
-noite, _ := juigo.ClaudeDarkTheme() // escuro — mesmas métricas, troca sem pular
+claro, _ := juigo.DefaultTheme() // o mesmo que vem sem configurar
+escuro, _ := juigo.DarkTheme()   // mesmas métricas: a troca não move layout
 
-app, _ := juigo.New("Meu app", 800, 600)
-app.SetTheme(th)
+app.SetTheme(escuro)
 ```
 
 ## Princípios
 
-1. **Papel e tinta.** O fundo claro é papel (`#FAF9F5`), o texto é tinta
-   quente (`#141413`). No escuro os papéis se invertem: superfícies de
-   grafite quente (`#262624`) e texto cor de papel. Tooltips invertem de
-   novo — tinta sobre papel no claro, papel sobre grafite no escuro.
-2. **Terracota é ação.** Uma única cor de destaque (`#D97757`): botões,
-   borda do campo focado, marca do checkbox/radio, trilho ativo do slider,
-   sublinhado da aba, realce de drop. Se não é ação nem estado ativo, não é
-   terracota — a cor nunca decora.
-3. **Neutros sempre quentes.** Bordas, placeholders, faixas e divisores
-   puxam para o bege/kraft; não existe cinza azulado no sistema. A seleção
-   de texto é manilla (`#EBDBBC`) no claro e kraft profundo (`#574434`) no
-   escuro — papel marcado, não azul de sistema.
-4. **Formas generosas.** `Radius` 10 e `Padding`/`Spacing` 10 — mais curva
-   e mais respiro que o tema Default. Os dois modos compartilham TODAS as
-   métricas: alternar claro/escuro em runtime não move um pixel de layout.
-5. **Estados sempre visíveis.** Foco tem anel (terracota funda no claro,
-   clareada no escuro), desabilitado é lavagem translúcida do fundo, hover
-   de listas é aveia (`#F0EEE6`) / grafite claro (`#383733`).
+1. **Tinta é ação.** O botão primário, a marca do checkbox e do radio, o
+   trilho ativo do slider e a aba ativa são tinta (`#111111`). No escuro a
+   tinta se inverte e vira a cor do texto (`#EDEDED`), com rótulo escuro.
+   Se algo não é ação nem estado ativo, não é tinta.
+2. **Um sinal só.** O âmbar marca o que tem a atenção do teclado e o que
+   foi escolhido: o anel de foco dos controles (`#B27A00`) e a seleção de
+   texto, linhas, opções e dias, como um marca-texto (`#FEE7A0`). Campos de
+   texto com foco ganham a borda em tinta, porque o cursor já sinaliza.
+   O âmbar não decora, não colore títulos, ícones nem estados de botão.
+3. **Neutros puros.** Fundos, bordas e texto são cinza sem matiz, numa
+   escala de luminosidade fixa: fundo `#FAFAFA`, superfícies brancas, fio
+   `#E3E3E3`, borda de campo `#D3D3D3`. No escuro, carvão `#0F0F0F` e
+   superfícies `#171717`.
+4. **Forma contida.** `Radius` 4, `Padding` 10, `Spacing` 8: cantos que
+   suavizam sem virar pílula, respiro interno maior que o espaço entre
+   controles. Os dois modos compartilham todas as métricas.
+5. **Contraste medido.** Todo par de texto passa de 4.5:1 e todo foco ou
+   marca passa de 3:1, nos dois modos. Isso não é revisão manual: o
+   construtor de temas garante e `Theme.Audit` confere (ver abaixo).
+
+## Crie o seu tema
+
+Um tema é feito de **sementes**. O construtor deriva todos os tokens de cor
+(fundos, bordas, hover e pressionado, seleção, foco, estados, dica e
+sintaxe) e ajusta o que for preciso para passar na régua de contraste:
+
+```go
+marca := juigo.Palette{
+	Primary: color.RGBA{R: 0x2B, G: 0x59, B: 0xD9, A: 0xFF}, // a cor de ação
+}
+claro, _ := juigo.NewTheme(marca)
+marca.Dark = true
+escuro, _ := juigo.NewTheme(marca) // o par escuro sai das mesmas sementes
+```
+
+| Cobalto (só `Primary`) | Musgo escuro (`Primary` + `Neutral`) |
+| --- | --- |
+| ![Tema cobalto](tema-cobalto.png) | ![Tema musgo, escuro](tema-musgo-escuro.png) |
+
+| Semente | O que controla | Se omitida |
+| --- | --- | --- |
+| `Primary` | ação: botão primário, marcas, trilho ativo, aba, gráficos, palavra-chave | tinta |
+| `Signal` | anel de foco (e o matiz da seleção, sem `Highlight`) | `Primary` |
+| `Highlight` | o matiz da seleção (o marca-texto) | `Signal` |
+| `Neutral` | o matiz dos neutros (só um toque de croma) | cinza puro |
+| `Danger`, `Success`, `Warning` | cores de estado, usadas como texto | vermelho, verde, âmbar |
+| `Dark` | gera o modo escuro | claro |
+
+Como a derivação funciona, para quem quiser prever o resultado:
+
+- As cores são trabalhadas em **OKLCh**, não em RGB: "um pouco mais
+  claro" parece igualmente mais claro em qualquer matiz.
+- Os neutros seguem uma escala fixa de luminosidade por modo; a semente
+  `Neutral` só empresta o matiz.
+- Uma `Primary` **sem croma** (preto, grafite) é tinta: no modo oposto ela
+  se inverte para a cor do texto. Uma `Primary` com croma mantém o matiz e
+  só tem a luminosidade ajustada até ser percebida (3:1) sobre o fundo.
+- Hover e pressionado andam na luminosidade a partir da ação. O rótulo do
+  botão é o neutro (claro ou escuro) que mais contrasta com ela; se nem
+  esse chega a 4.5:1 (ações de luminância média, como `#0077EE`), a ação é
+  que se afasta do rótulo até chegar.
+- O anel de foco fica numa faixa de luminosidade por modo (escuro no
+  claro, aceso no escuro) antes do ajuste de 3:1; a seleção usa o matiz de
+  `Highlight` com luminosidade fixa por modo.
+- Um teste varre o cubo RGB como semente, nos dois modos, e exige
+  auditoria vazia: a garantia vale para qualquer cor, não só para as do
+  exemplo.
+- Cores de estado e de sintaxe são ajustadas até 4.5:1 sobre o fundo.
+
+Para variar só um pedaço da identidade, parta das sementes dela:
+
+```go
+p := juigo.NanquimPalette()
+p.Signal = color.RGBA{R: 0x00, G: 0x8C, B: 0xFF, A: 0xFF} // foco azul
+p.Highlight = p.Signal                                    // e a seleção junto
+th, _ := juigo.NewTheme(p)
+```
+
+E para re-colorir um tema já ajustado (fontes, raio, tamanhos) sem perder
+nada disso, use `th.ApplyPalette(p)`: ele só toca nas cores.
+
+### Conferindo um tema
+
+`Theme.Audit()` devolve os pares abaixo da régua WCAG (texto 4.5:1, foco e
+marcas 3:1). Vazio quer dizer aprovado. Vale um teste no seu projeto,
+principalmente se você mexeu em tokens à mão depois de derivar:
+
+```go
+func TestMeuTema(t *testing.T) {
+	th, _ := juigo.NewTheme(minhaMarca)
+	th.Placeholder = color.RGBA{R: 0xAA, G: 0xAA, B: 0xAA, A: 0xFF}
+	if issues := th.Audit(); len(issues) > 0 {
+		t.Fatal(issues) // Placeholder/InputBackground: 2.32:1 (mínimo 4.5:1)
+	}
+}
+```
+
+`juigo.Contrast(a, b)` mede um par avulso.
 
 ## Tokens
 
-O design system é o próprio `juigo.Theme` preenchido — cada token abaixo é
-um campo público; derive e sobrescreva à vontade.
+Cada token é um campo público de `juigo.Theme`. Os valores abaixo são os do
+Nanquim, já derivados das sementes.
 
 | Token | Papel na interface | Claro | Escuro |
 | --- | --- | --- | --- |
-| `Background` | papel da janela | `#FAF9F5` | `#262624` |
-| `Text` | tinta | `#141413` | `#EDEBE3` |
-| `Placeholder` | sugestões, rótulos apagados | `#928B7F` | `#A09A8D` |
-| `ButtonNormal` | ação primária | `#D97757` | `#D97757` |
-| `ButtonHover` / `ButtonPressed` | ação sob ponteiro / apertada | `#E08A6C` / `#BD5F3D` | `#E08A6C` / `#B0532E` |
-| `ButtonText` / `ButtonBorder` | rótulo e fio do botão | `#FAF9F5` / `#CC785C` | `#FAF9F5` / `#B5643F` |
-| `InputBackground` | campos de texto | `#FFFFFF` | `#30302E` |
-| `InputBorder` / `InputBorderFocused` | fio do campo / focado | `#D6CFC2` / `#D97757` | `#4C4A44` / `#D97757` |
-| `Selection` | seleção de texto e de linhas | `#EBDBBC` | `#574434` |
-| `FocusOutline` | anel de foco | `#C15F3C` | `#E39A7D` |
-| `Accent` | marcas ativas (checkbox, slider, abas) | `#D97757` | `#D97757` |
-| `HoverBackground` | item sob o ponteiro | `#F0EEE6` | `#383733` |
-| `TooltipBackground` / `TooltipText` | dica | `#141413` / `#FAF9F5` | `#F0EEE6` / `#141413` |
-| `Danger` | erros e ações destrutivas | `#BF4D43` | `#E5756A` |
-| `CurrentLine` | faixa da linha do cursor (CodeEditor) | `#F2EFE7` | `#2E2E2B` |
-| `Radius` / `Padding` / `Spacing` | forma e respiro | 10 / 10 / 10 | 10 / 10 / 10 |
+| `Background` | fundo da janela | `#FAFAFA` | `#0F0F0F` |
+| `Surface` / `SurfaceBorder` | cartões, menus, divisores | `#FFFFFF` / `#E3E3E3` | `#171717` / `#282828` |
+| `Text` | texto | `#121212` | `#EDEDED` |
+| `Placeholder` | sugestões, rótulos apagados, comentários | `#737373` | `#949494` |
+| `ButtonNormal` | ação primária | `#111111` | `#EDEDED` |
+| `ButtonHover` / `ButtonPressed` | ação sob ponteiro / apertada | `#232323` / `#050505` | `#FAFAFA` / `#D3D3D3` |
+| `ButtonText` | rótulo da ação | `#FFFFFF` | `#121212` |
+| `Accent` / `AccentText` | marcas ativas e o check sobre elas | `#111111` / `#FFFFFF` | `#EDEDED` / `#121212` |
+| `InputBackground` / `InputBorder` | campos | `#FFFFFF` / `#D3D3D3` | `#171717` / `#313131` |
+| `InputBorderFocused` | campo com foco | `#111111` | `#EDEDED` |
+| `FocusOutline` | anel de foco | `#B27A00` | `#F1B044` |
+| `Selection` | seleção de texto, linhas, opções e dias | `#FEE7A0` | `#584500` |
+| `HoverBackground` | item sob o ponteiro | `#F0F0F0` | `#202020` |
+| `HeaderBackground` | cabeçalho da Table, calha do CodeEditor | `#F4F4F4` | `#1C1C1C` |
+| `Track` | trilho do Slider e da ProgressBar; secundário/ghost pressionado | `#DFDFDF` | `#303030` |
+| `Danger` / `Success` / `Warning` | estados | `#D92D20` / `#148446` / `#A5630C` | `#EB4232` / `#2C9355` / `#C77700` |
+| `TooltipBackground` / `TooltipText` | dica (o modo invertido) | `#121212` / `#FAFAFA` | `#EDEDED` / `#0F0F0F` |
+| `CurrentLine` | linha do cursor no CodeEditor | `#F5F5F5` | `#1E1E1E` |
+| `Radius` / `Padding` / `Spacing` | forma e respiro | 4 / 10 / 8 | 4 / 10 / 8 |
 | `RowPad` | respiro de linha e margem da pílula (List/Tree) | 4 | 4 |
 
-Sintaxe (CodeEditor), na mesma família térrea:
-
-| Classe | Claro | Escuro |
-| --- | --- | --- |
-| `Keyword` | `#B0512F` (terracota funda) | `#E5876A` |
-| `String` | `#667B4E` (oliva) | `#A9BC8F` |
-| `Number` | `#4E7396` (azul-névoa) | `#8FB4D9` |
-| `Comment` | `#8C857A` | `#8F8A80` |
-| `Builtin` | `#9A6B2F` (kraft) | `#D4A27F` |
+Na sintaxe do CodeEditor, a palavra-chave usa a ação. Como tinta não se
+distingue do texto comum, um tema de tinta ganha um azul próprio para
+palavras-chave; strings saem no matiz do sinal (âmbar), números em laranja,
+embutidos em verde-petróleo e comentários no `Placeholder`.
 
 ## Tipografia
 
-A hierarquia vem de PAPÉIS tipográficos do tema, não de tamanhos avulsos:
+A hierarquia vem de papéis do tema, não de tamanhos avulsos:
 
 | Papel | Como usar | Fonte | Tamanho lógico |
 | --- | --- | --- | --- |
-| Título | `NewText("…").Title()` | display (Lora no papel e tinta) | `TitleSize` 24 |
+| Título | `NewText("…").Title()` | display (Go Mono Bold) | `TitleSize` 24 |
 | Subtítulo | `.Subtitle()` | display | `SubtitleSize` 19 |
-| Corpo | `NewText("…")` | regular (Go) | `FontSize` 16 |
-| Legenda | `.Caption()` | regular, menor | `CaptionSize` 13 |
+| Corpo | `NewText("…")` | Go Regular | `FontSize` 16 |
+| Legenda | `.Caption()` | Go Regular, menor | `CaptionSize` 13 |
 
-A fonte de display é um token trocável (`Theme.UseDisplayFont`): Go Bold
-nos temas Default/Dark (hierarquia por peso, zero assets), a serif Lora no
-papel e tinta (`theme.Lora()`; `theme.LoraBold()` para títulos mais
-pesados). Regras de uso: **um Título por tela**, Subtítulo abre seções e
-cartões, legenda para metadados — combine `.Caption()` com
-`Color(Theme.Placeholder)` quando quiser apagá-la junto. Tudo reescala com
-o tema (HiDPI) e troca em runtime.
+Títulos em mono e corpo proporcional vêm da mesma família (Go), então
+conversam sem esforço, e nenhuma fonte nova é embutida. A fonte de display
+é um token trocável: `th.UseDisplayFont(f)` (`theme.GoBold()` dá a
+hierarquia por peso do Classic). Regras de uso: **um Título por tela**,
+Subtítulo abre seções e cartões, Legenda para metadados.
 
 ## Componentes e hierarquia
 
-- **Botões em três níveis:** primário (preenchido de terracota — a ÚNICA
-  ação principal do bloco), `Secondary()` (superfície com fio, texto de
-  tinta — ações comuns) e `Ghost()` (só o rótulo; hover ganha fundo —
-  ações discretas, barras densas). Numa barra de ações, no máximo um
-  primário, à direita.
-- **Card** agrupa conteúdo numa superfície elevada (`Surface` +
-  `SurfaceBorder` + raio do tema, respiro interno de 2×Padding). Cartão é
-  agrupamento, não decoração: se tudo na tela é cartão, nada é.
-- **Divider** separa regiões DENTRO de uma superfície (o fio
-  `SurfaceBorder` com o respiro embutido); entre widgets comuns, prefira
-  espaço (`Gap`) a fios.
+- **Botões em três níveis:** primário (tinta: a ÚNICA ação principal do
+  bloco), `Secondary()` (superfície com fio, texto comum: ações comuns) e
+  `Ghost()` (só o rótulo, hover ganha fundo: ações discretas). Numa barra
+  de ações, no máximo um primário, à direita.
+- **Desabilitado** é forma sem ação: o botão vira uma placa neutra
+  (`HoverBackground`) com rótulo apagado, em vez de uma lavagem
+  translúcida sobre a cor de ação.
+- **Estado é forma, não só cor de texto.** Checkbox marcado é a caixa
+  cheia de `Accent` com o check em `AccentText`; a opção escolhida no
+  Dropdown é uma pílula de `Selection`; o dia de hoje no Calendar tem um
+  anel na cor de ação. Assim os estados leem até num tema de tinta, onde a
+  ação e o texto têm quase a mesma cor.
+- **Texto de estado:** `.Danger()`, `.Success()` e `.Warning()` em `Text` e
+  `Label`, seguindo trocas de tema.
+- **Card** agrupa conteúdo numa superfície (`Surface` + `SurfaceBorder`,
+  respiro interno de 2×Padding). Se tudo na tela é cartão, nada é.
+- **Divider** separa regiões dentro de uma superfície; entre widgets
+  comuns, prefira espaço (`Gap`) a fios.
 
-## Listas e árvores
+## Listas, árvores e tabelas
 
-Coleções seguem o layout do sistema, não só as cores:
-
-- **Linhas respiram** — a altura de linha de `List` e `Tree` é o conteúdo
-  mais `RowPad` em cima e embaixo; densidade vem do tema, não de cada
-  tela.
-- **Realce é pílula, não faixa** — seleção e hover são formas arredondadas
-  (`Radius`) com margem `RowPad` dos dois lados, como itens de uma
-  sidebar; o hover usa `HoverBackground` e aparece em qualquer lista
-  selecionável.
-- **Conteúdo com recuo** — o texto da linha nasce dentro da pílula (na
-  `Tree`, depois da coluna do chevron), nunca colado na borda.
-- **Coleção flutuante vive num poço** — uma lista dentro de um diálogo
-  fica num `Card` (superfície + fio), não solta sobre o fundo do modal; o
-  seletor de arquivos do `quick` é o exemplo canônico.
-
-## Espaçamento e forma
-
-Tudo em unidades lógicas do tema (escalam no HiDPI): a régua é o `Padding`
-(10) — respiro de controle = 1×, respiro de cartão = 2×, `Gap` entre
-grupos = `Spacing` (10). `Radius` 10 nos controles e superfícies; a faixa
-de pega do SplitPane, recuo da Tree e demais métricas herdam do tema.
+- **Linhas respiram:** a altura de linha de `List` e `Tree` é o conteúdo
+  mais `RowPad` em cima e embaixo.
+- **Realce é pílula:** seleção e hover são formas arredondadas com margem
+  `RowPad`. Numa lista selecionável o conteúdo nasce dentro da pílula
+  (margem mais `Padding`), nunca colado na borda dela.
+- **Tabela é dado:** cabeçalho em `HeaderBackground` com títulos em
+  legenda, linhas e colunas separadas pelo fio leve (`SurfaceBorder`).
 
 ## Movimento
 
 O movimento do sistema é o das transições de tela (`Navigator`):
-`Theme.TransitionDuration` de 280ms com easing suave, deslizar para
-avançar/voltar e fade para substituir. Animações extras devem usar
-`anim.Tween` sobre os mesmos timers — nada de movimento decorativo.
+`Theme.TransitionDuration` de 280ms com easing suave. Animações extras
+usam `anim.Tween` sobre os mesmos timers, nada de movimento decorativo.
 
-## Estendendo
+## Classic
 
-Derive do par pronto e sobrescreva tokens — as regras acima continuam
-valendo para o que você criar:
-
-```go
-th, _ := juigo.ClaudeTheme()
-th.Danger = color.RGBA{R: 0xA8, G: 0x3E, B: 0x32, A: 0xFF} // seu tom
-th.Radius = 6                                              // menos curva
-```
-
-Duas regras mantêm a identidade ao estender: terracota continua exclusiva
-de ação/estado ativo, e qualquer cor nova nasce da família térrea (aqueça o
-neutro antes de usá-lo). Para conferir contraste, a régua prática é: tinta
-sobre papel e papel sobre terracota sempre legíveis; se um par novo ficar
-mais fraco que esses, escureça o fundo ou o texto.
+O visual anterior (azul de sistema, cantos retos, títulos em Go Bold)
+continua disponível como `juigo.ClassicTheme()` e
+`juigo.ClassicDarkTheme()`, para telas já desenhadas sobre ele.
 
 As capturas desta página saem de `go run ./docs/gerar` (offscreen,
-determinístico) — regenere após qualquer ajuste de token.
+determinístico). Regenere após qualquer ajuste de token.
