@@ -175,7 +175,7 @@ func (c *Checkbox) Draw(dst *image.RGBA) {
 	box := image.Rect(bounds.Min.X, boxTop, bounds.Min.X+side, boxTop+side)
 
 	// O raio segue o tema mas é PRESO a 1/4 do lado: um tema de cantos
-	// generosos (papel e tinta, raio 10) não pode fazer a caixa virar
+	// generosos (raio 10, por exemplo) não pode fazer a caixa virar
 	// círculo — checkbox circular é indistinguível de Radio.
 	radius := min(th.RadiusPx(), side/4)
 	render.FillRoundRect(dst, box, radius, th.InputBackground)
@@ -189,10 +189,19 @@ func (c *Checkbox) Draw(dst *image.RGBA) {
 	}
 
 	if c.checked {
-		// A marca interna usa metade do raio: acompanha a caixa sem virar
-		// círculo em caixas pequenas.
-		inset := side / 4
-		render.FillRoundRect(dst, box.Inset(inset), radius/2, th.Accent)
+		// Marcado: a caixa inteira vira ação (Accent) com o check desenhado
+		// por cima (AccentText) — o estado lê de longe e não se confunde com
+		// o Radio. Dois traços com antialiasing, sem alocação.
+		render.FillRoundRect(dst, box, radius, th.Accent)
+		w := max(th.Px(2), 2)
+		a := image.Pt(box.Min.X+side*27/100, box.Min.Y+side*52/100)
+		m := image.Pt(box.Min.X+side*43/100, box.Min.Y+side*68/100)
+		z := image.Pt(box.Min.X+side*74/100, box.Min.Y+side*34/100)
+		render.StrokeLine(dst, a, m, w, th.AccentText)
+		render.StrokeLine(dst, m, z, w, th.AccentText)
+		if c.focused {
+			render.StrokeRoundRect(dst, box, radius, 2*th.BorderPx(), th.FocusOutline)
+		}
 	}
 
 	labelX := box.Max.X + th.PaddingPx()

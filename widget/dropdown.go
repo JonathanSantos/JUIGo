@@ -423,17 +423,18 @@ func (l *dropdownList) Draw(dst *image.RGBA) {
 	y := bounds.Min.Y + th.BorderPx()
 	for i, opt := range d.options {
 		row := image.Rect(bounds.Min.X+th.BorderPx(), y, bounds.Max.X-th.BorderPx(), y+itemH)
-		if i == l.highlight {
-			// Realce arredondado como o painel: com raio zero volta a ser
-			// o retângulo reto de antes.
+		// Realces arredondados como o painel (com raio zero, retângulos
+		// retos): a opção escolhida é sempre uma pílula de seleção — forma,
+		// não só cor de texto, para ler em qualquer tema —, e as demais sob
+		// o ponteiro ou o teclado ganham o hover.
+		switch {
+		case i == d.selected:
+			render.FillRoundRect(view, row, radius, th.Selection)
+		case i == l.highlight:
 			render.FillRoundRect(view, row, radius, th.HoverBackground)
 		}
-		c := th.Text
-		if i == d.selected {
-			c = th.Accent
-		}
 		baseline := y + (itemH-th.LineHeight())/2 + th.Ascent()
-		th.DrawText(view, opt, image.Pt(row.Min.X+th.PaddingPx(), baseline), c)
+		th.DrawText(view, opt, image.Pt(row.Min.X+th.PaddingPx(), baseline), th.Text)
 		y += itemH
 	}
 }

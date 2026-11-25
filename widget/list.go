@@ -283,7 +283,12 @@ func (l *List[W]) PreferredSize() image.Point {
 	if !l.ensureRowSize() {
 		return image.Point{}
 	}
-	return image.Point{X: l.rowW, Y: l.count * l.rowH}
+	w := l.rowW
+	if l.selected != nil && l.theme != nil {
+		// O conteúdo nasce recuado dentro da pílula (ver contentRect).
+		w += 2 * (l.theme.Px(l.theme.RowPad) + l.theme.PaddingPx())
+	}
+	return image.Point{X: w, Y: l.count * l.rowH}
 }
 
 // rowRect devolve o retângulo absoluto da linha lógica i.
@@ -300,6 +305,21 @@ func (l *List[W]) pillRect(i int) image.Rectangle {
 	pad := l.theme.Px(l.theme.RowPad)
 	r.Min.X += pad
 	r.Max.X -= pad
+	return r
+}
+
+// contentRect devolve onde o conteúdo da linha i é posicionado. Em listas
+// selecionáveis o conteúdo nasce DENTRO da pílula de realce (margem RowPad
+// mais o Padding do tema), nunca colado na borda dela; nas demais ocupa a
+// linha inteira.
+func (l *List[W]) contentRect(i int) image.Rectangle {
+	r := l.rowRect(i)
+	if l.selected == nil || l.theme == nil {
+		return r
+	}
+	in := l.theme.Px(l.theme.RowPad) + l.theme.PaddingPx()
+	r.Min.X += in
+	r.Max.X = max(r.Max.X-in, r.Min.X)
 	return r
 }
 
@@ -339,7 +359,7 @@ func (l *List[W]) ensure(visible image.Rectangle) {
 	for k := range n {
 		row := l.pool[k]
 		l.bind(row, first+k)
-		row.Layout(l.rowRect(first + k))
+		row.Layout(l.contentRect(first + k))
 		l.children = append(l.children, row)
 	}
 	l.poolStart, l.poolLen, l.poolTop, l.poolValid = first, n, b.Min.Y, true

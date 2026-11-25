@@ -337,7 +337,13 @@ func (b *Button) Draw(dst *image.RGBA) {
 		y := bounds.Min.Y + (bounds.Dy()-b.theme.LineHeight())/2 + b.theme.Ascent()
 		b.theme.DrawText(view, b.label, image.Pt(x, y), b.fgColor())
 	}
-	b.drawDisabledOverlay(dst)
+}
+
+// inert informa se o botão está desabilitado pelo próprio flag (não pelo
+// loading, que mantém a cor e mostra o spinner): desenhado em neutros, sem
+// lavagem.
+func (b *Button) inert() bool {
+	return b.disabled && !b.loading
 }
 
 // drawSpinner desenha os três pontos do indicador de carregamento, com o
@@ -369,13 +375,22 @@ func (b *Button) drawSpinner(dst *image.RGBA, bounds image.Rectangle) {
 // bgColor devolve a cor de fundo do estado atual, conforme a variante
 // (alfa zero = sem fundo).
 func (b *Button) bgColor() color.RGBA {
+	if b.inert() {
+		// Desabilitado: a forma continua (primário e secundário viram uma
+		// placa neutra), mas sem a cor de ação — lê como "indisponível" em
+		// qualquer tema, sem a lavagem translúcida borrando a ação.
+		if b.variant == buttonGhost {
+			return color.RGBA{}
+		}
+		return b.theme.HoverBackground
+	}
 	switch b.variant {
 	case buttonSecondary:
 		switch b.state {
 		case ButtonStateHover:
 			return b.theme.HoverBackground
 		case ButtonStatePressed:
-			return b.theme.Selection
+			return b.theme.Track
 		}
 		return b.theme.Surface
 	case buttonGhost:
@@ -383,7 +398,7 @@ func (b *Button) bgColor() color.RGBA {
 		case ButtonStateHover:
 			return b.theme.HoverBackground
 		case ButtonStatePressed:
-			return b.theme.Selection
+			return b.theme.Track
 		}
 		return color.RGBA{}
 	}
@@ -398,6 +413,9 @@ func (b *Button) bgColor() color.RGBA {
 
 // borderColor devolve o fio da variante (alfa zero = sem fio).
 func (b *Button) borderColor() color.RGBA {
+	if b.inert() {
+		return color.RGBA{}
+	}
 	switch b.variant {
 	case buttonSecondary:
 		return b.theme.InputBorder
@@ -409,6 +427,9 @@ func (b *Button) borderColor() color.RGBA {
 
 // fgColor devolve a cor do rótulo da variante.
 func (b *Button) fgColor() color.RGBA {
+	if b.inert() {
+		return b.theme.Placeholder
+	}
 	if b.variant == buttonPrimary {
 		return b.theme.ButtonText
 	}

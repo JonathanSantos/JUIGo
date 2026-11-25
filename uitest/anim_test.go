@@ -36,7 +36,7 @@ func TestAnimacaoComRelogioVirtual(t *testing.T) {
 	if img.RGBAAt(b.Min.X+b.Dx()/4, b.Min.Y+b.Dy()/2) != th.Accent {
 		t.Fatal("o quarto inicial da barra deveria estar preenchido")
 	}
-	if img.RGBAAt(b.Min.X+3*b.Dx()/4, b.Min.Y+b.Dy()/2) != th.InputBorder {
+	if img.RGBAAt(b.Min.X+3*b.Dx()/4, b.Min.Y+b.Dy()/2) != th.Track {
 		t.Fatal("o quarto final da barra ainda deveria estar vazio")
 	}
 

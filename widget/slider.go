@@ -265,7 +265,7 @@ func (s *Slider) Draw(dst *image.RGBA) {
 	// pílula (o raio é limitado à metade da espessura); com raio zero o
 	// resultado é pixel a pixel o mesmo dos dois segmentos retos de antes.
 	radius := th.RadiusPx()
-	render.FillRoundRect(dst, image.Rect(x0, cy-half, x1, cy+half), radius, th.InputBorder)
+	render.FillRoundRect(dst, image.Rect(x0, cy-half, x1, cy+half), radius, th.Track)
 	render.FillRoundRect(dst, image.Rect(x0, cy-half, hx, cy+half), radius, th.Accent)
 
 	handle := th.Px(th.SliderHandleSize)

@@ -89,7 +89,7 @@ func TestCapturaVisual(t *testing.T) {
 	}
 	t.Chdir(base)
 	// Captura em ESCALA 2 (retina): o PNG sai nítido como o App real.
-	th, err := juigo.ClaudeTheme()
+	th, err := juigo.DefaultTheme()
 	if err != nil {
 		t.Fatal(err)
 	}

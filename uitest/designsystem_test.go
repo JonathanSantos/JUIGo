@@ -10,8 +10,9 @@ import (
 )
 
 // TestPapeisTipograficos confere a escala: Título > Subtítulo > corpo >
-// legenda em altura de linha, nos temas Default e Claude (a serif Lora do
-// Claude mede diferente da Go Bold, mas a ORDEM é invariante do sistema).
+// legenda em altura de linha, nos temas Default e Classic (a Go Mono Bold
+// do Nanquim mede diferente da Go Bold, mas a ORDEM é invariante do
+// sistema).
 func TestPapeisTipograficos(t *testing.T) {
 	titulo := juigo.NewText("Relatório").Title()
 	sub := juigo.NewText("Relatório").Subtitle()
@@ -32,20 +33,20 @@ func TestPapeisTipograficos(t *testing.T) {
 	h := uitest.New(t, ui, 400, 300)
 	verifica("Default")
 
-	claude, err := juigo.ClaudeTheme()
+	classico, err := juigo.ClassicTheme()
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.Session().SetTheme(claude)
+	h.Session().SetTheme(classico)
 	h.Layout()
-	verifica("Claude")
+	verifica("Classic")
 }
 
-// TestBotoesHierarquia confere as três variantes por pixels no tema Claude:
-// primário terracota, secundário na superfície com fio, ghost invisível em
+// TestBotoesHierarquia confere as três variantes por pixels no tema padrão:
+// primário em tinta, secundário na superfície com fio, ghost invisível em
 // repouso e com fundo de hover sob o ponteiro.
 func TestBotoesHierarquia(t *testing.T) {
-	claude, err := juigo.ClaudeTheme()
+	th, err := juigo.DefaultTheme()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,61 +54,61 @@ func TestBotoesHierarquia(t *testing.T) {
 	sec := juigo.NewButton("Extrato", nil).Secondary()
 	ghost := juigo.NewButton("Cancelar", nil).Ghost()
 	ui := juigo.NewVBox(prim, sec, ghost).Pad(20).Gap(12)
-	h := uitest.NewWithTheme(t, ui, claude, 300, 260)
+	h := uitest.NewWithTheme(t, ui, th, 300, 260)
 
 	dentro := func(w juigo.Widget) image.Point {
 		b := w.Bounds()
 		return image.Pt(b.Min.X+8, b.Min.Y+b.Dy()/2)
 	}
 	img := h.Screenshot()
-	if got, quer := img.RGBAAt(dentro(prim).X, dentro(prim).Y), claude.ButtonNormal; got != quer {
-		t.Fatalf("primário deveria ser terracota %v; veio %v", quer, got)
+	if got, quer := img.RGBAAt(dentro(prim).X, dentro(prim).Y), th.ButtonNormal; got != quer {
+		t.Fatalf("primário deveria ser a ação %v; veio %v", quer, got)
 	}
-	if got, quer := img.RGBAAt(dentro(sec).X, dentro(sec).Y), claude.Surface; got != quer {
+	if got, quer := img.RGBAAt(dentro(sec).X, dentro(sec).Y), th.Surface; got != quer {
 		t.Fatalf("secundário deveria ter fundo de superfície %v; veio %v", quer, got)
 	}
-	if got, quer := img.RGBAAt(dentro(ghost).X, dentro(ghost).Y), claude.Background; got != quer {
-		t.Fatalf("ghost em repouso deveria mostrar o papel %v; veio %v", quer, got)
+	if got, quer := img.RGBAAt(dentro(ghost).X, dentro(ghost).Y), th.Background; got != quer {
+		t.Fatalf("ghost em repouso deveria mostrar o fundo %v; veio %v", quer, got)
 	}
 
 	h.Hover(uitest.Text("Cancelar"))
 	img = h.Screenshot()
-	if got, quer := img.RGBAAt(dentro(ghost).X, dentro(ghost).Y), claude.HoverBackground; got != quer {
+	if got, quer := img.RGBAAt(dentro(ghost).X, dentro(ghost).Y), th.HoverBackground; got != quer {
 		t.Fatalf("ghost sob o ponteiro deveria ganhar hover %v; veio %v", quer, got)
 	}
 }
 
 // TestCardEDivider confere superfície, fio e o respiro padrão do cartão.
 func TestCardEDivider(t *testing.T) {
-	claude, err := juigo.ClaudeTheme()
+	th, err := juigo.DefaultTheme()
 	if err != nil {
 		t.Fatal(err)
 	}
 	miolo := juigo.NewVBox(juigo.NewText("Conteúdo"), juigo.NewDivider(), juigo.NewText("Resto"))
 	card := juigo.NewCard(miolo)
 	ui := juigo.NewVBox(card).Pad(16)
-	h := uitest.NewWithTheme(t, ui, claude, 320, 240)
+	h := uitest.NewWithTheme(t, ui, th, 320, 240)
 	img := h.Screenshot()
 
 	b := card.Bounds()
 	centroX := b.Min.X + b.Dx()/2
-	if got := img.RGBAAt(centroX, b.Min.Y+4); got != claude.Surface {
-		t.Fatalf("o miolo do cartão deveria ser a superfície %v; veio %v", claude.Surface, got)
+	if got := img.RGBAAt(centroX, b.Min.Y+4); got != th.Surface {
+		t.Fatalf("o miolo do cartão deveria ser a superfície %v; veio %v", th.Surface, got)
 	}
-	if got := img.RGBAAt(centroX, b.Min.Y); got != claude.SurfaceBorder {
-		t.Fatalf("a beirada do cartão deveria ser o fio %v; veio %v", claude.SurfaceBorder, got)
+	if got := img.RGBAAt(centroX, b.Min.Y); got != th.SurfaceBorder {
+		t.Fatalf("a beirada do cartão deveria ser o fio %v; veio %v", th.SurfaceBorder, got)
 	}
 	// Respiro padrão: o conteúdo começa 2×Padding para dentro.
-	pad := claude.Px(2 * claude.Padding)
+	pad := th.Px(2 * th.Padding)
 	if got := miolo.Bounds().Min.X - b.Min.X; got != pad {
 		t.Fatalf("o respiro interno deveria ser %dpx; veio %d", pad, got)
 	}
 }
 
 // TestIncrementalIdentidade é a rede de segurança das dirty regions para os
-// componentes novos: títulos serif, Card, Divider e variantes de botão.
+// componentes novos: títulos de display, Card, Divider e variantes de botão.
 func TestIncrementalIdentidade(t *testing.T) {
-	claude, err := juigo.ClaudeTheme()
+	th, err := juigo.DefaultTheme()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +125,7 @@ func TestIncrementalIdentidade(t *testing.T) {
 			).Gap(8),
 		).Gap(8)),
 	).Pad(16).Gap(10)
-	h := uitest.NewWithTheme(t, ui, claude, 420, 260)
+	h := uitest.NewWithTheme(t, ui, th, 420, 260)
 
 	verifica := func(passo string) {
 		t.Helper()

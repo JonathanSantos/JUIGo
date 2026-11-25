@@ -1,67 +1,43 @@
 package theme
 
 import (
-	_ "embed"
 	"fmt"
 	"image"
 	"image/color"
 
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/gofont/gobold"
+	"golang.org/x/image/font/gofont/gomonobold"
 	"golang.org/x/image/font/opentype"
 
 	"github.com/JonathanSantos/JUIGo/render"
 )
 
-// Lora (https://github.com/cyrealtype/Lora), licença SIL OFL 1.1
-// (theme/assets/Lora-OFL.txt) — a serif "de livro" embutida que faz o papel
-// de DISPLAY (títulos) no design system "papel e tinta". Regular e Bold.
+// goBoldFnt e goMonoBoldFnt são os parses únicos das fontes de display
+// (single-threaded por contrato).
 var (
-	//go:embed assets/Lora-Regular.ttf
-	loraRegularTTF []byte
-	//go:embed assets/Lora-Bold.ttf
-	loraBoldTTF []byte
+	goBoldFnt     *opentype.Font
+	goMonoBoldFnt *opentype.Font
 )
 
-// loraRegular, loraBoldFnt e goBoldFnt são os parses únicos das fontes de
-// display (single-threaded por contrato).
-var (
-	loraRegular *opentype.Font
-	loraBoldFnt *opentype.Font
-	goBoldFnt   *opentype.Font
-)
-
-// Lora devolve a serif Lora Regular embutida, interpretada uma única vez —
-// a fonte de display do tema Claude (papel e tinta).
-func Lora() (*opentype.Font, error) {
-	if loraRegular != nil {
-		return loraRegular, nil
+// GoMonoBold devolve a Go Mono Bold (x/image, já dependência), interpretada
+// uma única vez — a fonte de display da identidade Nanquim (Default/Dark):
+// títulos com cara de ferramenta, da mesma família do corpo.
+func GoMonoBold() (*opentype.Font, error) {
+	if goMonoBoldFnt != nil {
+		return goMonoBoldFnt, nil
 	}
-	f, err := opentype.Parse(loraRegularTTF)
+	f, err := opentype.Parse(gomonobold.TTF)
 	if err != nil {
-		return nil, fmt.Errorf("juigo: falha ao interpretar a Lora embutida: %w", err)
+		return nil, fmt.Errorf("juigo: falha ao interpretar a Go Mono Bold embutida: %w", err)
 	}
-	loraRegular = f
-	return f, nil
-}
-
-// LoraBold devolve a Lora Bold embutida, interpretada uma única vez — para
-// quem quiser títulos serifados com mais peso (UseDisplayFont).
-func LoraBold() (*opentype.Font, error) {
-	if loraBoldFnt != nil {
-		return loraBoldFnt, nil
-	}
-	f, err := opentype.Parse(loraBoldTTF)
-	if err != nil {
-		return nil, fmt.Errorf("juigo: falha ao interpretar a Lora Bold embutida: %w", err)
-	}
-	loraBoldFnt = f
+	goMonoBoldFnt = f
 	return f, nil
 }
 
 // GoBold devolve a Go Bold (x/image, já dependência), interpretada uma única
-// vez — a fonte de display PADRÃO dos temas Default/Dark: hierarquia por
-// peso, sem asset novo.
+// vez — a fonte de display dos temas Classic/ClassicDark e o recurso de
+// quem não definir uma: hierarquia por peso, sem asset novo.
 func GoBold() (*opentype.Font, error) {
 	if goBoldFnt != nil {
 		return goBoldFnt, nil
@@ -142,10 +118,10 @@ func (t *Theme) Caption() *TextFont { return t.caption }
 
 // UseDisplayFont troca a fonte de DISPLAY do tema em runtime — títulos e
 // subtítulos são reconstruídos na escala corrente; corpo e legenda seguem
-// na fonte regular. É como o Claude ganha a serif Lora:
+// na fonte regular:
 //
-//	lora, _ := theme.Lora()
-//	th.UseDisplayFont(lora)
+//	bold, _ := theme.GoBold()
+//	th.UseDisplayFont(bold)
 func (t *Theme) UseDisplayFont(fnt *opentype.Font) error {
 	if fnt == nil || fnt == t.displayFnt {
 		return nil

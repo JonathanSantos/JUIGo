@@ -15,13 +15,13 @@ import (
 // corTinta é a cor fixa dos benchmarks de primitivas.
 var corTinta = color.RGBA{R: 0x14, G: 0x14, B: 0x13, A: 0xFF}
 
-// BenchmarkFrameClaude1x é o BenchmarkFrame1x com o design system "papel e
-// tinta": mede o custo do raio 10 com antialiasing e da tipografia por
-// papéis sobre o mesmo conteúdo.
-func BenchmarkFrameClaude1x(b *testing.B) {
-	th, err := juigo.ClaudeTheme()
+// BenchmarkFrameClassic1x é o BenchmarkFrame1x no tema Classic (cantos
+// retos, títulos em Go Bold): a diferença para o Default mede o custo do
+// raio com antialiasing e da fonte de display sobre o mesmo conteúdo.
+func BenchmarkFrameClassic1x(b *testing.B) {
+	th, err := juigo.ClassicTheme()
 	if err != nil {
-		b.Fatalf("ClaudeTheme: %v", err)
+		b.Fatalf("ClassicTheme: %v", err)
 	}
 	campo := juigo.NewInput("Digite aqui…")
 	campo.SetText("Olá, ação! Texto de exemplo çãé")
@@ -117,7 +117,7 @@ func BenchmarkLabelRewrap(b *testing.B) {
 // BenchmarkChartLine mede um gráfico de linha completo (eixos, série AA e
 // rótulos) em 300×180.
 func BenchmarkChartLine(b *testing.B) {
-	th, err := juigo.ClaudeTheme()
+	th, err := juigo.DefaultTheme()
 	if err != nil {
 		b.Fatal(err)
 	}

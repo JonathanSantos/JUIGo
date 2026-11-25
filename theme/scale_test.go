@@ -19,14 +19,14 @@ func TestTemaEscala(t *testing.T) {
 	if th.Scale() != 2 {
 		t.Fatalf("Scale() = %v, esperado 2", th.Scale())
 	}
-	if th.Padding != 8 {
-		t.Fatalf("campo lógico Padding mudou para %d; deveria permanecer 8", th.Padding)
+	if th.Padding != 10 {
+		t.Fatalf("campo lógico Padding mudou para %d; deveria permanecer 10", th.Padding)
 	}
 	if got := th.Px(8); got != 16 {
 		t.Fatalf("Px(8) na escala 2 = %d, esperado 16", got)
 	}
-	if got := th.PaddingPx(); got != 16 {
-		t.Fatalf("PaddingPx() na escala 2 = %d, esperado 16", got)
+	if got := th.PaddingPx(); got != 20 {
+		t.Fatalf("PaddingPx() na escala 2 = %d, esperado 20", got)
 	}
 	if got := th.InputMinWidthPx(); got != 440 {
 		t.Fatalf("InputMinWidthPx() na escala 2 = %d, esperado 440", got)

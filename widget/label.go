@@ -28,8 +28,8 @@ type Label struct {
 	text string
 	role textRole
 
-	col    color.RGBA
-	danger bool
+	col  color.RGBA
+	tone textTone
 	// maxW limita a largura do wrap em unidades lógicas (0 = a largura do
 	// layout).
 	maxW int
@@ -62,14 +62,28 @@ func (l *Label) Caption() *Label { l.role = roleCaption; l.bump(); return l }
 // Color sobrescreve a cor do texto (ver Text.Color). Encadeável.
 func (l *Label) Color(c color.RGBA) *Label {
 	l.col = c
-	l.danger = false
+	l.tone = toneNone
 	l.Invalidate()
 	return l
 }
 
 // Danger usa a cor de erro do tema (ver Text.Danger). Encadeável.
 func (l *Label) Danger() *Label {
-	l.danger = true
+	l.tone = toneDanger
+	l.Invalidate()
+	return l
+}
+
+// Success usa a cor de sucesso do tema (ver Text.Success). Encadeável.
+func (l *Label) Success() *Label {
+	l.tone = toneSuccess
+	l.Invalidate()
+	return l
+}
+
+// Warning usa a cor de aviso do tema (ver Text.Warning). Encadeável.
+func (l *Label) Warning() *Label {
+	l.tone = toneWarning
 	l.Invalidate()
 	return l
 }
@@ -271,12 +285,7 @@ func (l *Label) Draw(dst *image.RGBA) {
 		return
 	}
 	b := l.Bounds()
-	c := l.col
-	if l.danger {
-		c = l.theme.Danger
-	} else if c == (color.RGBA{}) {
-		c = l.theme.Text
-	}
+	c := l.tone.color(l.theme, l.col)
 	lineH, ascent, _ := l.metrics()
 	l.ensureWrap(l.wrapWidth())
 	view := render.Clip(dst, b, &l.clip)

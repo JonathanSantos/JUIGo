@@ -12,8 +12,8 @@ func TestPreferredSizeAcompanhaEscala(t *testing.T) {
 
 	b := NewButton("OK", nil)
 	b.SetTheme(th)
-	if got := b.PreferredSize().Y; got != th.LineHeight()+2*16 {
-		t.Fatalf("Button.PreferredSize().Y = %d, esperado %d", got, th.LineHeight()+2*16)
+	if got := b.PreferredSize().Y; got != th.LineHeight()+2*th.PaddingPx() {
+		t.Fatalf("Button.PreferredSize().Y = %d, esperado %d", got, th.LineHeight()+2*th.PaddingPx())
 	}
 	in := NewInput("")
 	in.SetTheme(th)

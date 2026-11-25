@@ -6,6 +6,7 @@
 package main
 
 import (
+	"image/color"
 	"log"
 	"os"
 	"path/filepath"
@@ -69,7 +70,7 @@ func vitrine() juigo.Widget {
 func identidade() juigo.Widget {
 	return juigo.NewVBox(
 		juigo.NewText("Fatura de julho").Title(),
-		juigo.NewText("Papel, tinta e terracota").Subtitle(),
+		juigo.NewText("Resumo da conta").Subtitle(),
 		juigo.NewCard(juigo.NewVBox(
 			juigo.NewText("Cobrança automática").Subtitle(),
 			juigo.NewText("O cartão termina em 4242 e renova no dia 12."),
@@ -86,7 +87,7 @@ func identidade() juigo.Widget {
 	).Pad(16).Gap(10)
 }
 
-// graficos monta a cena do juigo/chart no papel e tinta.
+// graficos monta a cena do juigo/chart no tema padrão.
 func graficos() juigo.Widget {
 	vendas := []float64{4, 6, 5, 9, 7, 11, 10, 14, 12, 16, 15, 19}
 	saldo := []float64{3, -1, 4, 2, -2, 5, 3}
@@ -201,25 +202,28 @@ func main() {
 		log.Fatal(err)
 	}
 
-	claude, err := juigo.ClaudeTheme()
+	// Temas por sementes (docs/DESIGN.md, "Crie o seu"): a mesma cena da
+	// identidade com uma cor de ação trocada.
+	cobalto, err := juigo.NewTheme(juigo.Palette{Primary: color.RGBA{R: 0x2B, G: 0x59, B: 0xD9, A: 0xFF}})
 	if err != nil {
 		log.Fatal(err)
 	}
-	claudeEscuro, err := juigo.ClaudeDarkTheme()
+	musgo, err := juigo.NewTheme(juigo.Palette{
+		Primary: color.RGBA{R: 0x2D, G: 0x6A, B: 0x4F, A: 0xFF},
+		Neutral: color.RGBA{R: 0x6B, G: 0x7A, B: 0x60, A: 0xFF},
+		Dark:    true,
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	salva("vitrine-claro.png", vitrine(), claro, 440, 460)
-	salva("vitrine-escuro.png", vitrine(), escuro, 440, 460)
-	// O design system "papel e tinta" usa a MESMA vitrine: a diferença entre
-	// os pares é só a pele (docs/DESIGN.md). Padding/Spacing 10 pedem um
-	// quadro um pouco maior.
-	salva("vitrine-claude.png", vitrine(), claude, 470, 500)
-	salva("vitrine-claude-escuro.png", vitrine(), claudeEscuro, 470, 500)
-	salva("identidade-claude.png", identidade(), claude, 480, 340)
-	salva("identidade-claude-escuro.png", identidade(), claudeEscuro, 480, 340)
-	salva("graficos.png", graficos(), claude, 460, 520)
+	salva("vitrine-claro.png", vitrine(), claro, 470, 500)
+	salva("vitrine-escuro.png", vitrine(), escuro, 470, 500)
+	salva("identidade-claro.png", identidade(), claro, 480, 340)
+	salva("identidade-escuro.png", identidade(), escuro, 480, 340)
+	salva("tema-cobalto.png", identidade(), cobalto, 480, 340)
+	salva("tema-musgo-escuro.png", identidade(), musgo, 480, 340)
+	salva("graficos.png", graficos(), claro, 460, 520)
 	salva("quick-form.png", formulario(), claro, 440, 440)
 	salva("todomvc.png", todomvc(), claro, 440, 400)
 	salva("contatos.png", agenda(), claro, 720, 420)
@@ -227,5 +231,5 @@ func main() {
 	salva("cells.png", planilha(), claro, 620, 400)
 
 	// As cenas por componente do site (docs/index.html).
-	geraComponentes(claude, claudeEscuro)
+	geraComponentes(claro, escuro)
 }

@@ -1074,7 +1074,7 @@ func (c *CodeEditor) Draw(dst *image.RGBA) {
 	// Gutter: fundo, separador e números das linhas visíveis.
 	gut := image.Rect(in.Min.X, in.Min.Y, in.Min.X+c.gutterW(), in.Max.Y)
 	gutView := render.Clip(dst, gut, &c.clipGut)
-	render.FillRect(gutView, gut, th.HoverBackground)
+	render.FillRect(gutView, gut, th.HeaderBackground)
 	render.FillRect(dst, image.Rect(gut.Max.X, in.Min.Y, gut.Max.X+1, in.Max.Y), th.InputBorder)
 
 	first := c.scrollY / rowH

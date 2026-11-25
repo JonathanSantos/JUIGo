@@ -295,13 +295,13 @@ func (t *Table) Draw(dst *image.RGBA) {
 			view := render.Clip(dst, cellRect, &t.clip)
 			th.DrawText(view, t.cell(i, c), image.Pt(cellRect.Min.X+th.PaddingPx(), baseline(r.Min.Y)), th.Text)
 		}
-		render.FillRect(dst, image.Rect(b.Min.X, r.Max.Y, b.Max.X, r.Max.Y+1), th.InputBorder)
+		render.FillRect(dst, image.Rect(b.Min.X, r.Max.Y, b.Max.X, r.Max.Y+1), th.SurfaceBorder)
 	}
 
 	// Cabeçalho FIXO no topo da viewport, por cima das linhas roladas.
 	headerTop := region.Min.Y
 	header := image.Rect(b.Min.X, headerTop, b.Max.X, headerTop+h)
-	render.FillRect(dst, header, th.HoverBackground)
+	render.FillRect(dst, header, th.HeaderBackground)
 	// Títulos no papel de LEGENDA (menores que as células): a hierarquia
 	// tipográfica do design system aplicada ao dado tabular.
 	caption := th.Caption()
@@ -314,6 +314,6 @@ func (t *Table) Draw(dst *image.RGBA) {
 	render.FillRect(dst, image.Rect(b.Min.X, header.Max.Y-1, b.Max.X, header.Max.Y), th.InputBorder)
 	// Divisões verticais por toda a região visível.
 	for c := 1; c < len(t.titles); c++ {
-		render.FillRect(dst, image.Rect(t.colX[c], region.Min.Y, t.colX[c]+1, region.Max.Y), th.InputBorder)
+		render.FillRect(dst, image.Rect(t.colX[c], region.Min.Y, t.colX[c]+1, region.Max.Y), th.SurfaceBorder)
 	}
 }

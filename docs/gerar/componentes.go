@@ -263,7 +263,7 @@ func cenaGraficos() juigo.Widget {
 func publicar()                  {}
 func salvar(string, string, int) {}
 
-// geraComponentes renderiza cada cena nos dois temas papel e tinta e
+// geraComponentes renderiza cada cena no par claro/escuro do tema padrão e
 // escreve docs/site/cenas.js com os metadados e o código de cada uma.
 func geraComponentes(claro, escuro *juigo.Theme) {
 	if err := os.MkdirAll(filepath.Join("docs", "componentes"), 0o755); err != nil {

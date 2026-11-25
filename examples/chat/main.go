@@ -1,9 +1,9 @@
-// Chat — a demo bandeira do design system "papel e tinta": uma conversa
+// Chat — a demo bandeira da identidade Nanquim: uma conversa
 // com a Tinta, a assistente de mentira do JUIGo. Junta num app só a barra
 // de menus com atalhos (e a paleta Ctrl/Cmd+K de brinde), o SplitPane com
 // a lista de conversas em pílulas, balões de Card com Label (parágrafos
 // que quebram sozinhos), resposta "digitando" pelos timers da aplicação e
-// a serif Lora nos títulos. Nenhuma IA de verdade foi ferida: as respostas
+// os títulos em Go Mono Bold. Nenhuma IA de verdade foi ferida: as respostas
 // são cartas da casa.
 package main
 
@@ -21,14 +21,10 @@ func main() {
 	// Textos da própria biblioteca (diálogos, calendário) em português.
 	juigo.SetLocale(juigo.LocalePTBR())
 
-	app, err := juigo.New("Chat — papel e tinta", 900, 560)
+	// Sem SetTheme: a identidade Nanquim é o tema padrão.
+	app, err := juigo.New("Chat — JUIGo", 900, 560)
 	if err != nil {
 		log.Fatal(err)
-	}
-	if th, err := juigo.ClaudeTheme(); err == nil {
-		if err := app.SetTheme(th); err != nil {
-			log.Fatal(err)
-		}
 	}
 	v := nova()
 	app.SetRoot(v.Raiz)
@@ -51,7 +47,7 @@ type conversa struct {
 
 // respostas são as cartas da casa — a Tinta responde na ordem, circular.
 var respostas = []string{
-	"Boa pergunta. No papel e tinta, a resposta certa costuma ser a mais quente: neutros de papel, uma única terracota de ação e títulos com serifa.",
+	"Boa pergunta. No Nanquim, a resposta certa costuma ser a mais sóbria: neutros puros, tinta preta na ação e um único sinal âmbar para foco e seleção.",
 	"Pensa assim: se tudo na tela é um cartão, nada é. Agrupe o que conversa entre si e deixe o papel respirar no resto.",
 	"Um título por tela, uma ação primária por bloco — o resto é hierarquia. É disso que o DESIGN.md vive.",
 	"Anotei. Agora me conta: isso precisa mesmo de um modal, ou um toast resolve com menos cerimônia?",
@@ -108,7 +104,7 @@ func nova() *vista {
 		).
 		Menu("Ajuda",
 			juigo.Command{Title: "Sobre o chat", Action: func() {
-				quick.Alert("Feito com JUIGo, papel e tinta. As respostas são cartas da casa.")
+				quick.Alert("Feito com JUIGo, no Nanquim. As respostas são cartas da casa.")
 			}},
 		)
 

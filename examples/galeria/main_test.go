@@ -58,14 +58,14 @@ func TestGaleriaKnobsDeEstilo(t *testing.T) {
 	g, h := harness(t)
 	g.aplicar() // tema inicial
 
-	claro := g.temas["Papel e tinta"]
+	claro := g.temas["Nanquim"]
 	img := h.Screenshot()
 	if got := img.RGBAAt(510, 650); got != claro.Background {
 		t.Fatalf("o fundo inicial deveria ser papel %v; veio %v", claro.Background, got)
 	}
 
-	g.temaNome.Set("Papel e tinta escuro")
-	escuro := g.temas["Papel e tinta escuro"]
+	g.temaNome.Set("Nanquim escuro")
+	escuro := g.temas["Nanquim escuro"]
 	img = h.Screenshot()
 	if got := img.RGBAAt(510, 650); got != escuro.Background {
 		t.Fatalf("trocar o tema deveria escurecer o fundo; veio %v", got)
@@ -77,12 +77,12 @@ func TestGaleriaKnobsDeEstilo(t *testing.T) {
 	}
 
 	h.Key(juigo.KeyT, juigo.ModControl) // atalho do menu: alternar
-	if g.temaNome.Get() != "Papel e tinta" {
+	if g.temaNome.Get() != "Nanquim" {
 		t.Fatalf("Ctrl+T deveria voltar ao claro; ficou %q", g.temaNome.Get())
 	}
 }
 
-// TestCapturaVisual salva docs/galeria.png (página Botões, papel e tinta)
+// TestCapturaVisual salva docs/galeria.png (página Botões, Nanquim)
 // quando GALERIA_CAPTURA aponta um caminho:
 //
 //	GALERIA_CAPTURA=docs/galeria.png go test ./examples/galeria -run TestCapturaVisual

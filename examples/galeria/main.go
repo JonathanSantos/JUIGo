@@ -10,8 +10,10 @@ package main
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/JonathanSantos/JUIGo"
@@ -40,7 +42,7 @@ func main() {
 		log.Fatal(err)
 	}
 	app.SetRoot(g.Raiz)
-	g.aplicar() // tema inicial: papel e tinta
+	g.aplicar() // tema inicial: Nanquim
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}
@@ -91,20 +93,34 @@ type galeria struct {
 func nova(aoTema func(*juigo.Theme)) (*galeria, error) {
 	g := &galeria{
 		aoTema:   aoTema,
-		temaNome: juigo.NewState("Papel e tinta"),
-		titulos:  juigo.NewState("Lora"),
+		temaNome: juigo.NewState("Nanquim"),
+		titulos:  juigo.NewState("Go Mono Bold"),
 		mono:     juigo.NewState("Go Mono"),
 		tamanho:  juigo.NewState("16"),
 		selecao:  juigo.NewState("Tipografia"),
 	}
 
 	g.temas = map[string]*juigo.Theme{}
+	// Cobalto e Musgo mostram o construtor por sementes: uma cor de ação
+	// (e um matiz de neutro) bastam para um tema completo, claro e escuro.
+	cobalto := juigo.Palette{Primary: color.RGBA{R: 0x2B, G: 0x59, B: 0xD9, A: 0xFF}}
+	musgo := juigo.Palette{
+		Primary: color.RGBA{R: 0x2D, G: 0x6A, B: 0x4F, A: 0xFF},
+		Neutral: color.RGBA{R: 0x6B, G: 0x7A, B: 0x60, A: 0xFF},
+	}
+	porSementes := func(p juigo.Palette, escuro bool) func() (*juigo.Theme, error) {
+		p.Dark = escuro
+		return func() (*juigo.Theme, error) { return juigo.NewTheme(p) }
+	}
 	for nome, criar := range map[string]func() (*juigo.Theme, error){
-		"Papel e tinta":        juigo.ClaudeTheme,
-		"Papel e tinta escuro": juigo.ClaudeDarkTheme,
-		"Padrão":               juigo.DefaultTheme,
-		"Padrão escuro":        juigo.DarkTheme,
-		"Clássico":             juigo.ClassicTheme,
+		"Nanquim":         juigo.DefaultTheme,
+		"Nanquim escuro":  juigo.DarkTheme,
+		"Cobalto":         porSementes(cobalto, false),
+		"Cobalto escuro":  porSementes(cobalto, true),
+		"Musgo":           porSementes(musgo, false),
+		"Musgo escuro":    porSementes(musgo, true),
+		"Clássico":        juigo.ClassicTheme,
+		"Clássico escuro": juigo.ClassicDarkTheme,
 	} {
 		th, err := criar()
 		if err != nil {
@@ -146,8 +162,9 @@ func nova(aoTema func(*juigo.Theme)) (*galeria, error) {
 		st.Watch(func(string) { g.aplicar() })
 	}
 	barraEstilo := juigo.NewHBox(
-		knob("Tema", g.temaNome, "Papel e tinta", "Papel e tinta escuro", "Padrão", "Padrão escuro", "Clássico"),
-		knob("Títulos", g.titulos, "Lora", "Lora Bold", "Go Bold"),
+		knob("Tema", g.temaNome, "Nanquim", "Nanquim escuro", "Cobalto", "Cobalto escuro",
+			"Musgo", "Musgo escuro", "Clássico", "Clássico escuro"),
+		knob("Títulos", g.titulos, "Go Mono Bold", "Go Bold"),
 		knob("Mono", g.mono, "Go Mono", "Fira Code"),
 		knob("Tamanho", g.tamanho, "14", "16", "18"),
 		juigo.NewSpacer(),
@@ -228,28 +245,21 @@ func (g *galeria) aplicar() {
 // alternarEscuro troca entre o par claro/escuro da família corrente
 // (comando Ctrl/Cmd+T do menu).
 func (g *galeria) alternarEscuro() {
-	switch g.temaNome.Get() {
-	case "Papel e tinta":
-		g.temaNome.Set("Papel e tinta escuro")
-	case "Papel e tinta escuro":
-		g.temaNome.Set("Papel e tinta")
-	case "Padrão", "Clássico":
-		g.temaNome.Set("Padrão escuro")
-	default:
-		g.temaNome.Set("Padrão")
+	// Todo tema tem o par "<nome> escuro": alternar é pôr ou tirar o sufixo.
+	nome := g.temaNome.Get()
+	if claro, ok := strings.CutSuffix(nome, " escuro"); ok {
+		g.temaNome.Set(claro)
+		return
 	}
+	g.temaNome.Set(nome + " escuro")
 }
 
 // fonteTitulos resolve o knob da fonte de display.
 func fonteTitulos(nome string) (*opentype.Font, error) {
-	switch nome {
-	case "Lora Bold":
-		return theme.LoraBold()
-	case "Go Bold":
+	if nome == "Go Bold" {
 		return theme.GoBold()
-	default:
-		return theme.Lora()
 	}
+	return theme.GoMonoBold()
 }
 
 // fonteMono resolve o knob da fonte mono.
@@ -311,11 +321,13 @@ func pgCores(g *galeria) juigo.Widget {
 		bloco("O texto nas cores semânticas do tema", juigo.NewVBox(
 			juigo.NewText("Texto padrão (tinta)"),
 			juigo.NewText("Apagado, para sugestões").Caption(),
-			juigo.NewText("Perigo — erros e ações destrutivas").Danger(),
+			juigo.NewText("Perigo: erros e ações destrutivas").Danger(),
+			juigo.NewText("Sucesso: deu certo, pode seguir").Success(),
+			juigo.NewText("Aviso: atenção antes de continuar").Warning(),
 		).Gap(6)),
 		bloco("Seleção e realce vêm do tema, nunca do widget", juigo.NewVBox(
 			juigo.NewText("Selecione o texto abaixo para ver a cor Selection:"),
-			campoComTexto("papel, tinta e terracota"),
+			campoComTexto("tinta, papel e um sinal âmbar"),
 		).Gap(6)),
 	).Gap(10)
 }

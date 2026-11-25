@@ -35,8 +35,8 @@ const (
 // fonte do tema. Não é focável e não consome eventos.
 //
 // Além do corpo (padrão), o Text assume os papéis tipográficos do tema:
-// Title e Subtitle usam a fonte de DISPLAY (Theme.UseDisplayFont — Go Bold
-// nos temas padrão, a serif Lora no Claude) e Caption usa a fonte do corpo
+// Title e Subtitle usam a fonte de DISPLAY (Theme.UseDisplayFont — Go
+// Mono Bold no Nanquim, Go Bold no Classic) e Caption usa a fonte do corpo
 // em tamanho menor. Os tamanhos vêm de Theme.TitleSize/SubtitleSize/
 // CaptionSize e seguem trocas de tema e de escala em runtime.
 type Text struct {
@@ -48,10 +48,11 @@ type Text struct {
 	// role é o papel tipográfico (ver Title/Subtitle/Caption).
 	role textRole
 	// col sobrescreve a cor do texto (ver Color); o valor zero usa a cor do
-	// tema. danger usa Theme.Danger — segue trocas de tema em runtime.
-	col    color.RGBA
-	danger bool
-	text   string
+	// tema. tone escolhe uma cor de ESTADO do tema (Danger/Success/Warning)
+	// — segue trocas de tema em runtime.
+	col  color.RGBA
+	tone textTone
+	text string
 	// clip é a visão recortada reutilizada pelo Draw (sem alocação).
 	clip image.RGBA
 }
@@ -110,7 +111,7 @@ func (t *Text) Caption() *Text {
 // acompanha o tema, prefira Danger. Encadeável.
 func (t *Text) Color(c color.RGBA) *Text {
 	t.col = c
-	t.danger = false
+	t.tone = toneNone
 	t.Invalidate()
 	return t
 }
@@ -118,9 +119,52 @@ func (t *Text) Color(c color.RGBA) *Text {
 // Danger desenha o texto na cor de erro do tema (Theme.Danger), seguindo
 // trocas de tema em runtime — ideal para mensagens de validação. Encadeável.
 func (t *Text) Danger() *Text {
-	t.danger = true
+	t.tone = toneDanger
 	t.Invalidate()
 	return t
+}
+
+// Success desenha o texto na cor de sucesso do tema (Theme.Success), como
+// Danger. Encadeável.
+func (t *Text) Success() *Text {
+	t.tone = toneSuccess
+	t.Invalidate()
+	return t
+}
+
+// Warning desenha o texto na cor de aviso do tema (Theme.Warning), como
+// Danger. Encadeável.
+func (t *Text) Warning() *Text {
+	t.tone = toneWarning
+	t.Invalidate()
+	return t
+}
+
+// textTone é a cor de ESTADO de um texto (ver Text.Danger/Success/Warning).
+type textTone uint8
+
+const (
+	toneNone textTone = iota
+	toneDanger
+	toneSuccess
+	toneWarning
+)
+
+// color devolve a cor do tom no tema; sem tom, a cor sobrescrita (Color)
+// ou, se ela for zero, o texto do tema.
+func (tone textTone) color(th *theme.Theme, override color.RGBA) color.RGBA {
+	switch tone {
+	case toneDanger:
+		return th.Danger
+	case toneSuccess:
+		return th.Success
+	case toneWarning:
+		return th.Warning
+	}
+	if override == (color.RGBA{}) {
+		return th.Text
+	}
+	return override
 }
 
 // BindText vincula o conteúdo ao State: o Text passa a exibir o valor atual
@@ -185,12 +229,7 @@ func (t *Text) Draw(dst *image.RGBA) {
 		return
 	}
 	bounds := t.Bounds()
-	c := t.col
-	if t.danger {
-		c = t.theme.Danger
-	} else if c == (color.RGBA{}) {
-		c = t.theme.Text
-	}
+	c := t.tone.color(t.theme, t.col)
 
 	var w, lineH, ascent int
 	f := t.roleFont()

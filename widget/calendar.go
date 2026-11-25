@@ -275,7 +275,9 @@ func (c *Calendar) Draw(dst *image.RGBA) {
 			clr = th.Placeholder
 		}
 		if day.Year() == today.Year() && day.YearDay() == today.YearDay() && !selected {
-			clr = th.Accent
+			// Hoje é um anel na cor de ação: forma, não só cor de texto
+			// (com ação em tinta, texto em Accent sumiria no texto comum).
+			render.StrokeRoundRect(view, pill, radius, th.BorderPx(), th.Accent)
 		}
 		s := dayLabels[day.Day()]
 		sw := th.MeasureString(s)

@@ -89,7 +89,7 @@ func TestCapturaVisual(t *testing.T) {
 		t.Skip("defina CHAT_CAPTURA para salvar o frame")
 	}
 	// Captura em ESCALA 2 (retina): o PNG sai nítido como o App real.
-	th, err := juigo.ClaudeTheme()
+	th, err := juigo.DefaultTheme()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestCapturaVisual(t *testing.T) {
 	h.Key(juigo.KeyEnter)
 	h.Advance(10 * time.Second)
 	h.Click(uitest.Placeholder("Escreva para a Tinta…"))
-	h.Type("E quando entra a terracota?")
+	h.Type("E quando entra o âmbar?")
 	h.Key(juigo.KeyEnter)
 	h.Advance(400 * time.Millisecond) // em pleno "digitando"
 	h.Layout()

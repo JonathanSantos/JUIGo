@@ -2,6 +2,7 @@ package juigo
 
 import (
 	"image"
+	"image/color"
 	"time"
 
 	"golang.org/x/image/font/opentype"
@@ -153,6 +154,12 @@ type (
 	MonoFont = theme.MonoFont
 	// SyntaxPalette são as cores das classes léxicas do highlight.
 	SyntaxPalette = theme.SyntaxPalette
+	// Palette são as sementes de cor de um tema (ver theme.Palette e
+	// NewTheme).
+	Palette = theme.Palette
+	// ContrastIssue é um par de tokens abaixo da régua WCAG (ver
+	// Theme.Audit).
+	ContrastIssue = theme.ContrastIssue
 	// Font é uma fonte OpenType carregada — o que Theme.UseDisplayFont e
 	// Theme.UseMonoFont recebem.
 	Font = opentype.Font
@@ -471,24 +478,33 @@ func Not(s *State[bool]) *State[bool] { return state.Not(s) }
 // state.NewHistory).
 func NewHistory[T any](initial T) *History[T] { return state.NewHistory(initial) }
 
-// DarkTheme constrói o tema escuro na escala 1; troque em runtime com
-// App.SetTheme (ver theme.Dark).
+// DarkTheme constrói o par escuro da identidade Nanquim na escala 1; troque
+// em runtime com App.SetTheme (ver theme.Dark).
 func DarkTheme() (*Theme, error) { return theme.Dark() }
 
-// DefaultTheme constrói o tema padrão na escala 1 (ver theme.Default).
+// DefaultTheme constrói o tema padrão — a identidade Nanquim, clara — na
+// escala 1 (ver theme.Default e docs/DESIGN.md).
 func DefaultTheme() (*Theme, error) { return theme.Default() }
 
-// ClaudeTheme constrói o tema claro "papel e tinta" do design system do
-// JUIGo (ver theme.Claude e docs/DESIGN.md).
-func ClaudeTheme() (*Theme, error) { return theme.Claude() }
+// NewTheme constrói um tema a partir das sementes de cor (ver Palette e
+// theme.New): todos os tokens derivados, contraste WCAG garantido.
+func NewTheme(p Palette) (*Theme, error) { return theme.New(p) }
 
-// ClaudeDarkTheme constrói o par escuro do "papel e tinta" (ver
-// theme.ClaudeDark).
-func ClaudeDarkTheme() (*Theme, error) { return theme.ClaudeDark() }
+// NanquimPalette devolve as sementes da identidade do JUIGo (ver
+// theme.Nanquim) — ponto de partida para variar só o que quiser.
+func NanquimPalette() Palette { return theme.Nanquim() }
 
-// ClassicTheme constrói o tema claro com o visual clássico — cantos retos e
-// botão sem borda (ver theme.Classic).
+// ClassicTheme constrói o tema claro com o visual clássico — azul, cantos
+// retos e botão sem borda (ver theme.Classic).
 func ClassicTheme() (*Theme, error) { return theme.Classic() }
+
+// ClassicDarkTheme constrói o par escuro do visual clássico (ver
+// theme.ClassicDark).
+func ClassicDarkTheme() (*Theme, error) { return theme.ClassicDark() }
+
+// Contrast devolve a razão de contraste WCAG 2 entre duas cores (ver
+// theme.Contrast).
+func Contrast(a, b color.RGBA) float64 { return theme.Contrast(a, b) }
 
 // NewEventBus cria um barramento síncrono (ver event.NewBus).
 func NewEventBus() *EventBus { return event.NewBus() }
@@ -513,15 +529,13 @@ func GoMonoFont() (*Font, error) { return theme.GoMono() }
 // FiraCodeFont devolve a Fira Code embutida (ver theme.FiraCode).
 func FiraCodeFont() (*Font, error) { return theme.FiraCode() }
 
-// LoraFont devolve a serifada Lora Regular embutida (ver theme.Lora).
-func LoraFont() (*Font, error) { return theme.Lora() }
-
-// LoraBoldFont devolve a Lora Bold embutida (ver theme.LoraBold).
-func LoraBoldFont() (*Font, error) { return theme.LoraBold() }
-
-// GoBoldFont devolve a Go Bold — a fonte de display padrão (ver
+// GoBoldFont devolve a Go Bold — a fonte de display do Classic (ver
 // theme.GoBold).
 func GoBoldFont() (*Font, error) { return theme.GoBold() }
+
+// GoMonoBoldFont devolve a Go Mono Bold — a fonte de display da identidade
+// Nanquim (ver theme.GoMonoBold).
+func GoMonoBoldFont() (*Font, error) { return theme.GoMonoBold() }
 
 // ShowToast exibe um aviso transitório na base da janela em interação por
 // d (0 usa Theme.ToastDuration); um aviso novo substitui o anterior (ver

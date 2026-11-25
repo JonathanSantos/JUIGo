@@ -29,12 +29,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// O exemplo roda no design system "papel e tinta" (docs/DESIGN.md).
-	if th, err := juigo.ClaudeTheme(); err == nil {
-		if err := app.SetTheme(th); err != nil {
-			log.Fatal(err)
-		}
-	}
+	// Sem SetTheme: roda na identidade Nanquim, o tema padrão
+	// (docs/DESIGN.md).
 	app.SetRoot(ui(raiz))
 	if err := app.Run(); err != nil {
 		log.Fatal(err)

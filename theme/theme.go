@@ -180,8 +180,20 @@ type Theme struct {
 	// TooltipBackground e TooltipText são as cores da caixa de dica.
 	TooltipBackground color.RGBA
 	TooltipText       color.RGBA
+	// AccentText é a cor de marcas desenhadas SOBRE Accent (o check do
+	// Checkbox marcado).
+	AccentText color.RGBA
 	// Danger é a cor de erros e ações destrutivas (mensagens de validação).
 	Danger color.RGBA
+	// Success e Warning são as cores de sucesso e de aviso (Text.Success e
+	// Text.Warning); como Danger, legíveis como texto sobre o fundo.
+	Success color.RGBA
+	Warning color.RGBA
+	// Track é o trilho inativo de Slider e ProgressBar.
+	Track color.RGBA
+	// HeaderBackground é o fundo de cabeçalhos: o da Table e a calha de
+	// números de linha do CodeEditor.
+	HeaderBackground color.RGBA
 	// Syntax é a paleta de highlight do CodeEditor (classes léxicas).
 	Syntax SyntaxPalette
 	// CurrentLine é a faixa sutil atrás da linha do cursor no CodeEditor.
@@ -208,8 +220,8 @@ type Theme struct {
 	// BorderPx).
 	BorderWidth int
 	// Radius é o raio dos cantos arredondados dos controles, em unidades
-	// lógicas (use RadiusPx). Zero desliga o arredondamento e reproduz o
-	// visual clássico (retângulos retos) pixel a pixel — ver Classic.
+	// lógicas (use RadiusPx). Zero desliga o arredondamento (retângulos
+	// retos) — ver Classic.
 	Radius int
 	// InputMinWidth é a largura preferida mínima do Input, em unidades
 	// lógicas (use InputMinWidthPx).
@@ -278,8 +290,9 @@ type Theme struct {
 
 	// TitleSize, SubtitleSize e CaptionSize são os tamanhos LÓGICOS dos
 	// papéis tipográficos (ver Title/Subtitle/Caption e Text.Title). Título
-	// e subtítulo usam a fonte de DISPLAY (UseDisplayFont; Go Bold por
-	// padrão, Lora no tema Claude); a legenda usa a fonte do corpo.
+	// e subtítulo usam a fonte de DISPLAY (UseDisplayFont; Go Mono Bold na
+	// identidade Nanquim, Go Bold no Classic); a legenda usa a fonte do
+	// corpo.
 	TitleSize    float64
 	SubtitleSize float64
 	CaptionSize  float64
@@ -315,60 +328,45 @@ type SyntaxPalette struct {
 	Builtin color.RGBA
 }
 
-// Default constrói o tema padrão do JUIGo na escala 1, interpretando a
-// fonte embutida. Falhas na fonte são devolvidas como erro. O App ajusta a
-// escala para o monitor via SetScale.
+// Default constrói o tema padrão do JUIGo — a identidade Nanquim no modo
+// claro (ver Nanquim e docs/DESIGN.md) — na escala 1. Falhas na fonte são
+// devolvidas como erro. O App ajusta a escala para o monitor via SetScale.
 func Default() (*Theme, error) {
+	return New(Nanquim())
+}
+
+// Dark constrói o par escuro da identidade Nanquim na escala 1: as mesmas
+// sementes e métricas de Default — troque em runtime com App.SetTheme sem
+// a interface pular.
+func Dark() (*Theme, error) {
+	p := Nanquim()
+	p.Dark = true
+	return New(p)
+}
+
+// base constrói um tema com as métricas, fontes e durações da identidade
+// do JUIGo e SEM cores (todas zeradas) — New e Classic pintam por cima.
+func base() (*Theme, error) {
 	parsed, err := opentype.Parse(embeddedFontTTF)
 	if err != nil {
 		return nil, fmt.Errorf("juigo: falha ao interpretar a fonte embutida: %w", err)
 	}
-
 	mono, err := GoMono()
+	if err != nil {
+		return nil, err
+	}
+	display, err := GoMonoBold()
 	if err != nil {
 		return nil, err
 	}
 
 	t := &Theme{
-		Background:  color.RGBA{R: 0xF2, G: 0xF3, B: 0xF5, A: 0xFF},
-		Text:        color.RGBA{R: 0x1F, G: 0x23, B: 0x28, A: 0xFF},
-		Placeholder: color.RGBA{R: 0x9A, G: 0xA0, B: 0xA8, A: 0xFF},
-
-		ButtonNormal:  color.RGBA{R: 0x3B, G: 0x82, B: 0xF6, A: 0xFF},
-		ButtonHover:   color.RGBA{R: 0x60, G: 0xA5, B: 0xFA, A: 0xFF},
-		ButtonPressed: color.RGBA{R: 0x1D, G: 0x4E, B: 0xD8, A: 0xFF},
-		ButtonText:    color.RGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF},
-		ButtonBorder:  color.RGBA{R: 0x25, G: 0x63, B: 0xEB, A: 0xFF},
-
-		InputBackground:    color.RGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF},
-		InputBorder:        color.RGBA{R: 0xB4, G: 0xBA, B: 0xC2, A: 0xFF},
-		InputBorderFocused: color.RGBA{R: 0x3B, G: 0x82, B: 0xF6, A: 0xFF},
-		Cursor:             color.RGBA{R: 0x1F, G: 0x23, B: 0x28, A: 0xFF},
-		Selection:          color.RGBA{R: 0xBF, G: 0xDB, B: 0xFE, A: 0xFF},
-		FocusOutline:       color.RGBA{R: 0x1D, G: 0x4E, B: 0xD8, A: 0xFF},
-		Accent:             color.RGBA{R: 0x3B, G: 0x82, B: 0xF6, A: 0xFF},
-		HoverBackground:    color.RGBA{R: 0xE4, G: 0xEC, B: 0xF9, A: 0xFF},
-		TooltipBackground:  color.RGBA{R: 0x2E, G: 0x33, B: 0x3B, A: 0xFF},
-		TooltipText:        color.RGBA{R: 0xF5, G: 0xF7, B: 0xFA, A: 0xFF},
-		Danger:             color.RGBA{R: 0xDC, G: 0x26, B: 0x26, A: 0xFF},
-		Syntax: SyntaxPalette{
-			Keyword: color.RGBA{R: 0xCF, G: 0x22, B: 0x2E, A: 0xFF},
-			String:  color.RGBA{R: 0x0A, G: 0x30, B: 0x69, A: 0xFF},
-			Number:  color.RGBA{R: 0x05, G: 0x50, B: 0xAE, A: 0xFF},
-			Comment: color.RGBA{R: 0x6E, G: 0x77, B: 0x81, A: 0xFF},
-			Builtin: color.RGBA{R: 0x95, G: 0x38, B: 0x00, A: 0xFF},
-		},
-		CurrentLine: color.RGBA{R: 0xF2, G: 0xF5, B: 0xFA, A: 0xFF},
-
-		Surface:       color.RGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF},
-		SurfaceBorder: color.RGBA{R: 0xDD, G: 0xE1, B: 0xE6, A: 0xFF},
-
 		FontSize:     16,
 		TitleSize:    24,
 		SubtitleSize: 19,
 		CaptionSize:  13,
 
-		Padding:              8,
+		Padding:              10,
 		Spacing:              8,
 		BorderWidth:          1,
 		Radius:               4,
@@ -390,11 +388,10 @@ func Default() (*Theme, error) {
 		SplitterThickness:  6,
 		TreeIndent:         16,
 		RowPad:             4,
-		Backdrop:           color.RGBA{A: 0x66},
-		DisabledWash:       color.RGBA{R: 0xF2, G: 0xF3, B: 0xF5, A: 0x99},
 
-		fnt:     parsed,
-		monoFnt: mono,
+		fnt:        parsed,
+		monoFnt:    mono,
+		displayFnt: display,
 	}
 	if err := t.SetScale(1); err != nil {
 		return nil, err

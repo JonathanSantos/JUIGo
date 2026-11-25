@@ -37,7 +37,7 @@ func TestProgressBar(t *testing.T) {
 	if got := buf.RGBAAt(25, 4); got != th.Accent {
 		t.Fatalf("metade esquerda deveria ser Accent; got %v", got)
 	}
-	if got := buf.RGBAAt(75, 4); got != th.InputBorder {
+	if got := buf.RGBAAt(75, 4); got != th.Track {
 		t.Fatalf("metade direita deveria ser trilho; got %v", got)
 	}
 }
