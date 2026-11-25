@@ -1,98 +1,61 @@
-# JUIGo
+<h1 align="center">JUIGo</h1>
 
-[![testes](https://github.com/JonathanSantos/JUIGo/actions/workflows/testes.yml/badge.svg)](https://github.com/JonathanSantos/JUIGo/actions/workflows/testes.yml)
-[![Go Reference](https://pkg.go.dev/badge/github.com/JonathanSantos/JUIGo.svg)](https://pkg.go.dev/github.com/JonathanSantos/JUIGo)
-[![licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg)](LICENSE)
+<p align="center">
+  <strong>Interfaces desktop em Go, desenhadas pixel a pixel.</strong><br>
+  Renderização por software, estado reativo tipado, formulários validados numa expressão<br>
+  e testes de UI determinísticos — tudo atrás de um único <code>import</code>.
+</p>
 
-Biblioteca de interface gráfica desktop em Go, escrita **do zero** como
-projeto de estudo (**J**onathan + **UI** + **Go**): renderização por
-software num `*image.RGBA`, reatividade tipada com generics, formulários
-validados em uma expressão e um framework de testes de UI determinístico —
-tudo atrás de um único `import`.
+<p align="center">
+  <a href="https://github.com/JonathanSantos/JUIGo/actions/workflows/testes.yml"><img alt="testes" src="https://github.com/JonathanSantos/JUIGo/actions/workflows/testes.yml/badge.svg"></a>
+  <a href="https://pkg.go.dev/github.com/JonathanSantos/JUIGo"><img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/JonathanSantos/JUIGo.svg"></a>
+  <a href="LICENSE"><img alt="licença: MIT" src="https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg"></a>
+</p>
+
+<p align="center">
+  <a href="https://jonathansantos.github.io/JUIGo/"><strong>Documentação e componentes</strong></a> ·
+  <a href="#começando">Começando</a> ·
+  <a href="#componentes">Componentes</a> ·
+  <a href="#exemplos">Exemplos</a> ·
+  <a href="docs/API.md">Convenções da API</a>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/vitrine-claude-escuro.png">
+    <img alt="Vitrine de widgets do JUIGo no tema papel e tinta" src="docs/vitrine-claude.png" width="470">
+  </picture>
+</p>
+
+<p align="center"><sub>Nenhuma imagem desta página é mockup: todas são renderizadas pela própria lib,
+offscreen (<a href="docs/gerar/main.go"><code>go run ./docs/gerar</code></a>). No modo escuro do GitHub
+você vê as renderizações escuras.</sub></p>
 
 > *JUIGo is a desktop GUI library for Go, built from scratch as a study
 > project: software rendering, typed reactive state, a validated-forms
 > layer and a deterministic UI-testing harness. The documentation is in
 > Brazilian Portuguese.*
 
-| Tema claro | Tema escuro (troca em runtime) |
+## Em números
+
+| 25+ widgets | 15 µs | 0 | 3 |
+| :---: | :---: | :---: | :---: |
+| de Button a CodeEditor, Tree e Table | por frame incremental | alocações no caminho quente | dependências (GLFW, GL, `x/image`) |
+
+## Começando
+
+**Requisitos:** Go 1.26+ e uma toolchain C (o GLFW compila via cgo), com os
+headers de janela/GL da sua plataforma:
+
+| Plataforma | O que instalar |
 | --- | --- |
-| ![Vitrine no tema claro](docs/vitrine-claro.png) | ![Vitrine no tema escuro](docs/vitrine-escuro.png) |
-
-*As screenshots desta página são geradas pela renderização offscreen da
-própria lib — [`go run ./docs/gerar`](docs/gerar/main.go).*
-
-## Por que JUIGo
-
-- **25+ widgets** — Text, Label (parágrafo com quebra de linha e papéis
-  tipográficos), Button, Input (seleção — inclusive palavra por
-  duplo clique —, clipboard, filtro), TextArea
-  com soft wrap, CodeEditor (fonte mono, gutter, tabs, undo coalescido,
-  linhas virtualizadas e highlight de sintaxe INCREMENTAL — lexers Go/JSON
-  em `juigo/syntax`, contrato aberto para os seus), Checkbox, Radio,
-  Slider, ProgressBar, Dropdown, Image, Tabs, SplitPane (painéis
-  redimensionáveis com divisor arrastável), Modal, Popup ancorado,
-  Tooltip, Grid, List virtualizada, Tree (árvore virtualizada com o modelo
-  em callbacks seus), Table com cabeçalho fixo — com seleção como State e
-  reordenação por arrasto (`OnReorder`, com indicador de inserção) —,
-  Card, Divider, Calendar e MenuBar.
-- **Comandos globais e paleta** — `Command{Título, atalho, ação}`
-  registrado no App (o atalho respeita o widget focado), `MenuBar` cujos
-  itens são comandos e se registram sozinhos, e a paleta **Ctrl/Cmd+K**
-  embutida: busca, Enter executa.
-- **Gráficos temáticos** — `juigo/chart`: sparkline, linha e barras com
-  antialiasing (`render.StrokeLine`), 100% nas cores do tema.
-- **Navegação entre telas** — `Navigator` com pilha de telas
-  (`Push`/`Pop`/`Replace`/`PopToRoot`) e transições animadas prontas:
-  deslizar nas quatro direções e fade, com o `Pop` revertendo a transição
-  de entrada sozinho; telas dormentes preservam o estado.
-- **Reatividade tipada** — `State[T]` + `Map`/`Combine`, bindings de duas
-  vias (`BindValue`, `BindChecked`, `BindSelected`, `BindDisabled`,
-  `BindInvalid`) e tudo declarável inline, sem variáveis temporárias.
-- **Formulários em uma expressão** — a camada `quick`: campos com handles
-  tipados, validação com mensagens suas, erros por campo e Enter enviando;
-  além de diálogos (`Confirm`/`Alert`/`Prompt`), seletor de arquivos
-  100% JUIGo (`OpenFile`/`SaveFile`, sem dependência de plataforma), menu
-  de contexto (`Menu`) e avisos transitórios (`Toast`) de uma chamada.
-- **Testável de verdade** — `uitest` dirige o MESMO núcleo de interação do
-  App real, headless, com relógio virtual (nada de sleeps) e screenshots
-  determinísticos para golden tests.
-- **Rápida por construção** — dirty regions (só a região suja é repintada e
-  enviada à GPU), zero alocações no caminho quente, ~14µs por frame
-  incremental; um golden test prova que o frame incremental é byte a byte
-  igual ao completo.
-- **HiDPI, temas em runtime, múltiplas janelas (`App.NewWindow`, cada uma
-  com tema e foco próprios, States compartilhados entre elas), drag-and-drop
-  (`StartDrag`/`DropTarget`, com fantasma e realce do alvo), undo/redo
-  (`History`), timers (`After`/`Every`), animações (`anim.Tween`) e um
-  inspector de depuração (Ctrl/Cmd+I)** de fábrica.
-
-## Status
-
-Projeto de **estudo**, em evolução ativa. Versionado por tags `v0.x`
-(primeira: `v0.1.0`) — na série 0.x a API ainda quebra entre versões, sem
-janela de depreciação. Desenvolvido e verificado no macOS; Linux e Windows
-têm as dependências mapeadas abaixo, mas ainda não foram testados. Issues e
-correções são bem-vindas.
-
-## Instalação
-
-Requisitos: Go 1.26+, toolchain C (o GLFW compila via cgo) e os headers de
-janela/GL da sua plataforma:
-
-- **macOS**: Xcode Command Line Tools (`xcode-select --install`)
-- **Linux**: `libgl1-mesa-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev`
-- **Windows**: toolchain gcc (MSYS2 ou TDM-GCC)
+| macOS | Xcode Command Line Tools (`xcode-select --install`) |
+| Linux | `libgl1-mesa-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev` |
+| Windows | toolchain gcc (MSYS2 ou TDM-GCC) |
 
 ```bash
 go get github.com/JonathanSantos/JUIGo
 ```
-
-A fonte **Go Regular** ([go.dev/blog/go-fonts](https://go.dev/blog/go-fonts),
-licença BSD do projeto Go) é embutida via `go:embed` — binários JUIGo não
-dependem de fontes do sistema.
-
-## Primeiros passos
 
 ```go
 package main
@@ -119,74 +82,120 @@ func main() {
 ```
 
 Digite no campo e o título reage a cada tecla — o `State` é a única fonte
-de verdade e a interface é uma projeção dele.
+de verdade e a interface é uma projeção dele. A fonte **Go Regular**
+([go.dev/blog/go-fonts](https://go.dev/blog/go-fonts), licença BSD do
+projeto Go) vem embutida via `go:embed`: binários JUIGo não dependem de
+fontes do sistema.
 
-## As ideias que sustentam a DX
+## Componentes
 
-- **Tudo declarável inline** — callbacks, opções e layout são métodos
-  encadeáveis que devolvem o tipo concreto, no estilo dos `Bind*`:
-  `NewInput("E-mail").BindValue(mail).OnSubmit(enviar).Grow(1)`,
-  `NewSlider(0, 1).Step(0.1).OnChange(f)`,
-  `NewButton("Salvar", f).Tooltip("Grava").BindDisabled(invalido)`. Qualquer
-  interface cabe em uma única expressão.
-- **Uma API, uma regra** — propriedade é `X()`/`SetX(v)`, opção é verbo sem
-  `Set`, `OnChange` sempre entrega o valor e só reage ao usuário, todo
-  `Bind*` tem o seu par de leitura. As convenções estão escritas em
-  [docs/API.md](docs/API.md); quem vem de uma versão anterior segue
-  [docs/MIGRACAO-v0.19.md](docs/MIGRACAO-v0.19.md).
-- **Tema ambiente** — construtores não pedem tema: o App o injeta na árvore
-  no *mount*. `DefaultTheme` (claro), `DarkTheme` (escuro) e o design
-  system "papel e tinta" (`ClaudeTheme`/`ClaudeDarkTheme` — ver
-  [docs/DESIGN.md](docs/DESIGN.md)) prontos, todos
-  com cantos arredondados com antialiasing (`Theme.Radius`, padrão 4);
-  `ClassicTheme` (ou `Radius = 0`) devolve o visual reto de antes, pixel a
-  pixel. `App.SetTheme` troca em runtime. Métricas são unidades lógicas
-  escaladas pelo tema — HiDPI transparente.
-- **Reatividade com `State[T]`** — `NewState`/`Get`/`Set`/`Watch` + `Map` e
-  `Combine` para derivados; `Set` redesenha a interface sozinho. Eventos
-  continuam callbacks (`OnClick`) — estado é para dados.
-- **Layout sem cerimônia** — `VBox`/`HBox` com `.Grow(peso)`, `Spacer`,
-  `.Centered()`/`.AtStart()`/`.AtEnd()`; `Grid(n, …)` para formulários
-  alinhados; `Scroll` (eixo horizontal opcional, `ScrollToEnd` e
-  `StickToEnd` para chats e logs) e `List`/`Table` virtualizadas para
-  milhares de linhas com um punhado de widgets — `NewTextList` quando a
-  linha é só texto.
-- **Disabled e loading centrais** — `.BindDisabled(estado)` tira o widget
-  (e a subárvore) da interação no roteamento, com esmaecimento;
-  `Button.BindLoading` mostra spinner e implica desabilitado.
-- **Trabalho assíncrono com `App.Post`** — o único método thread-safe:
-  goroutine trabalha, `Post` entrega o resultado à main thread.
-- **Undo, timers e seleção** — `NewHistory` (pilhas + `CanUndo`/`CanRedo`
-  prontos para botões), `After`/`Every` no relógio da aplicação,
-  `BindSelected` fazendo da linha selecionada um State como outro qualquer
-  (ou só `OnChange`/`Selected()`, sem State nenhum).
-- **Vínculos que não vazam** — todo `Bind*` assina o State com referência
-  fraca: reconstruir uma lista com `Clear` + `Add` não acumula observadores,
-  e `Watch` devolve o cancelamento para quem precisa.
-- **Textos da lib em qualquer idioma** — inglês por padrão;
-  `juigo.SetLocale(juigo.LocalePTBR())` troca diálogos, calendário e formato
-  de data de uma vez.
+Cada captura abaixo tem o código que a gerou no
+[site da documentação](https://jonathansantos.github.io/JUIGo/#componentes).
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="https://jonathansantos.github.io/JUIGo/#c-botoes"><b>Button</b></a><br>
+      <picture><source media="(prefers-color-scheme: dark)" srcset="docs/componentes/botoes-escuro.png"><img alt="Button" src="docs/componentes/botoes.png"></picture>
+    </td>
+    <td width="50%" valign="top">
+      <a href="https://jonathansantos.github.io/JUIGo/#c-entradas"><b>Input e TextArea</b></a><br>
+      <picture><source media="(prefers-color-scheme: dark)" srcset="docs/componentes/entradas-escuro.png"><img alt="Input e TextArea" src="docs/componentes/entradas.png"></picture>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <a href="https://jonathansantos.github.io/JUIGo/#c-escolhas"><b>Checkbox, Radio e Dropdown</b></a><br>
+      <picture><source media="(prefers-color-scheme: dark)" srcset="docs/componentes/escolhas-escuro.png"><img alt="Checkbox, Radio e Dropdown" src="docs/componentes/escolhas.png"></picture>
+      <br><br>
+      <a href="https://jonathansantos.github.io/JUIGo/#c-slider"><b>Slider e ProgressBar</b></a><br>
+      <picture><source media="(prefers-color-scheme: dark)" srcset="docs/componentes/slider-escuro.png"><img alt="Slider e ProgressBar" src="docs/componentes/slider.png"></picture>
+    </td>
+    <td valign="top">
+      <a href="https://jonathansantos.github.io/JUIGo/#c-formulario"><b>quick.Form</b></a><br>
+      <picture><source media="(prefers-color-scheme: dark)" srcset="docs/componentes/formulario-escuro.png"><img alt="quick.Form" src="docs/componentes/formulario.png"></picture>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <a href="https://jonathansantos.github.io/JUIGo/#c-tabela"><b>Table</b></a><br>
+      <picture><source media="(prefers-color-scheme: dark)" srcset="docs/componentes/tabela-escuro.png"><img alt="Table" src="docs/componentes/tabela.png"></picture>
+    </td>
+    <td valign="top">
+      <a href="https://jonathansantos.github.io/JUIGo/#c-editor"><b>CodeEditor</b></a><br>
+      <picture><source media="(prefers-color-scheme: dark)" srcset="docs/componentes/editor-escuro.png"><img alt="CodeEditor" src="docs/componentes/editor.png"></picture>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <a href="https://jonathansantos.github.io/JUIGo/#c-graficos"><b>chart</b></a><br>
+      <picture><source media="(prefers-color-scheme: dark)" srcset="docs/componentes/graficos-escuro.png"><img alt="Gráficos" src="docs/componentes/graficos.png"></picture>
+    </td>
+    <td valign="top">
+      <a href="https://jonathansantos.github.io/JUIGo/#c-calendario"><b>Calendar</b></a><br>
+      <picture><source media="(prefers-color-scheme: dark)" srcset="docs/componentes/calendario-escuro.png"><img alt="Calendar" src="docs/componentes/calendario.png" width="300"></picture>
+      <br><br>
+      <a href="https://jonathansantos.github.io/JUIGo/#c-arvore"><b>Tree</b></a><br>
+      <picture><source media="(prefers-color-scheme: dark)" srcset="docs/componentes/arvore-escuro.png"><img alt="Tree" src="docs/componentes/arvore.png" width="300"></picture>
+    </td>
+  </tr>
+</table>
+
+E ainda: Text e Label (parágrafo com quebra de linha e papéis
+tipográficos), List virtualizada, Tabs, SplitPane, Card, Divider, Image,
+Grid, Scroll, Modal, Popup ancorado, Tooltip, MenuBar e Navigator.
+
+## O que vem na caixa
+
+| | |
+| --- | --- |
+| **Reatividade tipada** | `State[T]` + `Map`/`Combine`, bindings de duas vias (`BindValue`, `BindChecked`, `BindSelected`, `BindDisabled`, `BindInvalid`) com referência fraca — nada vaza. |
+| **Tudo inline** | Opções e callbacks são métodos encadeáveis que devolvem o tipo concreto: `NewInput("E-mail").BindValue(mail).OnSubmit(enviar).Grow(1)`. |
+| **Formulários em uma expressão** | `quick.Form` com handles tipados, validação e erros por campo; `Confirm`/`Alert`/`Prompt`, `Menu`, `Toast` e seletor de arquivos 100% JUIGo. |
+| **Navegação** | `Navigator` com pilha de telas e transições animadas (deslizar nas quatro direções e fade); telas dormentes preservam o estado. |
+| **Comandos e paleta** | `Command{Título, atalho, ação}`, `MenuBar` cujos itens são comandos e a paleta **Ctrl/Cmd+K** embutida. |
+| **Tema ambiente** | Construtores não pedem tema; `DefaultTheme`, `DarkTheme` e o design system papel e tinta, trocáveis em runtime. HiDPI transparente. |
+| **Testável de verdade** | `uitest` dirige o MESMO núcleo do App real, headless, com relógio virtual e screenshots determinísticos. |
+| **Rápida por construção** | Dirty regions, zero alocações no caminho quente; um golden test prova que o frame incremental é byte a byte igual ao completo. |
+| **E mais** | Múltiplas janelas, drag-and-drop, undo/redo (`History`), timers, animações (`anim.Tween`), `App.Post` para goroutines, textos da lib em inglês ou pt-BR (`SetLocale`) e inspector de depuração (**Ctrl/Cmd+I**). |
 
 ## Design system "papel e tinta"
 
-| Claro | Escuro |
-| --- | --- |
-| ![Papel e tinta, claro](docs/identidade-claude.png) | ![Papel e tinta, escuro](docs/identidade-claude-escuro.png) |
+<table>
+  <tr>
+    <td><img alt="Papel e tinta, claro" src="docs/identidade-claude.png"></td>
+    <td><img alt="Papel e tinta, escuro" src="docs/identidade-claude-escuro.png"></td>
+  </tr>
+</table>
 
 Uma identidade completa pronta para usar, inspirada na linguagem visual do
 Claude (Anthropic): papel e tinta como base, títulos na serif Lora
-(embutida, OFL), terracota exclusiva para ações, neutros sempre quentes e
-formas generosas. Vem com o sistema inteiro, não só cores: papéis
-tipográficos (`Text.Title/Subtitle/Caption`, fonte de display trocável),
-hierarquia de botões (`Secondary`/`Ghost`), superfícies (`Card`,
-`Divider`) e movimento. `juigo.ClaudeTheme()` e `juigo.ClaudeDarkTheme()`
-compartilham as métricas — alternam em runtime sem a interface pular. Os
-princípios, a tabela de tokens e como estender sem perder a identidade
-estão em [docs/DESIGN.md](docs/DESIGN.md).
+(embutida, OFL), terracota exclusiva para ações e neutros quentes. Vem com
+papéis tipográficos (`Title/Subtitle/Caption`), hierarquia de botões
+(`Secondary`/`Ghost`), superfícies (`Card`, `Divider`) e movimento.
+`juigo.ClaudeTheme()` e `juigo.ClaudeDarkTheme()` compartilham as métricas
+e alternam em runtime sem a interface pular. Tokens e regras em
+[docs/DESIGN.md](docs/DESIGN.md).
 
-## Formulários com `quick`
+<details>
+<summary><b>Os temas clássicos</b> — <code>DefaultTheme</code> e <code>DarkTheme</code></summary>
+<br>
 
-<img src="docs/quick-form.png" alt="quick.Form com validação" width="440">
+| Tema claro | Tema escuro |
+| --- | --- |
+| ![Vitrine no tema claro](docs/vitrine-claro.png) | ![Vitrine no tema escuro](docs/vitrine-escuro.png) |
+
+Todos com cantos arredondados com antialiasing (`Theme.Radius`, padrão 4);
+`ClassicTheme` (ou `Radius = 0`) devolve o visual reto, pixel a pixel.
+</details>
+
+## Como se usa
+
+<details open>
+<summary><b>Formulários com <code>quick</code></b></summary>
+<br>
+
+<img src="docs/quick-form.png" alt="quick.Form com validação" width="440" align="right">
 
 ```go
 nome  := quick.Text("Nome:").Required("Informe o nome").Min(3, "Mínimo de 3")
@@ -199,15 +208,16 @@ quick.Form(nome, email, idade).Submit("Salvar", func() {
 ```
 
 Cada campo é um **handle tipado** dono do próprio State — a variável é a
-"chave" do formulário, verificada pelo compilador. A grade alinha rótulos e
-campos, os erros aparecem por campo (no blur ou no envio, na cor de erro do
-tema, com borda vermelha no controle), Enter envia, `Section` divide
-formulários longos. `quick.Confirm/Alert/Prompt` abrem diálogos de uma
-chamada. E a regra da rampa: tudo aceita e devolve widgets comuns — quando o
-padrão pronto não servir, desça um nível naquele ponto sem reescrever a
-tela.
+"chave" do formulário, verificada pelo compilador. Erros aparecem por campo
+(no blur ou no envio), Enter envia e `Section` divide formulários longos. A
+regra da rampa: tudo aceita e devolve widgets comuns — quando o padrão
+pronto não servir, desça um nível naquele ponto sem reescrever a tela.
+<br clear="right">
+</details>
 
-## Navegação entre telas
+<details>
+<summary><b>Navegação entre telas</b></summary>
+<br>
 
 <img src="docs/navegacao.png" alt="Navegação em pleno deslize" width="640">
 
@@ -224,17 +234,14 @@ nav.Pop()                                         // reverte a transição de en
 
 O `Navigator` é um widget comum: sirva-o de raiz, aninhe-o numa aba, o que
 for. Só a tela do topo participa de eventos e foco; as demais dormem na
-pilha com o estado intacto (rolagem, campos preenchidos). A transição vai
-por chamada (argumento opcional) ou como padrão (`nav.Transition(…)`), a
-duração vem do tema (`Theme.TransitionDuration`) e, durante a animação, as
-telas viram retratos — a interação é engolida até terminar. As animações
-correm nos timers da aplicação (`anim.Tween`): no `uitest`, `Advance`
-atravessa uma transição deterministicamente, quadro a quadro.
+pilha com o estado intacto. A duração vem do tema
+(`Theme.TransitionDuration`) e, no `uitest`, `Advance` atravessa uma
+transição deterministicamente, quadro a quadro.
+</details>
 
-## Testando sua aplicação
-
-O `uitest` dirige o mesmo núcleo de interação do App real (roteamento,
-foco, captura, overlay), headless e sem sleeps:
+<details>
+<summary><b>Testando sua aplicação com <code>uitest</code></b></summary>
+<br>
 
 ```go
 func TestFormulario(t *testing.T) {
@@ -249,115 +256,111 @@ func TestFormulario(t *testing.T) {
 
 Seletores por texto, placeholder, tipo (`OfType[*juigo.Button]()`) e
 predicado; `Advance` dispara timers, animações e piscada de cursor na
-ordem, sem dormir. **Ctrl/Cmd+I** em qualquer app abre o inspector de
-depuração: contornos, realce sob o ponteiro e um crachá com tipo, bounds e
-flags de cada widget.
+ordem, sem dormir.
+</details>
+
+<details>
+<summary><b>As ideias que sustentam a DX</b></summary>
+<br>
+
+- **Uma API, uma regra** — propriedade é `X()`/`SetX(v)`, opção é verbo sem
+  `Set`, `OnChange` sempre entrega o valor e só reage ao usuário, todo
+  `Bind*` tem o seu par de leitura. Convenções em [docs/API.md](docs/API.md);
+  quem vem de uma versão anterior segue
+  [docs/MIGRACAO-v0.19.md](docs/MIGRACAO-v0.19.md).
+- **Layout sem cerimônia** — `VBox`/`HBox` com `.Grow(peso)`, `Spacer`,
+  `.Centered()`/`.AtStart()`/`.AtEnd()`; `Grid(n, …)` para formulários
+  alinhados; `Scroll` (com `ScrollToEnd` e `StickToEnd` para chats e logs)
+  e `List`/`Table` virtualizadas — `NewTextList` quando a linha é só texto.
+- **Disabled e loading centrais** — `.BindDisabled(estado)` tira o widget
+  (e a subárvore) da interação; `Button.BindLoading` mostra spinner.
+- **Trabalho assíncrono com `App.Post`** — o único método thread-safe:
+  goroutine trabalha, `Post` entrega o resultado à main thread.
+- **Undo, timers e seleção** — `NewHistory` (com `CanUndo`/`CanRedo`
+  prontos para botões), `After`/`Every` no relógio da aplicação e
+  `BindSelected` fazendo da linha selecionada um State qualquer.
+</details>
 
 ## Exemplos
 
-- **`go run ./examples/galeria`** — o **storybook** do JUIGo, feito com o
-  próprio JUIGo: a árvore lateral navega pelos componentes, cada página
-  mostra instâncias vivas em cartões, e a barra do topo troca **tema,
-  fonte dos títulos, fonte mono e tamanho de texto em pleno voo**. As
-  páginas viram comandos globais — Ctrl/Cmd+K é a busca de componentes.
+<table>
+  <tr>
+    <td colspan="2">
+      <img alt="Galeria de componentes" src="docs/galeria.png"><br>
+      <b><code>go run ./examples/galeria</code></b> — o <b>storybook</b> do JUIGo, feito com o próprio JUIGo:
+      a árvore lateral navega pelos componentes e a barra do topo troca tema, fontes e tamanho de texto em pleno voo.
+      Ctrl/Cmd+K busca componentes.
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <img alt="Chat papel e tinta" src="docs/chat.png"><br>
+      <b><code>go run ./examples/chat</code></b> — a demo bandeira do design system: <code>SplitPane</code>,
+      balões de <code>Card</code> com <code>Label</code>, barra de menus com atalhos e a resposta chegando "digitando".
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img alt="Contatos, mestre-detalhe" src="docs/contatos.png"><br>
+      <b><code>examples/contatos</code></b> — mestre-detalhe: busca, tabela, abas, menu de contexto, exclusão com confirmação e toasts.
+    </td>
+    <td width="50%" valign="top">
+      <img alt="Arquivos: split, árvore e seletor" src="docs/arquivos.png"><br>
+      <b><code>examples/arquivos</code></b> — <code>SplitPane</code>, <code>Tree</code> de pastas lida sob demanda e o seletor <code>quick.OpenFile</code>/<code>SaveFile</code>.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <img alt="Kanban em pleno arrasto" src="docs/kanban.png"><br>
+      <b><code>examples/kanban</code></b> — drag-and-drop entre colunas, com fantasma, realce do alvo e cancelamento no Escape.
+    </td>
+    <td valign="top">
+      <img alt="CodeEditor" src="docs/editor.png"><br>
+      <b><code>examples/editor</code></b> — highlight incremental, auto-indentação, par de parênteses, undo coalescido e Go Mono ↔ Fira Code.
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <img alt="TodoMVC" src="docs/todomvc.png"><br>
+      <b><code>examples/todo</code></b> — TodoMVC em três camadas, com persistência JSON e edição inline.
+    </td>
+    <td valign="top">
+      <img alt="Cells, a mini-planilha do 7GUIs" src="docs/cells.png"><br>
+      <b><code>examples/7guis</code></b> — o <a href="https://eugenkiss.github.io/7guis/">7GUIs</a> completo, cada tarefa com testes
+      (<a href="examples/7guis/GAPS.md">o que o exercício rendeu à lib</a>).
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <img alt="Mini-proxy: captura HTTP/HTTPS, visor ReadOnly e mocks" src="docs/proxy.png"><br>
+      <b><code>go run ./examples/proxy</code></b> — um mini proxy de depuração HTTP/HTTPS local: captura, filtra,
+      mostra requisição e resposta em <code>CodeEditor</code> <code>ReadOnly</code> e simula respostas (mocks).
+    </td>
+  </tr>
+</table>
 
-  <img src="docs/galeria.png" alt="Galeria de componentes" width="1020">
+> **Segurança do proxy:** para inspecionar HTTPS ele gera uma CA local
+> (MITM, a técnica do mitmproxy/Charles). A CA nasce e vive só na sua
+> máquina (chave `0600`), nunca deve ser compartilhada, e a inspeção só se
+> justifica para depurar o **seu próprio** tráfego. Cert pinning continua
+> rejeitando o proxy. Ele escuta só em `127.0.0.1` — expor na rede
+> (`-addr :8080`) o transforma num relay aberto para quem estiver no mesmo
+> wifi. É um proxy **explícito**: captura o que for apontado para ele
+> (`HTTPS_PROXY=http://localhost:8080 curl https://httpbin.org/get`), não o
+> tráfego inteiro da máquina.
 
-- **`go run ./examples/chat`** — a demo bandeira do design system: conversas
-  num `SplitPane` com pílulas, balões de `Card` com `Label` (parágrafos que
-  quebram sozinhos), barra de menus com atalhos globais (e a paleta
-  Ctrl/Cmd+K de brinde) e a resposta chegando "digitando" pelos timers da
-  aplicação — papel e tinta de ponta a ponta.
+Também no repositório: **`basic`** (bindings, modal, tema escuro ao vivo,
+lista de 500 itens e `Post`), **`navegacao`** (três níveis de telas com
+transições) e **`janelas`** (`App.NewWindow`, tema por janela e o MESMO
+`State` reagindo em todas).
 
-  <img src="docs/chat.png" alt="Chat papel e tinta" width="900">
-
-- **Gráficos** (`juigo/chart`) na mesma identidade:
-
-  <img src="docs/graficos.png" alt="Gráficos temáticos" width="460">
-
-| | |
-| --- | --- |
-| ![TodoMVC](docs/todomvc.png) | ![Cells, a mini-planilha do 7GUIs](docs/cells.png) |
-
-<img src="docs/contatos.png" alt="Contatos, o exemplo mestre-detalhe" width="720">
-
-- **`go run ./examples/basic`** — a demo reativa: bindings, formulário
-  validado num modal, tema escuro ao vivo, lista virtualizada de 500 itens,
-  animação de rolagem e trabalho assíncrono com `Post`.
-- **`go run ./examples/7guis`** — o benchmark clássico
-  [7GUIs](https://eugenkiss.github.io/7guis/) completo: contador, conversor
-  de temperatura, reserva de voo, cronômetro, CRUD, desenho de círculos com
-  undo/redo e uma mini-planilha com fórmulas — cada um num pacote com
-  testes de uitest ([o que o exercício rendeu à lib](examples/7guis/GAPS.md)).
-- **`go run ./examples/todo`** — TodoMVC em três camadas (domínio puro,
-  view-model, composição), com persistência JSON, edição inline por duplo
-  clique e testes de domínio e de UI.
-- **`go run ./examples/contatos`** — mestre-detalhe: busca + tabela à
-  esquerda, detalhe em abas (`Tabs`) com formulário validado e notas à
-  direita; seleção preservada por identidade no filtro, menu de contexto no
-  botão direito (`quick.Menu`), exclusão com confirmação e toasts.
-- **`go run ./examples/navegacao`** — navegação: três níveis de telas com
-  transições (deslizar, fade, subir), botão Voltar por composição,
-  `PopToRoot` no "Concluir", troca da transição padrão em runtime e estado
-  preservado nas telas dormentes.
-- **`go run ./examples/arquivos`** — o trio "app de verdade": `SplitPane`
-  redimensionável, `Tree` de pastas virtualizada (filhos lidos do disco sob
-  demanda, expansão por teclado) e o seletor de arquivos
-  `quick.OpenFile`/`SaveFile`.
-
-  <img src="docs/arquivos.png" alt="Arquivos: split, árvore e o seletor de arquivos" width="820">
-
-- **`go run ./examples/kanban`** — drag-and-drop: cartões arrastados entre
-  colunas com fantasma e realce do alvo, cancelamento no Escape e a UI
-  reconstruída da projeção do modelo.
-- **`go run ./examples/janelas`** — multi-janela: `App.NewWindow`, tema por
-  janela (uma escura ao lado de claras) e o MESMO `State` reagindo em todas
-  ao mesmo tempo.
-- **`go run ./examples/proxy`** — um mini "Burp Suite": proxy de
-  depuração HTTP local que captura as trocas que passam por ele, filtra por
-  método/URL, mostra requisição e resposta em visores `CodeEditor` em modo
-  `ReadOnly` (com highlight JSON) e permite SIMULAR respostas de chamadas
-  específicas (mocks). Inspeciona **HTTP e também HTTPS** (via uma CA local
-  gerada — MITM, a mesma técnica do mitmproxy/Charles): ligue "Inspecionar
-  HTTPS", exporte a CA e instale-a na sua trust store. Aponte um cliente
-  para o proxy:
-  `HTTPS_PROXY=http://localhost:8080 curl https://httpbin.org/get`.
-
-  > **Segurança:** a CA nasce e vive só na sua máquina (chave `0600`),
-  > nunca deve ser compartilhada, e a inspeção só se justifica para depurar
-  > o **seu próprio** tráfego. Cert pinning continua rejeitando o proxy. O
-  > proxy escuta só em `127.0.0.1` — expor na rede (`-addr :8080`) o
-  > transforma num relay aberto para quem estiver no mesmo wifi.
-
-  É um proxy **explícito**: captura o que for apontado para ele, não o
-  tráfego inteiro da máquina.
-
-  <img src="docs/proxy.png" alt="Mini-proxy: captura HTTP/HTTPS, visor ReadOnly e mocks" width="900">
-
-- **`go run ./examples/editor [arquivo]`** — o CodeEditor: highlight de
-  sintaxe incremental (Go/JSON pela extensão; abrir um `/*` re-lexa só até
-  o estado convergir), auto-indentação, Tab/Shift+Tab indentando o bloco
-  selecionado (um passo de undo), linha atual e par de parênteses
-  realçados (pulando strings/comentários), gutter numerado, undo/redo
-  coalescido, rolagem 2D virtualizada com indicadores, quebra visual de
-  linhas opcional (`WrapLines`; o padrão é rolagem horizontal), tamanho de
-  fonte por editor (`FontSize`) e Go Mono ↔ Fira Code embutidas
-  (`Theme.UseMonoFont`), além de "ir à linha" por composição com
-  `quick.Prompt`.
-
-<img src="docs/editor.png" alt="CodeEditor" width="520">
-
-<img src="docs/kanban.png" alt="Kanban em pleno arrasto" width="640">
-
-Testes de tudo (rodam sem janela):
+Testes de tudo, sem abrir janela:
 
 ```bash
 go test ./...
 ```
 
-## Por dentro: performance, filosofia e curiosidades
-
-### Os números que importam
+## Por dentro
 
 | | |
 | --- | ---: |
@@ -367,55 +370,65 @@ go test ./...
 | Alocações no caminho quente de desenho | **zero** — provado por `AllocsPerRun` |
 | Binário completo, `-s -w` | **3,7 MB** (1,1 MB são as cinco fontes embutidas) |
 
-Medições, metodologia e a análise honesta de viabilidade — incluindo o
-que a lib ainda **não** faz — estão em [docs/BENCHMARK.md](docs/BENCHMARK.md).
+Medições, metodologia e a análise honesta de viabilidade — incluindo o que
+a lib ainda **não** faz — em [docs/BENCHMARK.md](docs/BENCHMARK.md). A
+organização de pacotes e os contratos (Widget, roteamento, overlay, tema)
+em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
 
-### A filosofia
+<details>
+<summary><b>A filosofia</b></summary>
+<br>
 
 - **Desenho 100% por software.** Cada pixel nasce num `*image.RGBA`; o
   OpenGL só apresenta o buffer. Isso compra determinismo (o mesmo código
-  produz os mesmos bytes — a base dos golden tests e das screenshots
-  desta página, geradas pela própria lib), renderização offscreen sem
-  janela e uma fronteira de plataforma minúscula: se o macOS aposentar o
-  OpenGL de vez, troca-se só o blitter.
+  produz os mesmos bytes — a base dos golden tests e das screenshots desta
+  página), renderização offscreen sem janela e uma fronteira de plataforma
+  minúscula: se o macOS aposentar o OpenGL de vez, troca-se só o blitter.
 - **Zero alocação no caminho quente é regra com polícia**, não aspiração:
   benchmarks de allocs fazem parte da suíte. O relatório de benchmark
   flagrou o widget mais novo alocando 2× por frame (method values virando
   closures) — a correção saiu no mesmo commit do relatório.
-- **Single-threaded por contrato.** Uma thread, um loop dirigido a
-  eventos, `App.Post` como única porta de entrada para goroutines. Sem
-  mutex em widget, sem corrida para debugar.
+- **Single-threaded por contrato.** Uma thread, um loop dirigido a eventos,
+  `App.Post` como única porta de entrada para goroutines. Sem mutex em
+  widget, sem corrida para debugar.
 - **Três dependências, e nada mais.** GLFW, GL e `x/image`. Até as fontes
   vêm embutidas — um `go build` produz um binário que não pede nada ao
   sistema.
 - **Erros sem pânico, godoc em português, um commit por incremento
   compilável.** Convenções pequenas que aguentaram a lib triplicar de
   tamanho sem apodrecer.
+</details>
 
-### A obsessão com DX
+<details>
+<summary><b>A obsessão com DX</b></summary>
+<br>
 
-Quase toda API nasceu de uma dor concreta, não de um plano: o tema
-ambiente existe porque passar `theme` em todo construtor doía; os handles
-tipados do `quick.Form` existem porque `Get("nome")` por string é bug
-esperando hora; **a variável é a chave** virou princípio — o compilador
-confere o que, em outras libs, é convenção de string. E a regra da rampa
-atravessa tudo: as camadas altas (`quick`) aceitam e devolvem widgets
-comuns, então quando o pronto não serve, desce-se UM degrau naquele ponto
-— nunca reescrever a tela.
+Quase toda API nasceu de uma dor concreta, não de um plano: o tema ambiente
+existe porque passar `theme` em todo construtor doía; os handles tipados do
+`quick.Form` existem porque `Get("nome")` por string é bug esperando hora;
+**a variável é a chave** virou princípio — o compilador confere o que, em
+outras libs, é convenção de string. E a regra da rampa atravessa tudo: as
+camadas altas (`quick`) aceitam e devolvem widgets comuns, então quando o
+pronto não serve, desce-se UM degrau naquele ponto — nunca reescrever a
+tela.
+</details>
 
-### uitest, a aposta que mais pagou
+<details>
+<summary><b>uitest, a aposta que mais pagou</b></summary>
+<br>
 
-O núcleo de interação inteiro (roteamento, foco, overlay, captura,
-relógio) vive numa `Session` sem janela; o App real é uma casca GLFW por
-cima, e o [uitest](uitest) dirige a MESMA Session nos testes — cliques,
-digitação, timers virtuais, screenshots determinísticos. O retorno
-composto disso: o golden test "frame incremental == frame completo" pegou
-bugs reais de dano em três widgets diferentes antes de qualquer usuário;
-e quando a altura de TODAS as linhas de TODAS as listas mudou (design
-system), **nenhum teste quebrou** — eles testam comportamento, não pixels
-decorados.
+O núcleo de interação inteiro (roteamento, foco, overlay, captura, relógio)
+vive numa `Session` sem janela; o App real é uma casca GLFW por cima, e o
+[uitest](uitest) dirige a MESMA Session nos testes. O retorno composto
+disso: o golden test "frame incremental == frame completo" pegou bugs reais
+de dano em três widgets diferentes antes de qualquer usuário; e quando a
+altura de TODAS as linhas de TODAS as listas mudou (design system),
+**nenhum teste quebrou** — eles testam comportamento, não pixels decorados.
+</details>
 
-### Curiosidades
+<details>
+<summary><b>Curiosidades</b></summary>
+<br>
 
 - **19.585 linhas de biblioteca**, cobertas por **7.893 linhas de testes**
   (234 testes, ~10 s de suíte) e demonstradas por **6.071 linhas de
@@ -425,33 +438,28 @@ decorados.
   116 commits — nenhum deles quebrando a suíte.
 - Dos ~101 MB de RSS de um app rodando, **88 MB são a stack OpenGL da
   Apple**; a interface em si vive em dígitos únicos de MB.
-- A fonte Go Regular não cobre ★ nem ◀, mas cobre ♥ ← ↑ ‹ › — o exemplo
-  de contatos usa ♥ nos favoritos por isso, e foi um teste de
-  `GlyphAdvance` que decidiu.
+- A fonte Go Regular não cobre ★ nem ◀, mas cobre ♥ ← ↑ ‹ › — o exemplo de
+  contatos usa ♥ nos favoritos por isso, e foi um teste de `GlyphAdvance`
+  que decidiu.
 - O bug mais sutil até hoje: `draw.Over` exige cor pré-multiplicada — os
   contornos verdes do inspector é que denunciaram.
+</details>
 
-## Arquitetura
+## Status
 
-Renderização 100% por software sobre um `*image.RGBA` (GLFW para
-janela/eventos; OpenGL só apresenta o buffer), single-threaded na main
-thread, loop dirigido a eventos com dirty regions, e o pacote raiz como
-fachada — aplicações importam só `github.com/JonathanSantos/JUIGo`. A
-organização de pacotes, os contratos (Widget, roteamento por geometria e
-por foco, overlay, tema) e os números de performance estão em
-[docs/ARQUITETURA.md](docs/ARQUITETURA.md). O benchmark completo — frames
-por tema e escala, primitivas, memória, cobertura e a análise de
-viabilidade — está em [docs/BENCHMARK.md](docs/BENCHMARK.md).
+Projeto de **estudo**, em evolução ativa. Versionado por tags `v0.x` — na
+série 0.x a API ainda quebra entre versões, sem janela de depreciação.
+Desenvolvido e verificado no macOS; Linux e Windows têm as dependências
+mapeadas, mas ainda não foram testados. Issues e correções são bem-vindas.
 
-## Fora de escopo (por enquanto)
-
-Acessibilidade, IME (composição de texto asiático — avaliação e plano em
-[docs/IME.md](docs/IME.md)), edição rica (negrito/itálico) e árvores. A
-arquitetura foi pensada para recebê-los depois: eventos são tipos abertos,
-o tema é injetado, containers são aninháveis e o desenho é isolado em
-`render/`.
+**Fora de escopo (por enquanto):** acessibilidade, IME (composição de texto
+asiático — avaliação e plano em [docs/IME.md](docs/IME.md)) e edição rica
+(negrito/itálico). A arquitetura foi pensada para recebê-los depois:
+eventos são tipos abertos, o tema é injetado, containers são aninháveis e o
+desenho é isolado em `render/`.
 
 ## Licença
 
 [MIT](LICENSE). A fonte Go Regular embutida segue a
-[licença BSD do projeto Go](https://go.dev/LICENSE).
+[licença BSD do projeto Go](https://go.dev/LICENSE); Lora e Fira Code, a
+OFL (textos em [`theme/assets`](theme/assets)).
