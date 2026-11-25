@@ -22,10 +22,12 @@ func (s *Session) ShowCommandPalette() {
 	p := newPaletteView(s)
 	th := s.theme
 	w := min(th.Px(380), s.size.X-2*th.PaddingPx())
-	h := min(th.Px(280), s.size.Y-2*th.PaddingPx())
 	x := (s.size.X - w) / 2
 	y := th.Px(48)
-	p.Layout(image.Rect(x, y, x+w, y+h))
+	// Tema antes de medir: fit pergunta a altura preferida do miolo.
+	Mount(p, th)
+	p.Layout(image.Rect(x, y, x+w, y))
+	p.fit()
 	s.palette = p
 	s.OpenOverlay(p)
 }
@@ -126,6 +128,7 @@ type paletteView struct {
 	filter   *state.State[string]
 	selIdx   *state.State[int]
 	list     *List[*cmdRow]
+	results  *Sized
 	box      *VBox
 	clip     image.RGBA
 }
@@ -153,7 +156,8 @@ func newPaletteView(s *Session) *paletteView {
 	field := &paletteInput{pal: p}
 	field.Input = NewInput(locale.CommandPlaceholder).BindValue(p.filter).OnSubmit(func(string) { p.runSelected() })
 	p.filter.Watch(func(string) { p.refilter() })
-	p.box = NewVBox(field, NewSized(NewScroll(p.list), 0, 200)).Gap(6)
+	p.results = NewSized(NewScroll(p.list), 0, 0)
+	p.box = NewVBox(field, p.results).Gap(6)
 	p.refilter()
 	return p
 }
@@ -173,6 +177,29 @@ func (p *paletteView) refilter() {
 	if p.selIdx.Get() != 0 {
 		p.selIdx.Set(0)
 	}
+	p.fit()
+}
+
+// paletteMaxResults é a altura máxima, em unidades lógicas, da área de
+// resultados; acima disso ela rola.
+const paletteMaxResults = 240
+
+// fit ajusta a altura do painel aos resultados: poucos comandos, painel
+// curto; muitos, até paletteMaxResults com rolagem. Mantém posição e
+// largura, e danifica a área antiga e a nova.
+func (p *paletteView) fit() {
+	b := p.Bounds()
+	if p.theme == nil || p.session == nil || b.Dx() == 0 {
+		return
+	}
+	p.Invalidate()
+	p.results.h = 0
+	if p.list.PreferredSize().Y > p.theme.Px(paletteMaxResults) {
+		p.results.h = paletteMaxResults
+	}
+	h := p.box.PreferredSize().Y + 2*p.theme.PaddingPx()
+	h = min(h, p.session.size.Y-b.Min.Y-p.theme.PaddingPx())
+	p.Layout(image.Rect(b.Min.X, b.Min.Y, b.Max.X, b.Min.Y+h))
 	p.Invalidate()
 }
 

@@ -16,12 +16,67 @@ import (
 	"github.com/JonathanSantos/JUIGo/render"
 )
 
-// Fonte Go Regular (https://go.dev/blog/go-fonts), licença BSD — a mesma do
-// projeto Go. Embutida para que binários JUIGo não dependam de fontes do
-// sistema.
-//
-//go:embed assets/GoRegular.ttf
-var embeddedFontTTF []byte
+// Fontes do corpo, embutidas para que binários JUIGo não dependam de fontes
+// do sistema: Inter (https://rsms.me/inter, licença SIL OFL 1.1 em
+// theme/assets/Inter-OFL.txt), a da identidade Nanquim, e Go Regular
+// (https://go.dev/blog/go-fonts, licença BSD do projeto Go), a do Classic.
+var (
+	//go:embed assets/Inter-Regular.ttf
+	interRegularTTF []byte
+	//go:embed assets/Inter-SemiBold.ttf
+	interSemiBoldTTF []byte
+	//go:embed assets/GoRegular.ttf
+	goRegularTTF []byte
+)
+
+// Parses únicos das fontes do corpo (single-threaded por contrato).
+var (
+	interRegular  *opentype.Font
+	interSemiBold *opentype.Font
+	goRegular     *opentype.Font
+)
+
+// parseOnce interpreta ttf na primeira chamada e guarda em *dst.
+func parseOnce(dst **opentype.Font, ttf []byte, name string) (*opentype.Font, error) {
+	if *dst != nil {
+		return *dst, nil
+	}
+	f, err := opentype.Parse(ttf)
+	if err != nil {
+		return nil, fmt.Errorf("juigo: falha ao interpretar a %s embutida: %w", name, err)
+	}
+	*dst = f
+	return f, nil
+}
+
+// Inter devolve a Inter Regular embutida — a fonte do corpo da identidade
+// Nanquim (Default/Dark e temas de New).
+func Inter() (*opentype.Font, error) { return parseOnce(&interRegular, interRegularTTF, "Inter") }
+
+// InterSemiBold devolve a Inter SemiBold embutida — a fonte de display
+// (títulos) da identidade Nanquim.
+func InterSemiBold() (*opentype.Font, error) {
+	return parseOnce(&interSemiBold, interSemiBoldTTF, "Inter SemiBold")
+}
+
+// GoRegular devolve a Go Regular embutida — a fonte do corpo do Classic.
+func GoRegular() (*opentype.Font, error) { return parseOnce(&goRegular, goRegularTTF, "Go Regular") }
+
+// UseBodyFont troca a fonte do CORPO (texto comum, campos, legendas) e
+// refaz as faces na escala corrente. Títulos seguem a fonte de display
+// (UseDisplayFont) e editores, a mono (UseMonoFont).
+func (t *Theme) UseBodyFont(fnt *opentype.Font) error {
+	if fnt == nil || fnt == t.fnt {
+		return nil
+	}
+	old := t.fnt
+	t.fnt = fnt
+	if err := t.SetScale(t.scale); err != nil {
+		t.fnt = old
+		return err
+	}
+	return nil
+}
 
 // Fira Code (https://github.com/tonsky/FiraCode), licença SIL OFL 1.1
 // (theme/assets/FiraCode-OFL.txt) — alternativa embutida de fonte mono
@@ -226,6 +281,10 @@ type Theme struct {
 	// InputMinWidth é a largura preferida mínima do Input, em unidades
 	// lógicas (use InputMinWidthPx).
 	InputMinWidth int
+	// ModalMinWidth é a largura mínima do painel do Modal (diálogos), em
+	// unidades lógicas — diálogos curtos não ficam espremidos em volta do
+	// título. Limitada à largura da janela.
+	ModalMinWidth int
 	// SliderMinWidth é a largura preferida mínima do Slider, em unidades
 	// lógicas.
 	SliderMinWidth int
@@ -290,7 +349,7 @@ type Theme struct {
 
 	// TitleSize, SubtitleSize e CaptionSize são os tamanhos LÓGICOS dos
 	// papéis tipográficos (ver Title/Subtitle/Caption e Text.Title). Título
-	// e subtítulo usam a fonte de DISPLAY (UseDisplayFont; Go Mono Bold na
+	// e subtítulo usam a fonte de DISPLAY (UseDisplayFont; Inter SemiBold na
 	// identidade Nanquim, Go Bold no Classic); a legenda usa a fonte do
 	// corpo.
 	TitleSize    float64
@@ -347,15 +406,15 @@ func Dark() (*Theme, error) {
 // base constrói um tema com as métricas, fontes e durações da identidade
 // do JUIGo e SEM cores (todas zeradas) — New e Classic pintam por cima.
 func base() (*Theme, error) {
-	parsed, err := opentype.Parse(embeddedFontTTF)
+	parsed, err := Inter()
 	if err != nil {
-		return nil, fmt.Errorf("juigo: falha ao interpretar a fonte embutida: %w", err)
+		return nil, err
 	}
 	mono, err := GoMono()
 	if err != nil {
 		return nil, err
 	}
-	display, err := GoMonoBold()
+	display, err := InterSemiBold()
 	if err != nil {
 		return nil, err
 	}
@@ -371,6 +430,7 @@ func base() (*Theme, error) {
 		BorderWidth:          1,
 		Radius:               4,
 		InputMinWidth:        220,
+		ModalMinWidth:        340,
 		SliderMinWidth:       160,
 		SliderTrackThickness: 4,
 		SliderHandleSize:     16,

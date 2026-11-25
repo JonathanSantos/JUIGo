@@ -3,7 +3,7 @@
 // de menus com atalhos (e a paleta Ctrl/Cmd+K de brinde), o SplitPane com
 // a lista de conversas em pílulas, balões de Card com Label (parágrafos
 // que quebram sozinhos), resposta "digitando" pelos timers da aplicação e
-// os títulos em Go Mono Bold. Nenhuma IA de verdade foi ferida: as respostas
+// a Inter da identidade. Nenhuma IA de verdade foi ferida: as respostas
 // são cartas da casa.
 package main
 

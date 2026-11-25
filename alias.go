@@ -529,12 +529,24 @@ func GoMonoFont() (*Font, error) { return theme.GoMono() }
 // FiraCodeFont devolve a Fira Code embutida (ver theme.FiraCode).
 func FiraCodeFont() (*Font, error) { return theme.FiraCode() }
 
+// InterFont devolve a Inter Regular — a fonte do corpo da identidade
+// Nanquim (ver theme.Inter).
+func InterFont() (*Font, error) { return theme.Inter() }
+
+// InterSemiBoldFont devolve a Inter SemiBold — a fonte dos títulos da
+// identidade Nanquim (ver theme.InterSemiBold).
+func InterSemiBoldFont() (*Font, error) { return theme.InterSemiBold() }
+
+// GoRegularFont devolve a Go Regular — a fonte do corpo do Classic (ver
+// theme.GoRegular).
+func GoRegularFont() (*Font, error) { return theme.GoRegular() }
+
 // GoBoldFont devolve a Go Bold — a fonte de display do Classic (ver
 // theme.GoBold).
 func GoBoldFont() (*Font, error) { return theme.GoBold() }
 
-// GoMonoBoldFont devolve a Go Mono Bold — a fonte de display da identidade
-// Nanquim (ver theme.GoMonoBold).
+// GoMonoBoldFont devolve a Go Mono Bold — opção de títulos com cara de
+// ferramenta (ver theme.GoMonoBold).
 func GoMonoBoldFont() (*Font, error) { return theme.GoMonoBold() }
 
 // ShowToast exibe um aviso transitório na base da janela em interação por

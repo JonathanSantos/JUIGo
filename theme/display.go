@@ -21,8 +21,7 @@ var (
 )
 
 // GoMonoBold devolve a Go Mono Bold (x/image, já dependência), interpretada
-// uma única vez — a fonte de display da identidade Nanquim (Default/Dark):
-// títulos com cara de ferramenta, da mesma família do corpo.
+// uma única vez — opção de display com cara de ferramenta (UseDisplayFont).
 func GoMonoBold() (*opentype.Font, error) {
 	if goMonoBoldFnt != nil {
 		return goMonoBoldFnt, nil

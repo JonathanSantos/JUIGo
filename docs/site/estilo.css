@@ -1,8 +1,8 @@
 /* Site do JUIGo: os tokens são os da identidade Nanquim (docs/DESIGN.md),
    derivados pelo theme.New, e as fontes são as mesmas da biblioteca. */
 
-@font-face { font-family: "Go"; src: url("fonts/GoRegular.ttf") format("truetype"); font-display: swap; }
-@font-face { font-family: "Go Mono"; src: url("fonts/GoMonoBold.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("fonts/Inter-Regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("fonts/Inter-SemiBold.ttf") format("truetype"); font-weight: 500 900; font-display: swap; }
 @font-face { font-family: "Fira Code"; src: url("fonts/FiraCode-Regular.ttf") format("truetype"); font-display: swap; }
 
 :root {
@@ -22,8 +22,8 @@
   --linha-atual: #F5F5F5;
   --k: #3E6DC8; --s: #815B19; --n: #B2511E; --c: #737373; --b: #23817D;
 
-  --display: "Go Mono", ui-monospace, Menlo, monospace;
-  --sans: "Go", "Helvetica Neue", Arial, sans-serif;
+  --display: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --sans: "Inter", "Helvetica Neue", Arial, sans-serif;
   --mono: "Fira Code", ui-monospace, Menlo, monospace;
 
   --raio: 4px;
@@ -170,7 +170,7 @@ main {
 }
 main > section { max-width: var(--coluna); margin-bottom: 72px; }
 
-h1, h2, h3 { font-family: var(--display); font-weight: 400; line-height: 1.2; letter-spacing: -.01em; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.2; letter-spacing: -.01em; }
 h1 { font-size: clamp(2rem, 3.4vw, 2.8rem); margin: 0 0 20px; max-width: 16em; }
 h2 { font-size: 1.85rem; margin: 0 0 14px; }
 h3 { font-size: 1.25rem; margin: 0 0 6px; }
@@ -191,7 +191,7 @@ main > .topo {
   display: grid; grid-template-columns: repeat(4, auto); justify-content: start; gap: 12px 26px;
   color: var(--apagado); font-size: 15px;
 }
-.fatos strong { display: block; font: 400 26px/1.2 var(--display); color: var(--tinta); }
+.fatos strong { display: block; font: 600 26px/1.2 var(--display); color: var(--tinta); }
 .topo h1 { grid-column: 1 / -1; }
 .topo-texto { min-width: 0; }
 .topo-captura { margin: 0; }
@@ -299,7 +299,7 @@ pre:hover .copiar, pre .copiar:focus-visible { opacity: 1; }
   border-bottom: 1px solid var(--fio);
 }
 .componente:last-child { border-bottom: 0; }
-.componente h4 { font: 400 1.3rem/1.25 var(--display); margin: 0 0 4px; }
+.componente h4 { font: 600 1.3rem/1.25 var(--display); margin: 0 0 4px; }
 .componente p { color: var(--apagado); font-size: 15px; margin: 0; }
 .componente pre { margin: 0; }
 .componente-captura { margin: 0; }
@@ -321,7 +321,7 @@ main > #exemplos { max-width: 1000px; }
 .numeros { border-collapse: collapse; width: 100%; max-width: 40rem; font-size: 15px; }
 .numeros th, .numeros td { padding: 10px 0; border-bottom: 1px solid var(--fio); text-align: left; }
 .numeros th { font-weight: 400; color: var(--apagado); padding-right: 24px; }
-.numeros td { font: 400 18px var(--display); text-align: right; white-space: nowrap; }
+.numeros td { font: 600 18px var(--display); text-align: right; white-space: nowrap; }
 
 .rodape {
   max-width: var(--coluna);

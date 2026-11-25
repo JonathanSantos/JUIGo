@@ -677,7 +677,10 @@ func (in *Input) Draw(dst *image.RGBA) {
 		in.drawComposition(view, textX, baseline)
 	case len(in.runes) > 0:
 		th.DrawText(view, in.text, image.Pt(textX, baseline), th.Text)
-	case !in.focused && in.placeholder != "":
+	case in.placeholder != "":
+		// A sugestão fica visível também com foco (o cursor aparece antes
+		// dela): um campo recém-aberto, como o da paleta ou de um Prompt,
+		// continua dizendo o que espera até a primeira tecla.
 		th.DrawText(view, in.placeholder, image.Pt(textX, baseline), th.Placeholder)
 	}
 

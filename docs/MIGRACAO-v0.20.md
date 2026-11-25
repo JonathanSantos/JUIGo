@@ -12,7 +12,7 @@ compilação.
 |---|---|
 | `juigo.ClaudeTheme()`, `theme.Claude()` | `juigo.DefaultTheme()` — ou um tema seu com `NewTheme` |
 | `juigo.ClaudeDarkTheme()`, `theme.ClaudeDark()` | `juigo.DarkTheme()` |
-| `juigo.LoraFont()`, `juigo.LoraBoldFont()`, `theme.Lora()`, `theme.LoraBold()` | `juigo.GoMonoBoldFont()` ou `juigo.GoBoldFont()`; para uma serif, carregue o `.ttf` com `opentype.Parse` e passe a `Theme.UseDisplayFont` |
+| `juigo.LoraFont()`, `juigo.LoraBoldFont()`, `theme.Lora()`, `theme.LoraBold()` | `juigo.InterSemiBoldFont()`, `juigo.GoBoldFont()` ou `juigo.GoMonoBoldFont()`; para uma serif, carregue o `.ttf` com `opentype.Parse` e passe a `Theme.UseDisplayFont` |
 
 Quem gostava do "papel e tinta" chega perto com sementes:
 
@@ -26,8 +26,9 @@ th, _ := juigo.NewTheme(juigo.Palette{
 ## Mudanças de aparência
 
 - ⚠️ **`DefaultTheme`/`DarkTheme` mudaram de paleta e de métricas:** tinta
-  em vez de azul, `Padding` 10 (era 8), títulos em Go Mono Bold (eram Go
-  Bold). Layouts ficam um pouco mais espaçosos. Para o visual antigo, use
+  em vez de azul, `Padding` 10 (era 8) e a fonte passou a ser a **Inter**
+  (corpo Regular, títulos SemiBold; eram Go Regular e Go Bold). Textos
+  medem diferente: confira larguras fixas. Layouts ficam um pouco mais espaçosos. Para o visual antigo, use
   `ClassicTheme()` (claro) ou o novo `ClassicDarkTheme()` (escuro).
 - ⚠️ **`ClassicTheme` não é mais "Default com cantos retos"**: ele guarda
   a paleta antiga inteira. Os widgets, porém, ganharam os ajustes de
@@ -48,6 +49,8 @@ th, _ := juigo.NewTheme(juigo.Palette{
   `Theme.ApplyPalette`: temas a partir de sementes, com contraste WCAG
   garantido.
 - `Theme.Audit()` e `juigo.Contrast(a, b)`: conferência de contraste.
+- `Theme.UseBodyFont` troca a fonte do corpo; `theme.Inter()`,
+  `theme.InterSemiBold()` e `theme.GoRegular()` dão as embutidas.
 - Tokens novos: `Success`, `Warning`, `Track`, `HeaderBackground`,
   `AccentText`. Se você monta um `Theme` campo a campo, preencha-os (ou
   derive com `ApplyPalette` e sobrescreva o que quiser).

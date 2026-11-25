@@ -296,12 +296,14 @@ func (b *Bars) Draw(dst *image.RGBA) {
 		hi = lo + 1
 	}
 	zeroY := r.Max.Y - int((0-lo)/(hi-lo)*float64(r.Dy())+0.5)
+	// Cada barra ocupa ~60% da sua faixa, centrada: o espaço entre elas
+	// separa os valores e a série não vira um bloco maciço de cor.
 	n := len(b.data)
-	gap := th.Px(2)
-	bw := max((r.Dx()-gap*(n-1))/n, 1)
+	slot := float64(r.Dx()) / float64(n)
+	bw := max(int(slot*0.6), 1)
 	radius := min(th.Px(3), bw/2)
 	for i, v := range b.data {
-		x := r.Min.X + i*(bw+gap)
+		x := r.Min.X + int(float64(i)*slot+(slot-float64(bw))/2)
 		f := (v - lo) / (hi - lo)
 		y := r.Max.Y - int(f*float64(r.Dy())+0.5)
 		var bar image.Rectangle

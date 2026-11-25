@@ -82,10 +82,9 @@ func main() {
 ```
 
 Digite no campo e o título reage a cada tecla — o `State` é a única fonte
-de verdade e a interface é uma projeção dele. A fonte **Go Regular**
-([go.dev/blog/go-fonts](https://go.dev/blog/go-fonts), licença BSD do
-projeto Go) vem embutida via `go:embed`: binários JUIGo não dependem de
-fontes do sistema.
+de verdade e a interface é uma projeção dele. A fonte **Inter**
+([rsms.me/inter](https://rsms.me/inter), licença SIL OFL) vem embutida via
+`go:embed`: binários JUIGo não dependem de fontes do sistema.
 
 ## Componentes
 
@@ -169,7 +168,7 @@ Grid, Scroll, Modal, Popup ancorado, Tooltip, MenuBar e Navigator.
 </table>
 
 A identidade do JUIGo e o tema padrão: tinta preta como ação, neutros
-puros, um único sinal âmbar para foco e seleção e títulos em Go Mono Bold.
+puros, um único sinal âmbar para foco e seleção, tudo em Inter.
 Vem com papéis tipográficos (`Title/Subtitle/Caption`), hierarquia de
 botões (`Secondary`/`Ghost`), cores de estado (`Danger`/`Success`/
 `Warning`), superfícies (`Card`, `Divider`) e movimento. `DefaultTheme()` e
@@ -447,9 +446,9 @@ altura de TODAS as linhas de TODAS as listas mudou (design system),
   116 commits — nenhum deles quebrando a suíte.
 - Dos ~101 MB de RSS de um app rodando, **88 MB são a stack OpenGL da
   Apple**; a interface em si vive em dígitos únicos de MB.
-- A fonte Go Regular não cobre ★ nem ◀, mas cobre ♥ ← ↑ ‹ › — o exemplo de
-  contatos usa ♥ nos favoritos por isso, e foi um teste de `GlyphAdvance`
-  que decidiu.
+- A fonte Go Regular (a de antes do Inter) não cobria ★ nem ◀, mas cobria
+  ♥ ← ↑ ‹ › — o exemplo de contatos usa ♥ nos favoritos por isso, e foi um
+  teste de `GlyphAdvance` que decidiu.
 - O bug mais sutil até hoje: `draw.Over` exige cor pré-multiplicada — os
   contornos verdes do inspector é que denunciaram.
 </details>
@@ -469,6 +468,6 @@ desenho é isolado em `render/`.
 
 ## Licença
 
-[MIT](LICENSE). A fonte Go Regular embutida segue a
-[licença BSD do projeto Go](https://go.dev/LICENSE); Fira Code, a OFL
-(texto em [`theme/assets`](theme/assets)).
+[MIT](LICENSE). Inter e Fira Code embutidas seguem a SIL OFL 1.1 (textos
+em [`theme/assets`](theme/assets)); as fontes Go (Regular, Mono, Bold), a
+[licença BSD do projeto Go](https://go.dev/LICENSE).

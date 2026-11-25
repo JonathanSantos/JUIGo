@@ -103,8 +103,9 @@ func TestListaConteudoDentroDaPilula(t *testing.T) {
 // TestTonsDeEstado: Success e Warning desenham nas cores do tema e seguem
 // a troca de tema em runtime.
 func TestTonsDeEstado(t *testing.T) {
-	ok := juigo.NewText("████").Success()
-	aviso := juigo.NewText("████").Warning()
+	// Hastes verticais (H, I, l) cobrem pixels inteiros: a cor sai pura.
+	ok := juigo.NewText("HHHH IIII llll").Success()
+	aviso := juigo.NewText("HHHH IIII llll").Warning()
 	h := uitest.New(t, juigo.NewVBox(ok, aviso).Pad(10), 300, 200)
 	conta := func(w juigo.Widget, c color.RGBA) int {
 		img := h.Screenshot()
@@ -202,5 +203,54 @@ func TestListaLarguraContaORecuo(t *testing.T) {
 	quer := simples.PreferredSize().X + 2*(th.Px(th.RowPad)+th.PaddingPx())
 	if got := selecionavel.PreferredSize().X; got != quer {
 		t.Fatalf("largura preferida = %d, esperado %d", got, quer)
+	}
+}
+
+// TestTabelaHover: numa tabela selecionável a linha sob o ponteiro ganha o
+// realce HoverBackground, e o realce some quando o ponteiro sai.
+func TestTabelaHover(t *testing.T) {
+	tab := juigo.NewTable([]string{"Nome"}, 5, func(l, c int) string { return "linha" }).BindSelected(juigo.NewState(0))
+	h := uitest.New(t, juigo.NewVBox(tab).Pad(10), 300, 260)
+	th := h.Session().Theme()
+	r := tab.RowRect(2)
+	dentro := image.Pt(r.Max.X-4, r.Min.Y+r.Dy()/2)
+	h.MoveTo(dentro)
+	if got := h.Screenshot().RGBAAt(dentro.X, dentro.Y); got != th.HoverBackground {
+		t.Fatalf("a linha sob o ponteiro deveria ser %v; veio %v", th.HoverBackground, got)
+	}
+	h.MoveTo(image.Pt(1, 1))
+	if got := h.Screenshot().RGBAAt(dentro.X, dentro.Y); got == th.HoverBackground {
+		t.Fatal("fora da tabela o realce deveria sumir")
+	}
+}
+
+// TestPaletaAjustaAosResultados: a paleta abre visível, com altura para os
+// comandos que mostra, e encolhe ao filtrar.
+func TestPaletaAjustaAosResultados(t *testing.T) {
+	cmd := func(nome string) juigo.Command { return juigo.Command{Title: nome, Action: func() {}} }
+	barra := juigo.NewMenuBar().Menu("Arquivo", cmd("Novo arquivo"), cmd("Abrir pasta"), cmd("Salvar"))
+	h := uitest.New(t, juigo.NewVBox(barra, juigo.NewSpacer()), 500, 500)
+	th := h.Session().Theme()
+	h.Key(juigo.KeyK, juigo.ModControl)
+	altura := func() int {
+		img := h.Screenshot()
+		n := 0
+		for y := 0; y < img.Bounds().Dy(); y++ {
+			if img.RGBAAt(250, y) == th.Surface {
+				n++
+			}
+		}
+		return n
+	}
+	tres := altura()
+	if tres < th.LineHeight()*3 {
+		t.Fatalf("a paleta deveria abrir com espaço para 3 comandos; superfície de %dpx", tres)
+	}
+	if tres > th.Px(240) {
+		t.Fatalf("com 3 comandos o painel não deveria sobrar; superfície de %dpx", tres)
+	}
+	h.Type("salv")
+	if um := altura(); um >= tres {
+		t.Fatalf("filtrar para 1 comando deveria encolher o painel (%d → %d)", tres, um)
 	}
 }

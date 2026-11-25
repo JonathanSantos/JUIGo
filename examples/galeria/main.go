@@ -94,7 +94,7 @@ func nova(aoTema func(*juigo.Theme)) (*galeria, error) {
 	g := &galeria{
 		aoTema:   aoTema,
 		temaNome: juigo.NewState("Nanquim"),
-		titulos:  juigo.NewState("Go Mono Bold"),
+		titulos:  juigo.NewState("Inter SemiBold"),
 		mono:     juigo.NewState("Go Mono"),
 		tamanho:  juigo.NewState("16"),
 		selecao:  juigo.NewState("Tipografia"),
@@ -164,7 +164,7 @@ func nova(aoTema func(*juigo.Theme)) (*galeria, error) {
 	barraEstilo := juigo.NewHBox(
 		knob("Tema", g.temaNome, "Nanquim", "Nanquim escuro", "Cobalto", "Cobalto escuro",
 			"Musgo", "Musgo escuro", "Clássico", "Clássico escuro"),
-		knob("Títulos", g.titulos, "Go Mono Bold", "Go Bold"),
+		knob("Títulos", g.titulos, "Inter SemiBold", "Go Bold", "Go Mono Bold"),
 		knob("Mono", g.mono, "Go Mono", "Fira Code"),
 		knob("Tamanho", g.tamanho, "14", "16", "18"),
 		juigo.NewSpacer(),
@@ -256,10 +256,13 @@ func (g *galeria) alternarEscuro() {
 
 // fonteTitulos resolve o knob da fonte de display.
 func fonteTitulos(nome string) (*opentype.Font, error) {
-	if nome == "Go Bold" {
+	switch nome {
+	case "Go Bold":
 		return theme.GoBold()
+	case "Go Mono Bold":
+		return theme.GoMonoBold()
 	}
-	return theme.GoMonoBold()
+	return theme.InterSemiBold()
 }
 
 // fonteMono resolve o knob da fonte mono.

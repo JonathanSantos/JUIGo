@@ -7,9 +7,9 @@ import (
 // Classic constrói o tema claro com o visual clássico do JUIGo, anterior à
 // identidade Nanquim: azul de sistema, neutros azulados, cantos retos
 // (Radius zero), botão sem borda, títulos em Go Bold e as métricas antigas
-// (Padding 8). Fica para quem já tinha telas desenhadas sobre ele; para
-// algo novo, prefira Default ou um tema próprio com New. O par escuro é
-// ClassicDark.
+// (Padding 8) e corpo em Go Regular. Fica para quem já tinha telas
+// desenhadas sobre ele; para algo novo, prefira Default ou um tema próprio
+// com New. O par escuro é ClassicDark.
 func Classic() (*Theme, error) {
 	t, err := base()
 	if err != nil {
@@ -37,6 +37,13 @@ func finishClassic(t *Theme) error {
 	t.Padding = 8
 	t.Spacing = 8
 	t.ButtonBorder = color.RGBA{}
+	body, err := GoRegular()
+	if err != nil {
+		return err
+	}
+	if err := t.UseBodyFont(body); err != nil {
+		return err
+	}
 	bold, err := GoBold()
 	if err != nil {
 		return err

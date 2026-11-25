@@ -348,7 +348,9 @@ func digits(n int) int {
 
 // gutterW devolve a largura do gutter em px.
 func (c *CodeEditor) gutterW() int {
-	return digits(c.buf.count())*c.advance + 2*c.theme.Px(6)
+	// No mínimo duas colunas de dígitos: arquivos curtos não deixam os
+	// números espremidos contra a borda.
+	return max(digits(c.buf.count()), 2)*c.advance + 2*c.theme.Px(6)
 }
 
 // inner devolve a área interna (dentro da borda).

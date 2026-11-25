@@ -50,7 +50,7 @@ candidatos aparecer no lugar certo.
    Reavaliar a cada release do GLFW. Quando existir, a fiação é: preedit
    callback → `Session.Preedit`; caret/foco mudou → `Session.CaretRect` →
    `glfwSetPreeditCursorPos`.
-3. **Fonte** — pré-requisito paralelo da rota de plataforma: a Go Regular
+3. **Fonte** — pré-requisito paralelo da rota de plataforma: a Inter
    embutida NÃO cobre CJK (os glifos da composição real sairiam como
    quadrados). Exibir japonês/chinês/coreano pede fallback de fonte no
    tema (uma segunda face consultada quando o glifo falta) — independente

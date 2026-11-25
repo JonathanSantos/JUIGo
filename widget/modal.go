@@ -156,7 +156,7 @@ func (m *Modal) Layout(bounds image.Rectangle) {
 	}
 	pad := 2 * m.theme.PaddingPx()
 	pref := m.content.PreferredSize()
-	w := pref.X + 2*pad
+	w := max(pref.X+2*pad, m.theme.Px(m.theme.ModalMinWidth))
 	h := pref.Y + 2*pad
 	if limit := bounds.Dx() - 2*pad; w > limit {
 		w = limit
@@ -205,8 +205,10 @@ func (m *Modal) Draw(dst *image.RGBA) {
 	th := m.theme
 	render.FillRectOver(dst, m.Bounds(), th.Backdrop)
 	radius := th.RadiusPx()
-	render.FillRoundRect(dst, m.panel, radius, th.InputBackground)
-	render.StrokeRoundRect(dst, m.panel, radius, th.BorderPx(), th.InputBorder)
+	// O painel é uma superfície como o Card (Surface + fio leve), não um
+	// campo de entrada.
+	render.FillRoundRect(dst, m.panel, radius, th.Surface)
+	render.StrokeRoundRect(dst, m.panel, radius, th.BorderPx(), th.SurfaceBorder)
 	if m.scroll != nil {
 		view := render.Clip(dst, m.panel, &m.clip)
 		m.scroll.Draw(view)

@@ -43,12 +43,15 @@ type Table struct {
 	// estado do gesto entre o MouseDown e o limiar.
 	onReorder func(from, to int)
 	arm       reorderArm
+	// hoverRow é a linha sob o ponteiro numa tabela selecionável (-1 =
+	// nenhuma): ganha o realce HoverBackground, como em List e Tree.
+	hoverRow int
 }
 
 // NewTable cria a tabela com os títulos de coluna, o total de linhas e o
 // callback de célula. O tema é herdado no mount.
 func NewTable(titles []string, count int, cell func(row, col int) string) *Table {
-	return &Table{titles: titles, count: count, cell: cell}
+	return &Table{titles: titles, count: count, cell: cell, hoverRow: -1}
 }
 
 // Widths define larguras lógicas por coluna (na ordem); 0 divide a sobra
@@ -120,6 +123,9 @@ func (t *Table) SetCount(n int) *Table {
 		return t
 	}
 	t.count = n
+	if t.hoverRow >= n {
+		t.hoverRow = -1
+	}
 	if t.selected != nil && t.selected.Get() >= n {
 		t.selected.Set(-1)
 	}
@@ -244,12 +250,50 @@ func (t *Table) HandleEvent(ev event.Event) bool {
 		if i, fired := t.arm.fire(e.Pos, dragThreshold(t.theme)); fired {
 			StartDrag(reorderPayload{owner: t, from: i}, t.cell(i, 0))
 		}
+		if t.selected != nil {
+			t.setHoverRow(t.rowAt(e.Pos))
+		}
 		return false
-	case event.MouseUp, event.MouseLeave:
+	case event.MouseUp:
 		t.arm.disarm()
+		return false
+	case event.MouseLeave:
+		t.arm.disarm()
+		t.setHoverRow(-1)
 		return false
 	}
 	return false
+}
+
+// rowAt devolve a linha sob p, ou -1 sobre o cabeçalho fixo e fora das
+// linhas.
+func (t *Table) rowAt(p image.Point) int {
+	header := t.viewport.Min.Y
+	if t.viewport.Empty() {
+		header = t.Bounds().Min.Y
+	}
+	if p.Y < header+t.rowH() {
+		return -1
+	}
+	i := (p.Y - t.Bounds().Min.Y - t.rowH()) / t.rowH()
+	if i < 0 || i >= t.count {
+		return -1
+	}
+	return i
+}
+
+// setHoverRow move o realce de hover, danificando só as linhas afetadas.
+func (t *Table) setHoverRow(i int) {
+	if i == t.hoverRow {
+		return
+	}
+	if t.hoverRow >= 0 {
+		t.damage(t.RowRect(t.hoverRow))
+	}
+	t.hoverRow = i
+	if i >= 0 {
+		t.damage(t.RowRect(i))
+	}
 }
 
 // Draw pinta as linhas visíveis (com o realce da selecionada), as divisões
@@ -263,9 +307,12 @@ func (t *Table) Draw(dst *image.RGBA) {
 	h := t.rowH()
 	t.resolveCols()
 
+	// Sem Scroll (viewport vazia) a região é a própria tabela — NUNCA o
+	// destino: num redesenho parcial o destino é só o dano, e o cabeçalho
+	// "fixo" iria parar no topo dele, por cima das linhas.
 	region := t.viewport
 	if region.Empty() {
-		region = dst.Bounds()
+		region = b
 	}
 	region = region.Intersect(b)
 
@@ -287,8 +334,11 @@ func (t *Table) Draw(dst *image.RGBA) {
 	baseline := func(top int) int { return top + (h-th.LineHeight())/2 + th.Ascent() }
 	for i := first; i <= last; i++ {
 		r := t.RowRect(i)
-		if i == sel {
+		switch i {
+		case sel:
 			render.FillRect(dst, r, th.Selection)
+		case t.hoverRow:
+			render.FillRect(dst, r, th.HoverBackground)
 		}
 		for c := range t.titles {
 			cellRect := image.Rect(t.colX[c], r.Min.Y, t.colX[c+1], r.Max.Y)

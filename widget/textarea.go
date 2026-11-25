@@ -841,9 +841,12 @@ func (t *TextArea) Draw(dst *image.RGBA) {
 	textX := bounds.Min.X + pad
 	view := render.Clip(dst, image.Rect(bounds.Min.X+th.BorderPx(), innerTop, bounds.Max.X-th.BorderPx(), innerTop+innerH), &t.clip)
 
-	if len(t.runes) == 0 && !t.focused && t.placeholder != "" {
+	if len(t.runes) == 0 && t.placeholder != "" {
+		// Visível também com foco, como no Input; o cursor vem por cima.
 		th.DrawText(view, t.placeholder, image.Pt(textX, innerTop+th.Ascent()), th.Placeholder)
-		return
+		if !t.focused {
+			return
+		}
 	}
 
 	selStart, selEnd := t.selection()

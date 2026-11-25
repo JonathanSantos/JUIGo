@@ -21,7 +21,7 @@ func Confirm(title string, onResult func(ok bool)) *widget.Modal {
 			widget.NewButton(widget.CurrentLocale().Cancel, func() { m.Close() }).Secondary(),
 			widget.NewButton(widget.CurrentLocale().OK, func() { ok = true; m.Close() }),
 		),
-	)).OnClose(func() {
+	).Gap(16)).OnClose(func() {
 		if onResult != nil {
 			onResult(ok)
 		}
@@ -37,7 +37,7 @@ func Alert(message string) *widget.Modal {
 	m = widget.NewModal(widget.NewVBox(
 		widget.NewText(message),
 		Buttons(widget.NewButton(widget.CurrentLocale().OK, func() { m.Close() })),
-	))
+	).Gap(16))
 	m.Show()
 	return m
 }
@@ -57,7 +57,7 @@ func Prompt(title, placeholder string, onSubmit func(value string)) *widget.Moda
 			widget.NewButton(widget.CurrentLocale().Cancel, func() { m.Close() }).Secondary(),
 			widget.NewButton(widget.CurrentLocale().OK, accept),
 		),
-	)).OnClose(func() {
+	).Gap(12)).OnClose(func() {
 		if accepted && onSubmit != nil {
 			onSubmit(value.Get())
 		}

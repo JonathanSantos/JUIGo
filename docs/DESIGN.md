@@ -1,7 +1,7 @@
 # Design system Nanquim
 
 A identidade visual do JUIGo. Tinta preta sobre neutros puros, um único
-sinal âmbar e títulos em Go Mono Bold: cara de ferramenta, nada de
+sinal âmbar e a Inter, a sans de interface mais usada hoje: nada de
 decoração. É o tema padrão: `juigo.Run` já abre com ele, sem configurar
 nada.
 
@@ -157,15 +157,17 @@ A hierarquia vem de papéis do tema, não de tamanhos avulsos:
 
 | Papel | Como usar | Fonte | Tamanho lógico |
 | --- | --- | --- | --- |
-| Título | `NewText("…").Title()` | display (Go Mono Bold) | `TitleSize` 24 |
+| Título | `NewText("…").Title()` | display (Inter SemiBold) | `TitleSize` 24 |
 | Subtítulo | `.Subtitle()` | display | `SubtitleSize` 19 |
-| Corpo | `NewText("…")` | Go Regular | `FontSize` 16 |
-| Legenda | `.Caption()` | Go Regular, menor | `CaptionSize` 13 |
+| Corpo | `NewText("…")` | Inter Regular | `FontSize` 16 |
+| Legenda | `.Caption()` | Inter Regular, menor | `CaptionSize` 13 |
 
-Títulos em mono e corpo proporcional vêm da mesma família (Go), então
-conversam sem esforço, e nenhuma fonte nova é embutida. A fonte de display
-é um token trocável: `th.UseDisplayFont(f)` (`theme.GoBold()` dá a
-hierarquia por peso do Classic). Regras de uso: **um Título por tela**,
+Uma família só, com a hierarquia vinda de peso e tamanho. A Inter
+(embutida, OFL) cobre acentos, setas, ★ ♥ ✓ e os símbolos de atalho
+(⌘ ⇧ ⌥). As fontes são tokens trocáveis: `th.UseBodyFont(f)` para o corpo,
+`th.UseDisplayFont(f)` para os títulos e `th.UseMonoFont(f)` para
+editores (`theme.GoRegular()` e `theme.GoBold()` dão o par do Classic,
+`theme.GoMonoBold()` títulos com cara de ferramenta). Regras de uso: **um Título por tela**,
 Subtítulo abre seções e cartões, Legenda para metadados.
 
 ## Componentes e hierarquia
@@ -197,7 +199,11 @@ Subtítulo abre seções e cartões, Legenda para metadados.
   `RowPad`. Numa lista selecionável o conteúdo nasce dentro da pílula
   (margem mais `Padding`), nunca colado na borda dela.
 - **Tabela é dado:** cabeçalho em `HeaderBackground` com títulos em
-  legenda, linhas e colunas separadas pelo fio leve (`SurfaceBorder`).
+  legenda, linhas e colunas separadas pelo fio leve (`SurfaceBorder`) e,
+  numa tabela selecionável, hover na linha sob o ponteiro.
+- **Diálogos** são superfícies (`Surface` + fio leve) com largura mínima
+  (`ModalMinWidth`, 340) e respiro entre a pergunta e as ações; o campo
+  de um `Prompt` mostra a sugestão já com foco.
 
 ## Movimento
 

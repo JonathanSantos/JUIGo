@@ -230,7 +230,7 @@ func (t *Theme) ApplyPalette(p Palette) {
 
 	// Translúcidos: lavagem do fundo e pano do modal.
 	t.DisabledWash = withAlpha(t.Background, 0x99)
-	t.Backdrop = color.RGBA{A: 0x66}
+	t.Backdrop = color.RGBA{A: 0x4D}
 	if p.Dark {
 		t.Backdrop = color.RGBA{A: 0x99}
 	}

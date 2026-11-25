@@ -34,8 +34,8 @@ de acessibilidade, ainda não.
 
 | Cenário | CPU/frame | Alocações | % do orçamento 60 Hz |
 | --- | ---: | ---: | ---: |
-| Frame completo 480×320, tema Default (Nanquim) | 46 µs | 0 | 0,3% |
-| Frame completo 480×320, tema Classic (cantos retos) | 42 µs | 0 | 0,3% |
+| Frame completo 480×320, tema Default (Nanquim, Inter) | 52 µs | 0 | 0,3% |
+| Frame completo 480×320, tema Classic (cantos retos, Go) | 44 µs | 0 | 0,3% |
 | Frame completo 960×640 (escala 2×) | 142 µs | 0 | 0,9% |
 | Frame completo **2560×1600** (retina 13" inteira) | 553 µs | 0 | 3,3% |
 | Frame **incremental** (dirty region de um campo) | 15 µs | 0 | 0,1% |
@@ -44,8 +44,9 @@ de acessibilidade, ainda não.
 
 Leituras:
 
-- **Nanquim e Classic custam o mesmo** na prática: 46 µs contra 42 µs
-  está dentro da oscilação de ±30% entre rodadas descrita abaixo. (O
+- **Nanquim e Classic custam quase o mesmo**: 52 µs contra 44 µs fica
+  dentro da oscilação de ±30% entre rodadas descrita abaixo (o que sobra
+  vem do raio com antialiasing e dos glifos da Inter, mais detalhados). (O
   antigo tema "papel e tinta", removido na v0.20, custava ~1,9× por causa
   do raio 10 e da serif.) Só estas duas linhas foram medidas de novo
   (2026-11-24, `-count=3`); as demais são da v0.19.
@@ -82,7 +83,7 @@ Leituras:
 | --- | ---: |
 | Binário do chat (exemplo mais completo), `-s -w` | 3,8 MiB (4,0 MB) |
 | Binário com símbolos | 5,9 MiB |
-| — dos quais fontes embutidas (Go Regular/Mono/Bold/Mono Bold, Fira) | ~0,9 MB |
+| — dos quais fontes embutidas (Inter ×2, Go Regular/Mono/Bold/Mono Bold, Fira) | ~1,8 MB |
 | Tema (fontes rasterizadas + caches), heap — medido na v0.19 | ~0,3 MB |
 | UI densa 900×560 (SplitPane + List 10k + sessão + framebuffer), heap | ~2,2 MB |
 | RSS no App real com GL (referência histórica, 1400×850) | ~101 MB (88 MB são a stack OpenGL do macOS) |
